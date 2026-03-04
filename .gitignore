@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+
+.env
+.env.local
+.env.production
+
+server/data/
+server/reports/
+
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
