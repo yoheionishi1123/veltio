@@ -8,7 +8,6 @@ COPY server ./server
 COPY README.md ./
 
 ENV NODE_ENV=production
-ENV PORT=3210
 
 EXPOSE 3210
 

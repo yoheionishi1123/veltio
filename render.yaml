@@ -8,8 +8,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "3210"
       - key: CVR_STORAGE_DIR
         value: /var/data/veltio
       - key: SESSION_COOKIE_NAME
