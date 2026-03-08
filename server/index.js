@@ -258,6 +258,20 @@ function issuePasswordReset(user) {
   return code;
 }
 
+function trackAppEvent(db, event) {
+  if (!Array.isArray(db.appEvents)) db.appEvents = [];
+  db.appEvents.push({
+    id: uid(),
+    eventType: String(event.eventType || "unknown"),
+    userId: event.userId || null,
+    tenantId: event.tenantId || null,
+    projectId: event.projectId || null,
+    anonymousId: event.anonymousId || null,
+    meta: event.meta || null,
+    createdAt: event.createdAt || new Date().toISOString()
+  });
+}
+
 async function sendVerificationEmail(email, code) {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
     if (process.env.NODE_ENV === "production") {
@@ -341,6 +355,7 @@ async function ensureStorage() {
       diagnosisResults: [],
       reportJobs: [],
       assistantMessages: [],
+      appEvents: [],
       oauthStates: [],
       benchmarks: BENCHMARK_DEFAULTS,
       diagnosisRules: DIAGNOSIS_RULE_DEFAULTS,
@@ -365,6 +380,9 @@ async function readDb() {
   }
   if (!Array.isArray(db.projectContexts)) {
     db.projectContexts = [];
+  }
+  if (!Array.isArray(db.appEvents)) {
+    db.appEvents = [];
   }
   db.projectContexts = db.projectContexts.map((item) => ensureProjectContextDefaults(item, item.projectId));
   db.projects = (db.projects || []).map((project) => ensureProjectDefaults(project));
@@ -520,6 +538,15 @@ function ensureTenantDefaults(tenant) {
   tenant.contactName = tenant.contactName || "";
   tenant.jobTitle = tenant.jobTitle || "";
   tenant.plan = tenant.plan || "starter";
+  if (!Array.isArray(tenant.planHistory)) {
+    tenant.planHistory = [{
+      id: uid(),
+      fromPlan: null,
+      toPlan: tenant.plan,
+      changedAt: tenant.createdAt || new Date().toISOString(),
+      source: "init"
+    }];
+  }
   if (!Array.isArray(tenant.invitedUsers)) {
     tenant.invitedUsers = [];
   }
@@ -1788,6 +1815,25 @@ async function handleApi(req, res, urlObj) {
     return user;
   };
 
+  if (req.method === "POST" && urlObj.pathname === "/api/track") {
+    const body = await parseBody(req);
+    const user = currentUser(db, req);
+    const tenant = user ? primaryTenantForUser(db, user.id) : null;
+    trackAppEvent(db, {
+      eventType: String(body.eventType || "page_view"),
+      userId: user?.id || null,
+      tenantId: tenant?.id || null,
+      projectId: body.projectId || null,
+      anonymousId: String(body.anonymousId || "").trim().slice(0, 128) || null,
+      meta: {
+        path: String(body.path || "").slice(0, 512),
+        page: String(body.page || "").slice(0, 64)
+      }
+    });
+    await writeDb(db);
+    return json(res, 200, { ok: true });
+  }
+
   if (req.method === "POST" && urlObj.pathname === "/api/auth/signup") {
     const body = await parseBody(req);
     const { tenantName, email, password, displayName } = body;
@@ -1829,6 +1875,7 @@ async function handleApi(req, res, urlObj) {
       role: "owner",
       createdAt: new Date().toISOString()
     });
+    trackAppEvent(db, { eventType: "tenant_signup", userId: user.id, tenantId: tenant.id });
 
     let delivery;
     try {
@@ -1865,6 +1912,8 @@ async function handleApi(req, res, urlObj) {
     }
     user.emailVerifiedAt = new Date().toISOString();
     user.emailVerification = null;
+    const tenant = primaryTenantForUser(db, user.id);
+    trackAppEvent(db, { eventType: "user_verified", userId: user.id, tenantId: tenant?.id || null });
 
     const sid = uid();
     db.sessions = db.sessions.filter((s) => s.userId !== user.id);
@@ -1990,6 +2039,8 @@ async function handleApi(req, res, urlObj) {
       userId: user.id,
       expiresAt: new Date(Date.now() + 7 * ONE_DAY_MS).toISOString()
     });
+    const tenant = primaryTenantForUser(db, user.id);
+    trackAppEvent(db, { eventType: "user_login", userId: user.id, tenantId: tenant?.id || null });
     await writeDb(db);
 
     res.writeHead(200, {
@@ -2254,6 +2305,89 @@ async function handleApi(req, res, urlObj) {
     return json(res, 200, { from: range.from, to: range.to, series });
   }
 
+  if (req.method === "GET" && urlObj.pathname === "/api/admin/business-kpi") {
+    const user = requireAdmin();
+    if (!user) return;
+    const range = adminRangeFromQuery(urlObj);
+    if (!range) return json(res, 400, { error: "invalid_date_range" });
+    const search = String(urlObj.searchParams.get("q") || "").trim().toLowerCase();
+
+    const events = (db.appEvents || []).filter((item) => {
+      const d = String(item.createdAt || "").slice(0, 10);
+      if (!validateDate(d) || d < range.from || d > range.to) return false;
+      if (!search) return true;
+      return [
+        item.eventType,
+        item.tenantId,
+        item.projectId,
+        item.userId,
+        JSON.stringify(item.meta || {})
+      ].join(" ").toLowerCase().includes(search);
+    });
+
+    const veltioSessions = events.filter((e) => e.eventType === "page_view").length;
+    const signupTenants = db.tenants.filter((item) => {
+      const d = String(item.createdAt || "").slice(0, 10);
+      return validateDate(d) && d >= range.from && d <= range.to;
+    }).length;
+    const paidConversions = db.tenants.reduce((acc, tenant) => {
+      const history = tenant.planHistory || [];
+      const hit = history.some((row) => {
+        const d = String(row.changedAt || "").slice(0, 10);
+        return row.toPlan === "pro" && row.fromPlan !== "pro" && validateDate(d) && d >= range.from && d <= range.to;
+      });
+      return acc + (hit ? 1 : 0);
+    }, 0);
+    const paidCvr = safeDivide(paidConversions, signupTenants);
+
+    const churnTo = parseIsoDate(range.to);
+    const churnFrom = isoDateOnly(new Date(churnTo.getTime() - 29 * ONE_DAY_MS));
+    const eligibleTenants = db.tenants.filter((tenant) => {
+      const created = String(tenant.createdAt || "").slice(0, 10);
+      return validateDate(created) && created <= churnFrom;
+    });
+    const activeTenantSet = new Set(
+      (db.appEvents || [])
+        .filter((item) => {
+          const d = String(item.createdAt || "").slice(0, 10);
+          return item.tenantId && validateDate(d) && d >= churnFrom && d <= range.to;
+        })
+        .map((item) => item.tenantId)
+    );
+    const churnedTenants = eligibleTenants.filter((tenant) => !activeTenantSet.has(tenant.id)).length;
+    const churnRate30d = safeDivide(churnedTenants, eligibleTenants.length);
+
+    const totalProjects = db.projects.length;
+    const ga4ConnectedProjects = db.ga4Connections.length;
+    const ga4SyncedProjects = db.ga4Connections.filter((item) => item.lastSyncedAt).length;
+    const reportProjectSet = new Set(db.reportJobs.map((item) => item.projectId));
+    const reportProjects = reportProjectSet.size;
+    const ga4ConnectRate = safeDivide(ga4ConnectedProjects, totalProjects);
+    const ga4SyncRate = safeDivide(ga4SyncedProjects, ga4ConnectedProjects);
+    const reportActivationRate = safeDivide(reportProjects, ga4SyncedProjects);
+
+    return json(res, 200, {
+      from: range.from,
+      to: range.to,
+      kpis: {
+        veltioSessions,
+        signupTenants,
+        paidConversions,
+        paidCvr,
+        churnRate30d
+      },
+      ga4Funnel: {
+        totalProjects,
+        ga4ConnectedProjects,
+        ga4SyncedProjects,
+        reportProjects,
+        ga4ConnectRate,
+        ga4SyncRate,
+        reportActivationRate
+      }
+    });
+  }
+
   if (req.method === "POST" && urlObj.pathname === "/api/account/profile") {
     const user = requireAuth();
     if (!user) return;
@@ -2299,7 +2433,24 @@ async function handleApi(req, res, urlObj) {
     if (!tenant) return json(res, 404, { error: "tenant_not_found" });
     const body = await parseBody(req);
     const plan = body.plan === "pro" ? "pro" : "starter";
+    const fromPlan = tenant.plan || "starter";
     tenant.plan = plan;
+    if (!Array.isArray(tenant.planHistory)) tenant.planHistory = [];
+    if (fromPlan !== plan) {
+      tenant.planHistory.push({
+        id: uid(),
+        fromPlan,
+        toPlan: plan,
+        changedAt: new Date().toISOString(),
+        source: "account_plan_api"
+      });
+      trackAppEvent(db, {
+        eventType: "tenant_plan_changed",
+        userId: user.id,
+        tenantId: tenant.id,
+        meta: { fromPlan, toPlan: plan }
+      });
+    }
     await writeDb(db);
     return json(res, 200, { ok: true, plan });
   }
@@ -2533,10 +2684,24 @@ async function handleApi(req, res, urlObj) {
         lastSyncedAt: null,
         lastSyncError: null
       });
+      trackAppEvent(db, {
+        eventType: "ga4_connected",
+        userId: pending.userId,
+        tenantId: pending.tenantId,
+        projectId: pending.projectId,
+        meta: { propertyId: pending.propertyId }
+      });
 
       const project = db.projects.find((p) => p.id === pending.projectId);
       if (project) {
         await syncProjectMetrics(db, project);
+        trackAppEvent(db, {
+          eventType: "ga4_sync_success",
+          userId: pending.userId,
+          tenantId: pending.tenantId,
+          projectId: pending.projectId,
+          meta: { mode: "oauth_callback" }
+        });
       }
       db.oauthStates = db.oauthStates.filter((s) => s.state !== state);
       await writeDb(db);
@@ -2585,6 +2750,13 @@ async function handleApi(req, res, urlObj) {
     if (!conn) return json(res, 400, { error: "ga4_not_connected" });
     if (!requireGoogleOAuthConfig()) return json(res, 400, { error: "ga4_oauth_not_configured" });
     await syncProjectMetrics(db, project);
+    trackAppEvent(db, {
+      eventType: "ga4_sync_success",
+      userId: user.id,
+      tenantId: project.tenantId,
+      projectId: project.id,
+      meta: { mode: "manual_sync" }
+    });
     await writeDb(db);
     return json(res, 200, { ok: true, lastSyncedAt: conn.lastSyncedAt || null, lastSyncError: conn.lastSyncError || null });
   }
@@ -3100,6 +3272,13 @@ async function handleApi(req, res, urlObj) {
       updatedAt: new Date().toISOString()
     };
     db.reportJobs.push(job);
+    trackAppEvent(db, {
+      eventType: "report_generated",
+      userId: user.id,
+      tenantId: project.tenantId,
+      projectId: project.id,
+      meta: { format }
+    });
     await writeDb(db);
 
     return json(res, 201, { report: job });

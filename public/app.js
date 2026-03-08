@@ -24,7 +24,8 @@ const state = {
   adminFrom: null,
   adminTo: null,
   adminSearch: "",
-  adminCache: { tenants: [], users: [], projects: [] }
+  adminCache: { tenants: [], users: [], projects: [] },
+  adminBusiness: null
 };
 
 const q = (id) => document.getElementById(id);
@@ -158,6 +159,34 @@ function downloadCsv(filename, headers, rows) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(link.href);
+}
+
+function getVisitorId() {
+  const key = "veltio_vid";
+  let value = localStorage.getItem(key);
+  if (!value) {
+    value = `vid_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+    localStorage.setItem(key, value);
+  }
+  return value;
+}
+
+async function trackVisitor(eventType, meta = {}) {
+  try {
+    await fetch("/api/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventType,
+        anonymousId: getVisitorId(),
+        path: location.pathname,
+        page: state.activePage || "dashboard",
+        ...meta
+      })
+    });
+  } catch {
+    // best effort
+  }
 }
 
 function metricLabel(metricKey) {
@@ -671,6 +700,7 @@ function setActivePage(page) {
     void loadAdminDashboard();
   }
   syncAppPath();
+  void trackVisitor("page_view", { activePage: state.activePage });
 }
 
 function appendChatMessage(role, text) {
@@ -999,6 +1029,7 @@ async function bootstrap() {
   syncComparePresetUI();
   syncActionStatusUI();
   renderSiteDiagnosis();
+  void trackVisitor("page_view", { activePage: location.pathname.startsWith("/admin") ? "admin" : "auth_or_dashboard" });
 
   try {
     const me = await api("/api/me");
@@ -1057,6 +1088,31 @@ function renderAdminTrendChart(data) {
       <text x="${pad + 160}" y="16" fill="#b45309" font-size="12">売上</text>
       ${xLabels}
     </svg>
+  `;
+}
+
+function renderAdminBusinessKpi(data) {
+  state.adminBusiness = data || null;
+  const cards = q("admin-business-kpi-cards");
+  const funnel = q("admin-ga4-funnel");
+  if (!data?.kpis) {
+    cards.innerHTML = "<div class='tiny muted'>データがありません。</div>";
+    funnel.innerHTML = "";
+    return;
+  }
+  cards.innerHTML = `
+    <div class="card"><div class="k">Veltioセッション</div><div class="v">${fmtNum(data.kpis.veltioSessions)}</div></div>
+    <div class="card"><div class="k">期間新規企業</div><div class="v">${fmtNum(data.kpis.signupTenants)}</div></div>
+    <div class="card"><div class="k">期間有料化数</div><div class="v">${fmtNum(data.kpis.paidConversions)}</div></div>
+    <div class="card"><div class="k">課金CVR</div><div class="v">${fmtPct(data.kpis.paidCvr || 0)}</div></div>
+    <div class="card"><div class="k">30日離脱率</div><div class="v">${fmtPct(data.kpis.churnRate30d || 0)}</div></div>
+  `;
+  const f = data.ga4Funnel || {};
+  funnel.innerHTML = `
+    <article class="journey-step-card"><div class="journey-step-head"><div class="journey-step-name">全プロジェクト</div><div class="journey-step-value">${fmtNum(f.totalProjects || 0)}</div></div></article>
+    <article class="journey-step-card"><div class="journey-step-head"><div class="journey-step-name">GA4接続済み</div><div class="journey-step-value">${fmtNum(f.ga4ConnectedProjects || 0)}</div></div><div class="journey-step-meta">接続率 ${fmtPct(f.ga4ConnectRate || 0)}</div></article>
+    <article class="journey-step-card"><div class="journey-step-head"><div class="journey-step-name">初回同期完了</div><div class="journey-step-value">${fmtNum(f.ga4SyncedProjects || 0)}</div></div><div class="journey-step-meta">同期率 ${fmtPct(f.ga4SyncRate || 0)}</div></article>
+    <article class="journey-step-card"><div class="journey-step-head"><div class="journey-step-name">レポート生成済み</div><div class="journey-step-value">${fmtNum(f.reportProjects || 0)}</div></div><div class="journey-step-meta">活用率 ${fmtPct(f.reportActivationRate || 0)}</div></article>
   `;
 }
 
@@ -1140,9 +1196,10 @@ async function loadAdminDashboard() {
   if (state.adminSearch) {
     params.set("q", state.adminSearch);
   }
-  const [overview, trend, tenants, users, projects] = await Promise.all([
+  const [overview, trend, business, tenants, users, projects] = await Promise.all([
     api(`/api/admin/overview?${params.toString()}`),
     api(`/api/admin/trend?${params.toString()}`),
+    api(`/api/admin/business-kpi?${params.toString()}`),
     api(`/api/admin/tenants?${params.toString()}`),
     api(`/api/admin/users?${params.toString()}`),
     api(`/api/admin/projects?${params.toString()}`)
@@ -1154,6 +1211,7 @@ async function loadAdminDashboard() {
   };
   q("admin-status").textContent = `集計期間: ${overview.from} 〜 ${overview.to}${state.adminSearch ? ` / 検索: ${state.adminSearch}` : ""}`;
   renderAdminTrendChart(trend);
+  renderAdminBusinessKpi(business);
 
   q("admin-overview-cards").innerHTML = `
     <div class="card"><div class="k">企業数</div><div class="v">${fmtNum(overview.totalTenants)}</div></div>
