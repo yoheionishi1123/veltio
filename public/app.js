@@ -161,6 +161,11 @@ function downloadCsv(filename, headers, rows) {
   URL.revokeObjectURL(link.href);
 }
 
+function trackGa4(eventName, params = {}) {
+  if (typeof window.gtag !== "function") return;
+  window.gtag("event", eventName, params);
+}
+
 function getVisitorId() {
   const key = "veltio_vid";
   let value = localStorage.getItem(key);
@@ -187,6 +192,7 @@ async function trackVisitor(eventType, meta = {}) {
   } catch {
     // best effort
   }
+  trackGa4(eventType === "page_view" ? "veltio_page_view" : eventType, meta);
 }
 
 function metricLabel(metricKey) {
@@ -1127,8 +1133,10 @@ function showGa4CallbackMessage() {
   }
   if (ga4 === "connected") {
     q("ga4-quick-status").textContent = "GA4 OAuth連携が完了しました。";
+    trackGa4("ga4_connected", {});
   } else if (ga4 === "error") {
     q("ga4-quick-status").textContent = `GA4 OAuth連携に失敗しました: ${reason || "unknown_error"}`;
+    trackGa4("ga4_connect_error", { reason: String(reason || "unknown_error").slice(0, 80) });
   }
   history.replaceState({}, "", location.pathname + location.hash);
 }
@@ -1632,6 +1640,7 @@ q("login-form").addEventListener("submit", async (e) => {
         password: q("login-password").value
       }
     });
+    trackGa4("login", { method: "email_password" });
     await bootstrap();
   } catch (err) {
     if (err.code === "email_not_verified") {
@@ -1656,6 +1665,7 @@ q("signup-form").addEventListener("submit", async (e) => {
         password: q("signup-password").value
       }
     });
+    trackGa4("sign_up", { method: "email_password" });
     q("verify-email").value = q("signup-email").value;
     q("verify-code").value = "";
     q("signup-status").textContent = "";
@@ -1678,6 +1688,7 @@ q("verify-form").addEventListener("submit", async (e) => {
         code: q("verify-code").value
       }
     });
+    trackGa4("email_verify_completed", {});
     await bootstrap();
   } catch (err) {
     q("verify-status").textContent = uiErrorText(err);
@@ -1928,6 +1939,7 @@ async function createReport(format) {
       method: "POST",
       body: { from: state.from, to: state.to }
     });
+    trackGa4("report_generated", { report_format: format });
     q("report-status").className = "tiny";
     q("report-status").textContent = `${String(format).toUpperCase()} を生成しました。`;
     await loadReports();
@@ -1979,6 +1991,7 @@ q("upgrade-plan").addEventListener("click", async () => {
     method: "POST",
     body: { plan: "pro" }
   });
+  trackGa4("upgrade_to_pro", {});
   q("report-status").className = "tiny";
   q("report-status").textContent = "Proプランに更新しました。";
   await loadAccount();
