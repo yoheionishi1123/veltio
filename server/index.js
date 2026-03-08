@@ -891,6 +891,24 @@ function dayList(from, to) {
   return out;
 }
 
+function defaultRecentRange(days = 30) {
+  const to = isoDateOnly(new Date());
+  const from = isoDateOnly(new Date(Date.now() - (days - 1) * ONE_DAY_MS));
+  return { from, to };
+}
+
+function adminRangeFromQuery(urlObj) {
+  const from = urlObj.searchParams.get("from");
+  const to = urlObj.searchParams.get("to");
+  if (!from && !to) {
+    return defaultRecentRange(30);
+  }
+  if (!from || !to || !validateDate(from) || !validateDate(to)) {
+    return null;
+  }
+  return { from, to };
+}
+
 function parseIsoDate(value) {
   return new Date(`${value}T00:00:00Z`);
 }
@@ -2055,35 +2073,56 @@ async function handleApi(req, res, urlObj) {
   if (req.method === "GET" && urlObj.pathname === "/api/admin/overview") {
     const user = requireAdmin();
     if (!user) return;
-    const now = Date.now();
-    const sevenDaysAgo = new Date(now - (7 * ONE_DAY_MS)).toISOString().slice(0, 10);
-    const activeProjectIds = new Set(
-      db.metricDaily
-        .filter((row) => row.date >= sevenDaysAgo && row.sessions > 0)
-        .map((row) => row.projectId)
-    );
+    const range = adminRangeFromQuery(urlObj);
+    if (!range) return json(res, 400, { error: "invalid_date_range" });
+    const periodRows = db.metricDaily.filter((row) => row.date >= range.from && row.date <= range.to);
+    const periodAgg = aggregateMetricRows(periodRows);
+    const activeProjectIds = new Set(periodRows.filter((row) => row.sessions > 0).map((row) => row.projectId));
     const ga4Connected = new Set(db.ga4Connections.map((item) => item.projectId));
     const syncErrors = db.ga4Connections.filter((item) => item.lastSyncError).length;
+    const newUsers = db.users.filter((item) => (item.createdAt || "").slice(0, 10) >= range.from && (item.createdAt || "").slice(0, 10) <= range.to).length;
+    const newTenants = db.tenants.filter((item) => (item.createdAt || "").slice(0, 10) >= range.from && (item.createdAt || "").slice(0, 10) <= range.to).length;
+    const newProjects = db.projects.filter((item) => (item.createdAt || "").slice(0, 10) >= range.from && (item.createdAt || "").slice(0, 10) <= range.to).length;
+    const verifiedUsers = db.users.filter((item) => item.emailVerifiedAt).length;
+    const emailVerificationRate = safeDivide(verifiedUsers, db.users.length);
+    const ga4ConnectedRate = safeDivide(ga4Connected.size, db.projects.length);
+    const cvr = safeDivide(periodAgg.purchaseSessions, periodAgg.sessions);
     return json(res, 200, {
+      from: range.from,
+      to: range.to,
       totalTenants: db.tenants.length,
       totalUsers: db.users.length,
-      verifiedUsers: db.users.filter((item) => item.emailVerifiedAt).length,
+      verifiedUsers,
+      emailVerificationRate,
       totalProjects: db.projects.length,
       activeProjects7d: activeProjectIds.size,
       ga4ConnectedProjects: ga4Connected.size,
+      ga4ConnectedRate,
       ga4SyncErrors: syncErrors,
-      generatedReports: db.reportJobs.length
+      generatedReports: db.reportJobs.length,
+      sessions: periodAgg.sessions,
+      purchases: periodAgg.purchaseSessions,
+      revenue: periodAgg.revenue,
+      cvr,
+      newUsers,
+      newTenants,
+      newProjects
     });
   }
 
   if (req.method === "GET" && urlObj.pathname === "/api/admin/tenants") {
     const user = requireAdmin();
     if (!user) return;
+    const range = adminRangeFromQuery(urlObj);
+    if (!range) return json(res, 400, { error: "invalid_date_range" });
+    const search = String(urlObj.searchParams.get("q") || "").trim().toLowerCase();
+    const periodRows = db.metricDaily.filter((row) => row.date >= range.from && row.date <= range.to);
     const rows = db.tenants.map((tenant) => {
       const memberships = db.memberships.filter((m) => m.tenantId === tenant.id);
       const projects = db.projects.filter((p) => p.tenantId === tenant.id);
       const projectIds = new Set(projects.map((p) => p.id));
       const ga4Rows = db.ga4Connections.filter((conn) => projectIds.has(conn.projectId));
+      const agg = aggregateMetricRows(periodRows.filter((row) => projectIds.has(row.projectId)));
       const latestSync = ga4Rows
         .map((item) => item.lastSyncedAt)
         .filter(Boolean)
@@ -2097,41 +2136,61 @@ async function handleApi(req, res, urlObj) {
         users: memberships.length,
         projects: projects.length,
         ga4ConnectedProjects: ga4Rows.length,
+        sessions: agg.sessions,
+        purchases: agg.purchaseSessions,
+        revenue: agg.revenue,
+        cvr: safeDivide(agg.purchaseSessions, agg.sessions),
         latestSyncAt: latestSync,
         createdAt: tenant.createdAt || null
       };
     });
-    rows.sort((a, b) => (b.projects - a.projects) || (b.users - a.users));
-    return json(res, 200, { rows });
+    const filtered = search
+      ? rows.filter((row) => [row.accountName, row.companyName, row.plan].join(" ").toLowerCase().includes(search))
+      : rows;
+    filtered.sort((a, b) => (b.sessions - a.sessions) || (b.projects - a.projects) || (b.users - a.users));
+    return json(res, 200, { from: range.from, to: range.to, q: search, rows: filtered });
   }
 
   if (req.method === "GET" && urlObj.pathname === "/api/admin/users") {
     const user = requireAdmin();
     if (!user) return;
+    const search = String(urlObj.searchParams.get("q") || "").trim().toLowerCase();
+    const now = Date.now();
     const rows = db.users.map((item) => {
       const memberships = db.memberships.filter((m) => m.userId === item.id);
       const tenantNames = memberships
         .map((m) => db.tenants.find((t) => t.id === m.tenantId)?.name)
         .filter(Boolean);
+      const hasLiveSession = db.sessions.some((s) => s.userId === item.id && new Date(s.expiresAt).getTime() > now);
       return {
         id: item.id,
         email: item.email,
         displayName: item.displayName || "",
         verified: Boolean(item.emailVerifiedAt),
+        activeSession: hasLiveSession,
         emailVerifiedAt: item.emailVerifiedAt || null,
+        createdAt: item.createdAt || null,
         tenants: tenantNames
       };
     });
-    rows.sort((a, b) => String(a.email).localeCompare(String(b.email)));
-    return json(res, 200, { rows });
+    const filtered = search
+      ? rows.filter((row) => [row.email, row.displayName, ...(row.tenants || [])].join(" ").toLowerCase().includes(search))
+      : rows;
+    filtered.sort((a, b) => String(a.email).localeCompare(String(b.email)));
+    return json(res, 200, { q: search, rows: filtered });
   }
 
   if (req.method === "GET" && urlObj.pathname === "/api/admin/projects") {
     const user = requireAdmin();
     if (!user) return;
+    const range = adminRangeFromQuery(urlObj);
+    if (!range) return json(res, 400, { error: "invalid_date_range" });
+    const search = String(urlObj.searchParams.get("q") || "").trim().toLowerCase();
+    const periodRows = db.metricDaily.filter((row) => row.date >= range.from && row.date <= range.to);
     const rows = db.projects.map((project) => {
       const tenant = db.tenants.find((t) => t.id === project.tenantId);
       const conn = db.ga4Connections.find((g) => g.projectId === project.id) || null;
+      const agg = aggregateMetricRows(periodRows.filter((row) => row.projectId === project.id));
       return {
         id: project.id,
         name: project.name,
@@ -2140,11 +2199,18 @@ async function handleApi(req, res, urlObj) {
         ga4PropertyId: conn?.ga4PropertyId || null,
         ga4AccountEmail: conn?.accountEmail || null,
         lastSyncedAt: conn?.lastSyncedAt || null,
-        lastSyncError: conn?.lastSyncError || null
+        lastSyncError: conn?.lastSyncError || null,
+        sessions: agg.sessions,
+        purchases: agg.purchaseSessions,
+        revenue: agg.revenue,
+        cvr: safeDivide(agg.purchaseSessions, agg.sessions)
       };
     });
-    rows.sort((a, b) => String(a.tenantName).localeCompare(String(b.tenantName)));
-    return json(res, 200, { rows });
+    const filtered = search
+      ? rows.filter((row) => [row.tenantName, row.name, row.domain, row.ga4PropertyId || ""].join(" ").toLowerCase().includes(search))
+      : rows;
+    filtered.sort((a, b) => (b.sessions - a.sessions) || String(a.tenantName).localeCompare(String(b.tenantName)));
+    return json(res, 200, { from: range.from, to: range.to, q: search, rows: filtered });
   }
 
   if (req.method === "POST" && urlObj.pathname === "/api/account/profile") {

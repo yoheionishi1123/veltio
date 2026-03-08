@@ -419,6 +419,16 @@
           <section class="panel">
             <h2>運営管理</h2>
             <p class="muted tiny">サービス全体の企業・ユーザー・プロジェクト状況を確認できます。</p>
+            <div class="inline admin-toolbar">
+              <input id="admin-from-date" type="date" />
+              <input id="admin-to-date" type="date" />
+              <input id="admin-search" type="search" placeholder="企業名 / メール / ドメイン検索" />
+              <button id="admin-apply" type="button">反映</button>
+              <button id="admin-export-tenants" class="ghost" type="button">企業CSV</button>
+              <button id="admin-export-users" class="ghost" type="button">ユーザーCSV</button>
+              <button id="admin-export-projects" class="ghost" type="button">プロジェクトCSV</button>
+            </div>
+            <div id="admin-status" class="tiny muted"></div>
             <div id="admin-overview-cards" class="cards"></div>
           </section>
           <section class="panel">
@@ -426,7 +436,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>会社名</th><th>プラン</th><th>ユーザー数</th><th>プロジェクト数</th><th>GA4連携数</th><th>最終同期</th></tr>
+                  <tr><th>会社名</th><th>プラン</th><th>ユーザー数</th><th>プロジェクト数</th><th>期間Sessions</th><th>期間CVR</th><th>最終同期</th></tr>
                 </thead>
                 <tbody id="admin-tenants-body"></tbody>
               </table>
@@ -437,7 +447,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>メール</th><th>表示名</th><th>認証</th><th>所属企業</th><th>認証日時</th></tr>
+                  <tr><th>メール</th><th>表示名</th><th>認証</th><th>セッション</th><th>所属企業</th><th>認証日時</th></tr>
                 </thead>
                 <tbody id="admin-users-body"></tbody>
               </table>
@@ -448,7 +458,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>企業</th><th>プロジェクト</th><th>ドメイン</th><th>GA4 Property</th><th>同期状態</th></tr>
+                  <tr><th>企業</th><th>プロジェクト</th><th>ドメイン</th><th>GA4 Property</th><th>期間Sessions</th><th>期間CVR</th><th>同期状態</th></tr>
                 </thead>
                 <tbody id="admin-projects-body"></tbody>
               </table>

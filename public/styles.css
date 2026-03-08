@@ -782,6 +782,20 @@ th, td {
   text-decoration: underline;
 }
 
+.admin-toolbar {
+  margin-bottom: 8px;
+}
+
+.admin-toolbar input[type="search"] {
+  min-width: 260px;
+}
+
+.admin-toolbar .ghost {
+  color: #0a58ca;
+  border-color: #bfdbfe;
+  background: #fff;
+}
+
 .rec-meta, .rec-summary, .rec-step {
   font-size: 12px;
   color: var(--muted);
@@ -811,5 +825,9 @@ th, td {
     overflow-x: auto;
     padding-bottom: 4px;
     flex-wrap: nowrap;
+  }
+  .admin-toolbar input[type="search"] {
+    min-width: 0;
+    width: 100%;
   }
 }

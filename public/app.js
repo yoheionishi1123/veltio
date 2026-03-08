@@ -20,7 +20,11 @@ const state = {
   selectedValidationActionId: null,
   selectedValidationWindowDays: 30,
   journey: null,
-  isAdmin: false
+  isAdmin: false,
+  adminFrom: null,
+  adminTo: null,
+  adminSearch: "",
+  adminCache: { tenants: [], users: [], projects: [] }
 };
 
 const q = (id) => document.getElementById(id);
@@ -133,6 +137,27 @@ function fmtPct(n) {
 
 function fmtNum(n) {
   return Number(n || 0).toLocaleString();
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  if (/[",\n]/.test(text)) return `"${text.replace(/"/g, "\"\"")}"`;
+  return text;
+}
+
+function downloadCsv(filename, headers, rows) {
+  const lines = [
+    headers.map(csvEscape).join(","),
+    ...rows.map((row) => row.map(csvEscape).join(","))
+  ];
+  const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
 }
 
 function metricLabel(metricKey) {
@@ -942,6 +967,9 @@ async function loadCampaigns() {
 async function bootstrap() {
   state.from = daysAgoISO(29);
   state.to = todayISO();
+  state.adminFrom = daysAgoISO(29);
+  state.adminTo = todayISO();
+  state.adminSearch = "";
   state.comparePreset = "none";
   state.compareFrom = "";
   state.compareTo = "";
@@ -954,6 +982,9 @@ async function bootstrap() {
   q("compare-to-date").value = state.compareTo;
   q("granularity-select").value = state.granularity;
   q("chart-metric-select").value = state.chartMetric;
+  if (q("admin-from-date")) q("admin-from-date").value = state.adminFrom;
+  if (q("admin-to-date")) q("admin-to-date").value = state.adminTo;
+  if (q("admin-search")) q("admin-search").value = state.adminSearch;
   syncComparePresetUI();
   syncActionStatusUI();
   renderSiteDiagnosis();
@@ -1045,48 +1076,68 @@ async function refreshAll() {
 
 async function loadAdminDashboard() {
   if (!state.isAdmin) return;
+  const params = new URLSearchParams({
+    from: state.adminFrom || daysAgoISO(29),
+    to: state.adminTo || todayISO()
+  });
+  if (state.adminSearch) {
+    params.set("q", state.adminSearch);
+  }
   const [overview, tenants, users, projects] = await Promise.all([
-    api("/api/admin/overview"),
-    api("/api/admin/tenants"),
-    api("/api/admin/users"),
-    api("/api/admin/projects")
+    api(`/api/admin/overview?${params.toString()}`),
+    api(`/api/admin/tenants?${params.toString()}`),
+    api(`/api/admin/users?${params.toString()}`),
+    api(`/api/admin/projects?${params.toString()}`)
   ]);
+  state.adminCache = {
+    tenants: tenants.rows || [],
+    users: users.rows || [],
+    projects: projects.rows || []
+  };
+  q("admin-status").textContent = `集計期間: ${overview.from} 〜 ${overview.to}${state.adminSearch ? ` / 検索: ${state.adminSearch}` : ""}`;
 
   q("admin-overview-cards").innerHTML = `
     <div class="card"><div class="k">企業数</div><div class="v">${fmtNum(overview.totalTenants)}</div></div>
-    <div class="card"><div class="k">ユーザー数</div><div class="v">${fmtNum(overview.totalUsers)}</div><div class="k">認証済み ${fmtNum(overview.verifiedUsers)}</div></div>
-    <div class="card"><div class="k">プロジェクト数</div><div class="v">${fmtNum(overview.totalProjects)}</div><div class="k">7日稼働 ${fmtNum(overview.activeProjects7d)}</div></div>
-    <div class="card"><div class="k">GA4連携</div><div class="v">${fmtNum(overview.ga4ConnectedProjects)}</div><div class="k">同期エラー ${fmtNum(overview.ga4SyncErrors)}</div></div>
+    <div class="card"><div class="k">ユーザー数</div><div class="v">${fmtNum(overview.totalUsers)}</div><div class="k">認証率 ${(overview.emailVerificationRate * 100).toFixed(1)}%</div></div>
+    <div class="card"><div class="k">プロジェクト数</div><div class="v">${fmtNum(overview.totalProjects)}</div><div class="k">期間稼働 ${fmtNum(overview.activeProjects7d)}</div></div>
+    <div class="card"><div class="k">GA4連携率</div><div class="v">${(overview.ga4ConnectedRate * 100).toFixed(1)}%</div><div class="k">同期エラー ${fmtNum(overview.ga4SyncErrors)}</div></div>
+    <div class="card"><div class="k">期間Sessions</div><div class="v">${fmtNum(overview.sessions)}</div><div class="k">期間CVR ${(overview.cvr * 100).toFixed(2)}%</div></div>
+    <div class="card"><div class="k">期間売上</div><div class="v">${fmtNum(Math.round(overview.revenue || 0))}</div><div class="k">期間Purchase ${fmtNum(overview.purchases)}</div></div>
+    <div class="card"><div class="k">期間新規</div><div class="v">企業 ${fmtNum(overview.newTenants)}</div><div class="k">ユーザー ${fmtNum(overview.newUsers)} / プロジェクト ${fmtNum(overview.newProjects)}</div></div>
     <div class="card"><div class="k">生成レポート</div><div class="v">${fmtNum(overview.generatedReports)}</div></div>
   `;
 
-  q("admin-tenants-body").innerHTML = (tenants.rows || []).map((row) => `
+  q("admin-tenants-body").innerHTML = state.adminCache.tenants.map((row) => `
     <tr>
       <td>${escapeHtml(row.companyName || row.accountName || "-")}</td>
       <td>${escapeHtml(row.plan || "-")}</td>
       <td>${fmtNum(row.users)}</td>
       <td>${fmtNum(row.projects)}</td>
-      <td>${fmtNum(row.ga4ConnectedProjects)}</td>
+      <td>${fmtNum(row.sessions || 0)}</td>
+      <td>${fmtPct(row.cvr || 0)}</td>
       <td>${row.latestSyncAt ? new Date(row.latestSyncAt).toLocaleString() : "-"}</td>
     </tr>
   `).join("");
 
-  q("admin-users-body").innerHTML = (users.rows || []).map((row) => `
+  q("admin-users-body").innerHTML = state.adminCache.users.map((row) => `
     <tr>
       <td>${escapeHtml(row.email || "-")}</td>
       <td>${escapeHtml(row.displayName || "-")}</td>
       <td>${row.verified ? "認証済み" : "未認証"}</td>
+      <td>${row.activeSession ? "有効" : "-"}</td>
       <td>${escapeHtml((row.tenants || []).join(", ") || "-")}</td>
       <td>${row.emailVerifiedAt ? new Date(row.emailVerifiedAt).toLocaleString() : "-"}</td>
     </tr>
   `).join("");
 
-  q("admin-projects-body").innerHTML = (projects.rows || []).map((row) => `
+  q("admin-projects-body").innerHTML = state.adminCache.projects.map((row) => `
     <tr>
       <td>${escapeHtml(row.tenantName || "-")}</td>
       <td>${escapeHtml(row.name || "-")}</td>
       <td>${escapeHtml(row.domain || "-")}</td>
       <td>${escapeHtml(row.ga4PropertyId || "-")}</td>
+      <td>${fmtNum(row.sessions || 0)}</td>
+      <td>${fmtPct(row.cvr || 0)}</td>
       <td>${row.lastSyncError ? `<span class="error">${escapeHtml(row.lastSyncError)}</span>` : (row.lastSyncedAt ? `正常 (${new Date(row.lastSyncedAt).toLocaleString()})` : "未接続")}</td>
     </tr>
   `).join("");
@@ -1399,6 +1450,57 @@ q("tab-validation").addEventListener("click", () => setActivePage("validation"))
 q("tab-account").addEventListener("click", () => setActivePage("account"));
 q("tab-assistant").addEventListener("click", () => setActivePage("assistant"));
 q("tab-admin").addEventListener("click", () => setActivePage("admin"));
+q("admin-apply").addEventListener("click", async () => {
+  state.adminFrom = q("admin-from-date").value || daysAgoISO(29);
+  state.adminTo = q("admin-to-date").value || todayISO();
+  state.adminSearch = (q("admin-search").value || "").trim();
+  await loadAdminDashboard();
+});
+q("admin-export-tenants").addEventListener("click", () => {
+  const rows = state.adminCache.tenants || [];
+  downloadCsv("veltio-admin-tenants.csv",
+    ["company_name", "plan", "users", "projects", "sessions", "cvr", "latest_sync_at"],
+    rows.map((row) => [
+      row.companyName || row.accountName || "",
+      row.plan || "",
+      row.users ?? 0,
+      row.projects ?? 0,
+      row.sessions ?? 0,
+      (row.cvr ?? 0).toFixed(6),
+      row.latestSyncAt || ""
+    ])
+  );
+});
+q("admin-export-users").addEventListener("click", () => {
+  const rows = state.adminCache.users || [];
+  downloadCsv("veltio-admin-users.csv",
+    ["email", "display_name", "verified", "active_session", "tenants", "email_verified_at"],
+    rows.map((row) => [
+      row.email || "",
+      row.displayName || "",
+      row.verified ? "true" : "false",
+      row.activeSession ? "true" : "false",
+      (row.tenants || []).join(" | "),
+      row.emailVerifiedAt || ""
+    ])
+  );
+});
+q("admin-export-projects").addEventListener("click", () => {
+  const rows = state.adminCache.projects || [];
+  downloadCsv("veltio-admin-projects.csv",
+    ["tenant_name", "project_name", "domain", "ga4_property_id", "sessions", "cvr", "last_synced_at", "last_sync_error"],
+    rows.map((row) => [
+      row.tenantName || "",
+      row.name || "",
+      row.domain || "",
+      row.ga4PropertyId || "",
+      row.sessions ?? 0,
+      (row.cvr ?? 0).toFixed(6),
+      row.lastSyncedAt || "",
+      row.lastSyncError || ""
+    ])
+  );
+});
 q("run-signup-diagnosis").addEventListener("click", () => {
   renderSiteDiagnosis();
 });
