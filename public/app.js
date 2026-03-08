@@ -618,6 +618,13 @@ function showApp() {
   setActivePage(state.activePage || "dashboard");
 }
 
+function syncAppPath() {
+  const nextPath = state.activePage === "admin" ? "/admin" : "/";
+  if (location.pathname !== nextPath) {
+    history.replaceState({}, "", `${nextPath}${location.search || ""}${location.hash || ""}`);
+  }
+}
+
 function renderProjectHeader() {
   const empty = state.projects.length === 0;
   const multi = state.projects.length > 1;
@@ -663,6 +670,7 @@ function setActivePage(page) {
   if (state.activePage === "admin" && state.isAdmin) {
     void loadAdminDashboard();
   }
+  syncAppPath();
 }
 
 function appendChatMessage(role, text) {
@@ -975,6 +983,9 @@ async function bootstrap() {
   state.compareTo = "";
   state.granularity = "day";
   state.chartMetric = "sessions";
+  if (location.pathname === "/admin" || location.pathname.startsWith("/admin/")) {
+    state.activePage = "admin";
+  }
   q("from-date").value = state.from;
   q("to-date").value = state.to;
   q("compare-preset").value = state.comparePreset;
@@ -1001,6 +1012,52 @@ async function bootstrap() {
   } catch {
     showAuth("login");
   }
+}
+
+function renderAdminTrendChart(data) {
+  const host = q("admin-trend-chart");
+  const rows = data?.series || [];
+  if (!rows.length) {
+    host.textContent = "データがありません。";
+    return;
+  }
+  const width = 860;
+  const height = 240;
+  const pad = 36;
+  const innerW = width - pad * 2;
+  const innerH = height - pad * 2;
+  const maxTenant = Math.max(...rows.map((r) => r.tenantCount), 1);
+  const maxActive = Math.max(...rows.map((r) => r.activeProjects), 1);
+  const maxRevenue = Math.max(...rows.map((r) => r.revenue), 1);
+
+  const points = (arr, maxVal) => arr.map((item, idx) => {
+    const x = pad + (idx / Math.max(arr.length - 1, 1)) * innerW;
+    const y = pad + (1 - ((item / maxVal) || 0)) * innerH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  const xLabels = [0, Math.floor(rows.length / 2), rows.length - 1]
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .map((idx) => {
+      const x = pad + (idx / Math.max(rows.length - 1, 1)) * innerW;
+      return `<text x="${x.toFixed(1)}" y="${height - 8}" fill="#64748b" font-size="11" text-anchor="middle">${rows[idx].date}</text>`;
+    })
+    .join("");
+
+  host.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}">
+      <rect x="0" y="0" width="${width}" height="${height}" fill="#fff"/>
+      <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" stroke="#e2e8f0"/>
+      <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" stroke="#e2e8f0"/>
+      <polyline fill="none" stroke="#0a58ca" stroke-width="2.4" points="${points(rows.map((r) => r.tenantCount), maxTenant)}"></polyline>
+      <polyline fill="none" stroke="#0f766e" stroke-width="2.4" points="${points(rows.map((r) => r.activeProjects), maxActive)}"></polyline>
+      <polyline fill="none" stroke="#b45309" stroke-width="2.4" points="${points(rows.map((r) => r.revenue), maxRevenue)}"></polyline>
+      <text x="${pad}" y="16" fill="#0a58ca" font-size="12">企業数</text>
+      <text x="${pad + 70}" y="16" fill="#0f766e" font-size="12">有効PJ数</text>
+      <text x="${pad + 160}" y="16" fill="#b45309" font-size="12">売上</text>
+      ${xLabels}
+    </svg>
+  `;
 }
 
 function showGa4CallbackMessage() {
@@ -1083,8 +1140,9 @@ async function loadAdminDashboard() {
   if (state.adminSearch) {
     params.set("q", state.adminSearch);
   }
-  const [overview, tenants, users, projects] = await Promise.all([
+  const [overview, trend, tenants, users, projects] = await Promise.all([
     api(`/api/admin/overview?${params.toString()}`),
+    api(`/api/admin/trend?${params.toString()}`),
     api(`/api/admin/tenants?${params.toString()}`),
     api(`/api/admin/users?${params.toString()}`),
     api(`/api/admin/projects?${params.toString()}`)
@@ -1095,6 +1153,7 @@ async function loadAdminDashboard() {
     projects: projects.rows || []
   };
   q("admin-status").textContent = `集計期間: ${overview.from} 〜 ${overview.to}${state.adminSearch ? ` / 検索: ${state.adminSearch}` : ""}`;
+  renderAdminTrendChart(trend);
 
   q("admin-overview-cards").innerHTML = `
     <div class="card"><div class="k">企業数</div><div class="v">${fmtNum(overview.totalTenants)}</div></div>

@@ -1745,6 +1745,7 @@ function reprioritizedTemplateScore(template, context) {
 async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
   if (reqPath === "/") reqPath = "/index.html";
+  if (reqPath === "/admin" || reqPath.startsWith("/admin/")) reqPath = "/index.html";
   if (reqPath.endsWith("/")) reqPath = `${reqPath}index.html`;
   if (!path.extname(reqPath)) reqPath = `${reqPath}.html`;
   const fsPath = path.join(PUBLIC_DIR, reqPath);
@@ -2211,6 +2212,46 @@ async function handleApi(req, res, urlObj) {
       : rows;
     filtered.sort((a, b) => (b.sessions - a.sessions) || String(a.tenantName).localeCompare(String(b.tenantName)));
     return json(res, 200, { from: range.from, to: range.to, q: search, rows: filtered });
+  }
+
+  if (req.method === "GET" && urlObj.pathname === "/api/admin/trend") {
+    const user = requireAdmin();
+    if (!user) return;
+    const range = adminRangeFromQuery(urlObj);
+    if (!range) return json(res, 400, { error: "invalid_date_range" });
+    const dates = dayList(range.from, range.to);
+    const rows = db.metricDaily.filter((row) => row.date >= range.from && row.date <= range.to);
+    const byDate = new Map();
+    rows.forEach((row) => {
+      const current = byDate.get(row.date) || { revenue: 0, activeProjects: new Set() };
+      current.revenue += Number(row.revenue || 0);
+      if (Number(row.sessions || 0) > 0) {
+        current.activeProjects.add(row.projectId);
+      }
+      byDate.set(row.date, current);
+    });
+
+    const tenantCreatedDates = (db.tenants || [])
+      .map((item) => (item.createdAt || "").slice(0, 10))
+      .filter((v) => validateDate(v))
+      .sort();
+
+    let tenantCursor = 0;
+    let tenantCount = 0;
+    const series = dates.map((date) => {
+      while (tenantCursor < tenantCreatedDates.length && tenantCreatedDates[tenantCursor] <= date) {
+        tenantCount += 1;
+        tenantCursor += 1;
+      }
+      const day = byDate.get(date);
+      return {
+        date,
+        tenantCount,
+        activeProjects: day ? day.activeProjects.size : 0,
+        revenue: day ? day.revenue : 0
+      };
+    });
+    return json(res, 200, { from: range.from, to: range.to, series });
   }
 
   if (req.method === "POST" && urlObj.pathname === "/api/account/profile") {
