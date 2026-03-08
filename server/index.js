@@ -21,6 +21,12 @@ const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GA4_OAUTH_CLIENT_SECRET || "";
 const GOOGLE_OAUTH_REDIRECT_URI = process.env.GA4_OAUTH_REDIRECT_URI || `http://localhost:${PORT}/api/ga4/oauth/callback`;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "";
+const ADMIN_EMAILS = new Set(
+  String(process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+);
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -565,6 +571,11 @@ function currentUser(db, req) {
   const user = db.users.find((u) => u.id === session.userId);
   if (!user) return null;
   return user;
+}
+
+function isAdminUser(user) {
+  const email = String(user?.email || "").toLowerCase();
+  return ADMIN_EMAILS.has(email);
 }
 
 function validateDate(s) {
@@ -1998,7 +2009,8 @@ async function handleApi(req, res, urlObj) {
 
     return json(res, 200, {
       user: { id: user.id, email: user.email, displayName: user.displayName },
-      tenants
+      tenants,
+      isAdmin: isAdminUser(user)
     });
   }
 
@@ -2028,6 +2040,111 @@ async function handleApi(req, res, urlObj) {
         projectUrls
       }
     });
+  }
+
+  const requireAdmin = () => {
+    const user = requireAuth();
+    if (!user) return null;
+    if (!isAdminUser(user)) {
+      json(res, 403, { error: "forbidden", message: "管理者のみアクセスできます" });
+      return null;
+    }
+    return user;
+  };
+
+  if (req.method === "GET" && urlObj.pathname === "/api/admin/overview") {
+    const user = requireAdmin();
+    if (!user) return;
+    const now = Date.now();
+    const sevenDaysAgo = new Date(now - (7 * ONE_DAY_MS)).toISOString().slice(0, 10);
+    const activeProjectIds = new Set(
+      db.metricDaily
+        .filter((row) => row.date >= sevenDaysAgo && row.sessions > 0)
+        .map((row) => row.projectId)
+    );
+    const ga4Connected = new Set(db.ga4Connections.map((item) => item.projectId));
+    const syncErrors = db.ga4Connections.filter((item) => item.lastSyncError).length;
+    return json(res, 200, {
+      totalTenants: db.tenants.length,
+      totalUsers: db.users.length,
+      verifiedUsers: db.users.filter((item) => item.emailVerifiedAt).length,
+      totalProjects: db.projects.length,
+      activeProjects7d: activeProjectIds.size,
+      ga4ConnectedProjects: ga4Connected.size,
+      ga4SyncErrors: syncErrors,
+      generatedReports: db.reportJobs.length
+    });
+  }
+
+  if (req.method === "GET" && urlObj.pathname === "/api/admin/tenants") {
+    const user = requireAdmin();
+    if (!user) return;
+    const rows = db.tenants.map((tenant) => {
+      const memberships = db.memberships.filter((m) => m.tenantId === tenant.id);
+      const projects = db.projects.filter((p) => p.tenantId === tenant.id);
+      const projectIds = new Set(projects.map((p) => p.id));
+      const ga4Rows = db.ga4Connections.filter((conn) => projectIds.has(conn.projectId));
+      const latestSync = ga4Rows
+        .map((item) => item.lastSyncedAt)
+        .filter(Boolean)
+        .sort()
+        .at(-1) || null;
+      return {
+        id: tenant.id,
+        accountName: tenant.accountName || tenant.name,
+        companyName: tenant.companyName || tenant.name,
+        plan: tenant.plan || "starter",
+        users: memberships.length,
+        projects: projects.length,
+        ga4ConnectedProjects: ga4Rows.length,
+        latestSyncAt: latestSync,
+        createdAt: tenant.createdAt || null
+      };
+    });
+    rows.sort((a, b) => (b.projects - a.projects) || (b.users - a.users));
+    return json(res, 200, { rows });
+  }
+
+  if (req.method === "GET" && urlObj.pathname === "/api/admin/users") {
+    const user = requireAdmin();
+    if (!user) return;
+    const rows = db.users.map((item) => {
+      const memberships = db.memberships.filter((m) => m.userId === item.id);
+      const tenantNames = memberships
+        .map((m) => db.tenants.find((t) => t.id === m.tenantId)?.name)
+        .filter(Boolean);
+      return {
+        id: item.id,
+        email: item.email,
+        displayName: item.displayName || "",
+        verified: Boolean(item.emailVerifiedAt),
+        emailVerifiedAt: item.emailVerifiedAt || null,
+        tenants: tenantNames
+      };
+    });
+    rows.sort((a, b) => String(a.email).localeCompare(String(b.email)));
+    return json(res, 200, { rows });
+  }
+
+  if (req.method === "GET" && urlObj.pathname === "/api/admin/projects") {
+    const user = requireAdmin();
+    if (!user) return;
+    const rows = db.projects.map((project) => {
+      const tenant = db.tenants.find((t) => t.id === project.tenantId);
+      const conn = db.ga4Connections.find((g) => g.projectId === project.id) || null;
+      return {
+        id: project.id,
+        name: project.name,
+        domain: project.domain,
+        tenantName: tenant?.name || "",
+        ga4PropertyId: conn?.ga4PropertyId || null,
+        ga4AccountEmail: conn?.accountEmail || null,
+        lastSyncedAt: conn?.lastSyncedAt || null,
+        lastSyncError: conn?.lastSyncError || null
+      };
+    });
+    rows.sort((a, b) => String(a.tenantName).localeCompare(String(b.tenantName)));
+    return json(res, 200, { rows });
   }
 
   if (req.method === "POST" && urlObj.pathname === "/api/account/profile") {

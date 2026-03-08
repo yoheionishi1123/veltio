@@ -19,7 +19,8 @@ const state = {
   addingProject: false,
   selectedValidationActionId: null,
   selectedValidationWindowDays: 30,
-  journey: null
+  journey: null,
+  isAdmin: false
 };
 
 const q = (id) => document.getElementById(id);
@@ -178,7 +179,7 @@ function metricCompareRatioMeta(currentBlock, compareBlock, metricKey, label) {
   if (ratio === null) return null;
   const prefix = ratio >= 0 ? "+" : "";
   return {
-    text: `${label}対比 ${prefix}${(ratio * 100).toFixed(2)}%`,
+    text: `${prefix}${(ratio * 100).toFixed(2)}%`,
     tone: metricImprovementDirection(metricKey, ratio)
   };
 }
@@ -622,13 +623,20 @@ function renderProjectHeader() {
 }
 
 function setActivePage(page) {
-  state.activePage = ["dashboard", "validation", "account", "assistant"].includes(page) ? page : "dashboard";
-  ["dashboard", "validation", "account", "assistant"].forEach((key) => {
+  const allowed = state.isAdmin
+    ? ["dashboard", "validation", "account", "assistant", "admin"]
+    : ["dashboard", "validation", "account", "assistant"];
+  state.activePage = allowed.includes(page) ? page : "dashboard";
+  ["dashboard", "validation", "account", "assistant", "admin"].forEach((key) => {
+    if (!q(`tab-${key}`) || !q(`page-${key}`)) return;
     q(`tab-${key}`).classList.toggle("active", key === state.activePage);
     q(`page-${key}`).classList.toggle("hidden", key !== state.activePage);
   });
   if (state.activePage === "assistant" && !state.assistantHistoryLoaded) {
     void loadAssistantHistory();
+  }
+  if (state.activePage === "admin" && state.isAdmin) {
+    void loadAdminDashboard();
   }
 }
 
@@ -954,6 +962,8 @@ async function bootstrap() {
     const me = await api("/api/me");
     state.user = me.user;
     state.tenants = me.tenants;
+    state.isAdmin = Boolean(me.isAdmin);
+    q("tab-admin").classList.toggle("hidden", !state.isAdmin);
     showApp();
     showGa4CallbackMessage();
     await loadProjects();
@@ -1028,6 +1038,58 @@ async function refreshAll() {
     loadProjectContext(),
     loadCampaigns()
   ]);
+  if (state.isAdmin) {
+    await loadAdminDashboard();
+  }
+}
+
+async function loadAdminDashboard() {
+  if (!state.isAdmin) return;
+  const [overview, tenants, users, projects] = await Promise.all([
+    api("/api/admin/overview"),
+    api("/api/admin/tenants"),
+    api("/api/admin/users"),
+    api("/api/admin/projects")
+  ]);
+
+  q("admin-overview-cards").innerHTML = `
+    <div class="card"><div class="k">企業数</div><div class="v">${fmtNum(overview.totalTenants)}</div></div>
+    <div class="card"><div class="k">ユーザー数</div><div class="v">${fmtNum(overview.totalUsers)}</div><div class="k">認証済み ${fmtNum(overview.verifiedUsers)}</div></div>
+    <div class="card"><div class="k">プロジェクト数</div><div class="v">${fmtNum(overview.totalProjects)}</div><div class="k">7日稼働 ${fmtNum(overview.activeProjects7d)}</div></div>
+    <div class="card"><div class="k">GA4連携</div><div class="v">${fmtNum(overview.ga4ConnectedProjects)}</div><div class="k">同期エラー ${fmtNum(overview.ga4SyncErrors)}</div></div>
+    <div class="card"><div class="k">生成レポート</div><div class="v">${fmtNum(overview.generatedReports)}</div></div>
+  `;
+
+  q("admin-tenants-body").innerHTML = (tenants.rows || []).map((row) => `
+    <tr>
+      <td>${escapeHtml(row.companyName || row.accountName || "-")}</td>
+      <td>${escapeHtml(row.plan || "-")}</td>
+      <td>${fmtNum(row.users)}</td>
+      <td>${fmtNum(row.projects)}</td>
+      <td>${fmtNum(row.ga4ConnectedProjects)}</td>
+      <td>${row.latestSyncAt ? new Date(row.latestSyncAt).toLocaleString() : "-"}</td>
+    </tr>
+  `).join("");
+
+  q("admin-users-body").innerHTML = (users.rows || []).map((row) => `
+    <tr>
+      <td>${escapeHtml(row.email || "-")}</td>
+      <td>${escapeHtml(row.displayName || "-")}</td>
+      <td>${row.verified ? "認証済み" : "未認証"}</td>
+      <td>${escapeHtml((row.tenants || []).join(", ") || "-")}</td>
+      <td>${row.emailVerifiedAt ? new Date(row.emailVerifiedAt).toLocaleString() : "-"}</td>
+    </tr>
+  `).join("");
+
+  q("admin-projects-body").innerHTML = (projects.rows || []).map((row) => `
+    <tr>
+      <td>${escapeHtml(row.tenantName || "-")}</td>
+      <td>${escapeHtml(row.name || "-")}</td>
+      <td>${escapeHtml(row.domain || "-")}</td>
+      <td>${escapeHtml(row.ga4PropertyId || "-")}</td>
+      <td>${row.lastSyncError ? `<span class="error">${escapeHtml(row.lastSyncError)}</span>` : (row.lastSyncedAt ? `正常 (${new Date(row.lastSyncedAt).toLocaleString()})` : "未接続")}</td>
+    </tr>
+  `).join("");
 }
 
 async function loadGa4Status() {
@@ -1095,10 +1157,9 @@ async function loadMetrics() {
     card.className = item.metricKey === "cvr" ? "card action-focus-card" : "card";
     const status = item.status === "ok" ? "基準内" : `要改善 ${Math.abs(item.gap * 100).toFixed(2)}pt`;
     const delta = data.compare?.delta?.[item.metricKey];
-    const compareLabel = data.compare ? comparePresetLabel(state.comparePreset) || "比較" : "";
     const currentText = metricActualText(data, item.metricKey);
     const compareText = data.compare ? metricActualText(data.compare, item.metricKey) : "";
-    const compareRateMeta = data.compare ? metricCompareRatioMeta(data, data.compare, item.metricKey, compareLabel) : null;
+    const compareRateMeta = data.compare ? metricCompareRatioMeta(data, data.compare, item.metricKey, "") : null;
     const cvrProgress = item.metricKey === "cvr" && item.target > 0 ? (item.value / item.target) : null;
     const cvrRemaining = item.metricKey === "cvr" ? Math.max(0, item.target - item.value) : null;
     card.innerHTML = `
@@ -1109,16 +1170,15 @@ async function loadMetrics() {
       ${cvrProgress !== null ? `<div class="k">目標進捗 ${Math.max(0, cvrProgress * 100).toFixed(2)}%</div>` : ""}
       ${cvrRemaining !== null ? `<div class="k">目標まで ${fmtPct(cvrRemaining)}</div>` : ""}
       <div class="k">${status}</div>
-      ${compareLabel ? `<div class="k">${compareLabel} (${data.compare.from} 〜 ${data.compare.to}): ${escapeHtml(compareText)}</div>` : ""}
-      ${compareRateMeta ? `<div class="k compare-${compareRateMeta.tone}">${escapeHtml(compareRateMeta.text)}</div>` : ""}
+      ${data.compare ? `<div class="k">比較値 ${escapeHtml(compareText)}</div>` : ""}
+      ${compareRateMeta ? `<div class="v compare-${compareRateMeta.tone}">${escapeHtml(compareRateMeta.text)}</div>` : ""}
       ${typeof delta === "number" ? `<div class="k">比較差 ${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt</div>` : ""}
     `;
     cards.appendChild(card);
   });
   if (data.compare) {
     q("compare-status").className = "tiny";
-    const label = comparePresetLabel(state.comparePreset) || "比較";
-    q("compare-status").textContent = `現在期間: ${data.from} 〜 ${data.to} / ${label}: ${data.compare.from} 〜 ${data.compare.to}`;
+    q("compare-status").textContent = `現在期間: ${data.from} 〜 ${data.to} / 比較期間: ${data.compare.from} 〜 ${data.compare.to}`;
   } else {
     q("compare-status").className = "tiny";
     q("compare-status").textContent = `現在期間: ${data.from} 〜 ${data.to}（比較なし）`;
@@ -1338,6 +1398,7 @@ q("tab-dashboard").addEventListener("click", () => setActivePage("dashboard"));
 q("tab-validation").addEventListener("click", () => setActivePage("validation"));
 q("tab-account").addEventListener("click", () => setActivePage("account"));
 q("tab-assistant").addEventListener("click", () => setActivePage("assistant"));
+q("tab-admin").addEventListener("click", () => setActivePage("admin"));
 q("run-signup-diagnosis").addEventListener("click", () => {
   renderSiteDiagnosis();
 });
