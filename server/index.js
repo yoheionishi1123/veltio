@@ -242,6 +242,16 @@ function issueEmailVerification(user) {
   return code;
 }
 
+function issuePasswordReset(user) {
+  const code = generateVerificationCode();
+  user.passwordReset = {
+    codeHash: verificationCodeHash(code),
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    issuedAt: new Date().toISOString()
+  };
+  return code;
+}
+
 async function sendVerificationEmail(email, code) {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
     if (process.env.NODE_ENV === "production") {
@@ -260,6 +270,33 @@ async function sendVerificationEmail(email, code) {
       to: [email],
       subject: "Veltio メール認証コード",
       text: `Veltio の確認コードは ${code} です。15分以内に入力してください。`
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`email_delivery_failed:${text}`);
+  }
+  return { delivered: true };
+}
+
+async function sendPasswordResetEmail(email, code) {
+  if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("email_delivery_not_configured");
+    }
+    return { delivered: false, previewCode: code };
+  }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${RESEND_API_KEY}`
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM_EMAIL,
+      to: [email],
+      subject: "Veltio パスワード再設定コード",
+      text: `Veltio のパスワード再設定コードは ${code} です。15分以内に入力してください。`
     })
   });
   if (!res.ok) {
@@ -330,7 +367,8 @@ async function readDb() {
     emailVerifiedAt: Object.prototype.hasOwnProperty.call(user, "emailVerifiedAt")
       ? user.emailVerifiedAt
       : (user.createdAt || new Date().toISOString()),
-    emailVerification: user.emailVerification || null
+    emailVerification: user.emailVerification || null,
+    passwordReset: user.passwordReset || null
   }));
   if (!Array.isArray(db.benchmarks) || db.benchmarks.length === 0) {
     db.benchmarks = BENCHMARK_DEFAULTS;
@@ -1218,6 +1256,51 @@ function groupedBreakdown(rows, dimension) {
   return [...map.values()].map((item) => ({ ...item, metrics: computeRates(item) }));
 }
 
+function journeyStepRows(agg) {
+  return [
+    { key: "sessions", label: "訪問", value: agg.sessions },
+    { key: "pdp", label: "PDP閲覧", value: agg.pdpSessions },
+    { key: "add_to_cart", label: "カート追加", value: agg.addToCartSessions },
+    { key: "checkout", label: "チェックアウト開始", value: agg.checkoutSessions },
+    { key: "purchase", label: "購入完了", value: agg.purchaseSessions }
+  ];
+}
+
+function journeyDropoffs(steps) {
+  const out = [];
+  for (let i = 1; i < steps.length; i += 1) {
+    const prev = steps[i - 1];
+    const curr = steps[i];
+    const dropped = Math.max(0, prev.value - curr.value);
+    out.push({
+      from: prev.key,
+      to: curr.key,
+      fromLabel: prev.label,
+      toLabel: curr.label,
+      dropCount: dropped,
+      dropRate: safeDivide(dropped, prev.value),
+      passRate: safeDivide(curr.value, prev.value)
+    });
+  }
+  return out;
+}
+
+function topDropoffSegments(rows, dimension, limit = 3) {
+  const grouped = groupedBreakdown(rows, dimension);
+  const scored = grouped.map((item) => {
+    const dropRatio = safeDivide(item.sessions - item.purchaseSessions, item.sessions);
+    const weightedScore = dropRatio * Math.log10(Math.max(10, item.sessions));
+    return {
+      dimensionValue: item.dimensionValue,
+      sessions: item.sessions,
+      purchaseSessions: item.purchaseSessions,
+      dropRatio,
+      weightedScore
+    };
+  });
+  return scored.sort((a, b) => b.weightedScore - a.weightedScore).slice(0, limit);
+}
+
 function metricLabel(metricKey) {
   return {
     sessions: "Sessions",
@@ -1703,6 +1786,7 @@ async function handleApi(req, res, urlObj) {
       displayName,
       emailVerifiedAt: null,
       emailVerification: null,
+      passwordReset: null,
       createdAt: new Date().toISOString()
     };
     const code = issueEmailVerification(user);
@@ -1794,6 +1878,65 @@ async function handleApi(req, res, urlObj) {
       message: "確認コードを再送しました。",
       previewCode: delivery.previewCode
     });
+  }
+
+  if (req.method === "POST" && urlObj.pathname === "/api/auth/forgot-password") {
+    const body = await parseBody(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    if (!email) {
+      return json(res, 400, { error: "missing_email", message: "メールアドレスを入力してください。" });
+    }
+    const user = db.users.find((u) => String(u.email || "").toLowerCase() === email);
+    if (!user || !user.emailVerifiedAt) {
+      return json(res, 200, { ok: true, message: "再設定コードを送信しました。メールを確認してください。" });
+    }
+
+    const code = issuePasswordReset(user);
+    let delivery;
+    try {
+      delivery = await sendPasswordResetEmail(user.email, code);
+    } catch (err) {
+      return json(res, 500, {
+        error: "email_delivery_failed",
+        message: "再設定コードの送信に失敗しました。メール送信設定を確認してください。",
+        detail: String(err.message || err)
+      });
+    }
+    await writeDb(db);
+    return json(res, 200, {
+      ok: true,
+      message: "再設定コードを送信しました。メールを確認してください。",
+      previewCode: delivery.previewCode
+    });
+  }
+
+  if (req.method === "POST" && urlObj.pathname === "/api/auth/reset-password") {
+    const body = await parseBody(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    const code = String(body.code || "").trim();
+    const newPassword = String(body.newPassword || "");
+    if (!email || !code || !newPassword) {
+      return json(res, 400, { error: "missing_fields", message: "メール・コード・新しいパスワードを入力してください。" });
+    }
+    if (newPassword.length < 8) {
+      return json(res, 400, { error: "weak_password", message: "パスワードは8文字以上で入力してください。" });
+    }
+    const user = db.users.find((u) => String(u.email || "").toLowerCase() === email);
+    if (!user || !user.passwordReset) {
+      return json(res, 400, { error: "invalid_reset_request", message: "再設定コードが無効です。" });
+    }
+    if (new Date(user.passwordReset.expiresAt).getTime() < Date.now()) {
+      return json(res, 400, { error: "reset_expired", message: "再設定コードの有効期限が切れています。" });
+    }
+    if (user.passwordReset.codeHash !== verificationCodeHash(code)) {
+      return json(res, 400, { error: "invalid_reset_code", message: "再設定コードが一致しません。" });
+    }
+
+    user.passwordHash = hashPassword(newPassword);
+    user.passwordReset = null;
+    db.sessions = db.sessions.filter((s) => s.userId !== user.id);
+    await writeDb(db);
+    return json(res, 200, { ok: true, message: "パスワードを更新しました。ログインしてください。" });
   }
 
   if (req.method === "POST" && urlObj.pathname === "/api/auth/login") {
@@ -2332,6 +2475,36 @@ async function handleApi(req, res, urlObj) {
       series,
       funnel,
       compare
+    });
+  }
+
+  const journeyMatch = urlObj.pathname.match(/^\/api\/projects\/([^/]+)\/journey$/);
+  if (req.method === "GET" && journeyMatch) {
+    const user = requireAuth();
+    if (!user) return;
+    const projectId = journeyMatch[1];
+    const project = findProjectAccessible(db, projectId, user.id);
+    if (!project) return json(res, 404, { error: "project_not_found" });
+
+    const range = dateRangeFromQuery(urlObj);
+    if (!range) return json(res, 400, { error: "invalid_date_range" });
+    const rows = selectRowsForPeriod(db, projectId, range.from, range.to);
+    const agg = aggregateMetricRows(rows);
+    const steps = journeyStepRows(agg);
+    const dropoffs = journeyDropoffs(steps);
+    const primaryDropoff = [...dropoffs].sort((a, b) => b.dropRate - a.dropRate)[0] || null;
+    const channelTop = topDropoffSegments(rows, "channel", 3);
+    const deviceTop = topDropoffSegments(rows, "device", 3);
+
+    return json(res, 200, {
+      projectId,
+      from: range.from,
+      to: range.to,
+      steps,
+      dropoffs,
+      primaryDropoff,
+      channelTop,
+      deviceTop
     });
   }
 

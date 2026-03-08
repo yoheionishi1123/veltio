@@ -34,6 +34,7 @@
           <label>メール <input type="email" id="login-email" required /></label>
           <label>パスワード <input type="password" id="login-password" required /></label>
           <button type="submit">ログイン</button>
+          <button id="show-forgot" class="ghost auth-aux" type="button">パスワードを忘れた方</button>
         </form>
 
         <form id="signup-form" class="stack hidden">
@@ -93,6 +94,25 @@
           <button type="submit">メール認証を完了</button>
           <button id="resend-code" type="button" class="ghost">確認コードを再送</button>
           <div id="verify-status" class="tiny"></div>
+        </form>
+
+        <form id="forgot-form" class="stack hidden">
+          <h2>パスワード再設定</h2>
+          <p class="muted tiny">登録メールに6桁コードを送信します。</p>
+          <label>メール <input type="email" id="forgot-email" required /></label>
+          <button type="submit">再設定コードを送信</button>
+          <button id="back-to-login" class="ghost auth-aux" type="button">ログイン画面へ戻る</button>
+          <div id="forgot-status" class="tiny"></div>
+        </form>
+
+        <form id="reset-form" class="stack hidden">
+          <h2>新しいパスワードを設定</h2>
+          <label>メール <input type="email" id="reset-email" required /></label>
+          <label>再設定コード <input type="text" id="reset-code" maxlength="6" required /></label>
+          <label>新しいパスワード <input type="password" id="reset-password" required /></label>
+          <button type="submit">パスワードを更新</button>
+          <button id="back-to-login-2" class="ghost auth-aux" type="button">ログイン画面へ戻る</button>
+          <div id="reset-status" class="tiny"></div>
         </form>
       </section>
 
@@ -196,6 +216,23 @@
               <div class="chart-card">
                 <h3>ファネル</h3>
                 <div id="funnel-chart" class="chart"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>離脱 / カスタマージャーニー</h2>
+            <p class="muted tiny">どのフェーズで失速しているかを、全体とチャネル/デバイス別で確認します。</p>
+            <div id="journey-summary" class="journey-summary"></div>
+            <div id="journey-steps" class="journey-steps"></div>
+            <div class="journey-segments">
+              <div class="chart-card">
+                <h3>離脱が大きいチャネル TOP3</h3>
+                <div id="journey-channel-top" class="journey-rank"></div>
+              </div>
+              <div class="chart-card">
+                <h3>離脱が大きいデバイス TOP3</h3>
+                <div id="journey-device-top" class="journey-rank"></div>
               </div>
             </div>
           </section>
@@ -378,6 +415,10 @@
         </div>
       </section>
     </main>
+    <footer class="site-footer">
+      <a href="/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
+      <a href="/terms" target="_blank" rel="noopener">利用規約</a>
+    </footer>
 
     <script src="/app.js"></script>
   </body>

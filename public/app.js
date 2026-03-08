@@ -18,7 +18,8 @@ const state = {
   projectContext: null,
   addingProject: false,
   selectedValidationActionId: null,
-  selectedValidationWindowDays: 30
+  selectedValidationWindowDays: 30,
+  journey: null
 };
 
 const q = (id) => document.getElementById(id);
@@ -127,6 +128,10 @@ const SITE_DIAGNOSIS_MAP = {
 
 function fmtPct(n) {
   return `${(n * 100).toFixed(2)}%`;
+}
+
+function fmtNum(n) {
+  return Number(n || 0).toLocaleString();
 }
 
 function metricLabel(metricKey) {
@@ -497,6 +502,57 @@ function renderFunnelChart(funnel) {
     .join("");
 }
 
+function renderJourney(data) {
+  const summary = q("journey-summary");
+  const stepsHost = q("journey-steps");
+  const channelHost = q("journey-channel-top");
+  const deviceHost = q("journey-device-top");
+  if (!data || !Array.isArray(data.steps) || !data.steps.length) {
+    summary.textContent = "データがありません。";
+    stepsHost.innerHTML = "";
+    channelHost.innerHTML = "";
+    deviceHost.innerHTML = "";
+    return;
+  }
+  const primary = data.primaryDropoff;
+  summary.innerHTML = primary
+    ? `<div class="journey-alert">最大離脱: <strong>${escapeHtml(primary.fromLabel)} → ${escapeHtml(primary.toLabel)}</strong> / 離脱率 <strong>${fmtPct(primary.dropRate)}</strong> / 離脱セッション <strong>${fmtNum(primary.dropCount)}</strong></div>`
+    : "<div class='journey-alert'>離脱分析のデータが不足しています。</div>";
+
+  const max = data.steps[0]?.value || 1;
+  stepsHost.innerHTML = data.steps.map((step, index) => {
+    const prev = index > 0 ? data.steps[index - 1] : null;
+    const passRate = prev ? (prev.value ? step.value / prev.value : 0) : 1;
+    const dropCount = prev ? Math.max(0, prev.value - step.value) : 0;
+    return `
+      <article class="journey-step-card">
+        <div class="journey-step-head">
+          <div class="journey-step-name">${index + 1}. ${escapeHtml(step.label)}</div>
+          <div class="journey-step-value">${fmtNum(step.value)}</div>
+        </div>
+        <div class="journey-step-track">
+          <div class="journey-step-fill" style="width:${Math.max(4, (step.value / max) * 100)}%"></div>
+        </div>
+        <div class="journey-step-meta">
+          ${prev ? `前段階通過率 ${fmtPct(passRate)} / 離脱 ${fmtNum(dropCount)}` : "起点セッション"}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  const renderRank = (rows) => {
+    if (!rows?.length) return "<div class='tiny muted'>データなし</div>";
+    return rows.map((row, idx) => `
+      <div class="journey-rank-row">
+        <div class="journey-rank-title">${idx + 1}. ${escapeHtml(row.dimensionValue)}</div>
+        <div class="journey-rank-meta">離脱率 ${fmtPct(row.dropRatio)} / Sessions ${fmtNum(row.sessions)}</div>
+      </div>
+    `).join("");
+  };
+  channelHost.innerHTML = renderRank(data.channelTop);
+  deviceHost.innerHTML = renderRank(data.deviceTop);
+}
+
 async function api(path, options = {}) {
   const res = await fetch(path, {
     method: options.method || "GET",
@@ -522,6 +578,8 @@ function showAuth(mode = "login") {
   q("login-form").classList.toggle("hidden", mode !== "login");
   q("signup-form").classList.toggle("hidden", mode !== "signup");
   q("verify-form").classList.toggle("hidden", mode !== "verify");
+  q("forgot-form").classList.toggle("hidden", mode !== "forgot");
+  q("reset-form").classList.toggle("hidden", mode !== "reset");
   q("show-login").classList.toggle("active", mode === "login");
   q("show-signup").classList.toggle("active", mode === "signup");
 }
@@ -959,7 +1017,17 @@ async function loadProjects() {
 
 async function refreshAll() {
   if (!state.projectId) return;
-  await Promise.all([loadGa4Status(), loadMetrics(), loadBreakdown(), loadLatestDiagnosis(), loadReports(), loadAccount(), loadProjectContext(), loadCampaigns()]);
+  await Promise.all([
+    loadGa4Status(),
+    loadMetrics(),
+    loadJourney(),
+    loadBreakdown(),
+    loadLatestDiagnosis(),
+    loadReports(),
+    loadAccount(),
+    loadProjectContext(),
+    loadCampaigns()
+  ]);
 }
 
 async function loadGa4Status() {
@@ -1058,6 +1126,12 @@ async function loadMetrics() {
   renderTrendChart(data.series || [], state.chartMetric, data.compare?.series || []);
   renderChartSummary(data, state.chartMetric);
   renderFunnelChart(data.funnel || []);
+}
+
+async function loadJourney() {
+  const data = await api(`/api/projects/${state.projectId}/journey?from=${state.from}&to=${state.to}`);
+  state.journey = data;
+  renderJourney(data);
 }
 
 async function loadBreakdown() {
@@ -1253,6 +1327,13 @@ async function loadProjectContext() {
 
 q("show-login").addEventListener("click", () => showAuth("login"));
 q("show-signup").addEventListener("click", () => showAuth("signup"));
+q("show-forgot").addEventListener("click", () => {
+  q("forgot-email").value = q("login-email").value || "";
+  q("forgot-status").textContent = "";
+  showAuth("forgot");
+});
+q("back-to-login").addEventListener("click", () => showAuth("login"));
+q("back-to-login-2").addEventListener("click", () => showAuth("login"));
 q("tab-dashboard").addEventListener("click", () => setActivePage("dashboard"));
 q("tab-validation").addEventListener("click", () => setActivePage("validation"));
 q("tab-account").addEventListener("click", () => setActivePage("account"));
@@ -1320,6 +1401,45 @@ q("verify-form").addEventListener("submit", async (e) => {
     await bootstrap();
   } catch (err) {
     q("verify-status").textContent = uiErrorText(err);
+  }
+});
+
+q("forgot-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const out = await api("/api/auth/forgot-password", {
+      method: "POST",
+      body: { email: q("forgot-email").value }
+    });
+    q("reset-email").value = q("forgot-email").value;
+    q("reset-code").value = "";
+    q("reset-password").value = "";
+    q("forgot-status").textContent = out.previewCode
+      ? `コード送信済み（開発プレビュー: ${out.previewCode}）`
+      : (out.message || "コードを送信しました。");
+    q("reset-status").textContent = "";
+    showAuth("reset");
+  } catch (err) {
+    q("forgot-status").textContent = uiErrorText(err);
+  }
+});
+
+q("reset-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const out = await api("/api/auth/reset-password", {
+      method: "POST",
+      body: {
+        email: q("reset-email").value,
+        code: q("reset-code").value,
+        newPassword: q("reset-password").value
+      }
+    });
+    q("login-email").value = q("reset-email").value;
+    q("reset-status").textContent = out.message || "パスワードを更新しました。";
+    showAuth("login");
+  } catch (err) {
+    q("reset-status").textContent = uiErrorText(err);
   }
 });
 
