@@ -796,6 +796,12 @@ th, td {
   background: #fff;
 }
 
+.admin-danger {
+  color: #b42318 !important;
+  border-color: #fecaca !important;
+  background: #fff5f5 !important;
+}
+
 .rec-meta, .rec-summary, .rec-step {
   font-size: 12px;
   color: var(--muted);

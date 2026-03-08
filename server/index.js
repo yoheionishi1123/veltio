@@ -2265,6 +2265,73 @@ async function handleApi(req, res, urlObj) {
     return json(res, 200, { from: range.from, to: range.to, q: search, rows: filtered });
   }
 
+  const adminTenantDeleteMatch = urlObj.pathname.match(/^\/api\/admin\/tenants\/([^/]+)$/);
+  if (req.method === "DELETE" && adminTenantDeleteMatch) {
+    const user = requireAdmin();
+    if (!user) return;
+    const tenantId = adminTenantDeleteMatch[1];
+    const tenant = db.tenants.find((t) => t.id === tenantId);
+    if (!tenant) return json(res, 404, { error: "tenant_not_found" });
+
+    const body = await parseBody(req);
+    const confirmName = String(body.confirmName || "").trim();
+    if (!confirmName || confirmName !== String(tenant.name || "")) {
+      return json(res, 400, {
+        error: "confirm_name_mismatch",
+        message: "削除確認のため、企業名を正確に入力してください。"
+      });
+    }
+
+    const projectIds = new Set(db.projects.filter((p) => p.tenantId === tenantId).map((p) => p.id));
+    const memberUserIds = new Set(db.memberships.filter((m) => m.tenantId === tenantId).map((m) => m.userId));
+    const reportJobsToDelete = db.reportJobs.filter((r) => projectIds.has(r.projectId));
+
+    // Clean report files if present.
+    for (const report of reportJobsToDelete) {
+      if (report.filePath) {
+        try {
+          await fs.unlink(report.filePath);
+        } catch {
+          // ignore if file is already missing
+        }
+      }
+    }
+
+    db.projects = db.projects.filter((p) => p.tenantId !== tenantId);
+    db.ga4Connections = db.ga4Connections.filter((g) => !projectIds.has(g.projectId));
+    db.stageRules = db.stageRules.filter((s) => !projectIds.has(s.projectId));
+    db.metricDaily = db.metricDaily.filter((m) => !projectIds.has(m.projectId));
+    db.diagnosisResults = db.diagnosisResults.filter((d) => !projectIds.has(d.projectId));
+    db.reportJobs = db.reportJobs.filter((r) => !projectIds.has(r.projectId));
+    db.projectContexts = db.projectContexts.filter((c) => !projectIds.has(c.projectId));
+    db.assistantMessages = db.assistantMessages.filter((m) => !projectIds.has(m.projectId));
+    db.oauthStates = db.oauthStates.filter((s) => s.tenantId !== tenantId && !projectIds.has(s.projectId));
+    db.appEvents = (db.appEvents || []).filter((e) => e.tenantId !== tenantId && !projectIds.has(e.projectId));
+    db.memberships = db.memberships.filter((m) => m.tenantId !== tenantId);
+    db.tenants = db.tenants.filter((t) => t.id !== tenantId);
+
+    // Remove users who no longer belong to any tenant.
+    const remainingMemberUserIds = new Set(db.memberships.map((m) => m.userId));
+    const orphanUserIds = [...memberUserIds].filter((id) => !remainingMemberUserIds.has(id));
+    if (orphanUserIds.length) {
+      const orphanSet = new Set(orphanUserIds);
+      db.users = db.users.filter((u) => !orphanSet.has(u.id));
+      db.sessions = db.sessions.filter((s) => !orphanSet.has(s.userId));
+      db.oauthStates = db.oauthStates.filter((s) => !orphanSet.has(s.userId));
+      db.appEvents = (db.appEvents || []).filter((e) => !orphanSet.has(e.userId));
+    }
+
+    trackAppEvent(db, {
+      eventType: "admin_tenant_deleted",
+      userId: user.id,
+      tenantId,
+      meta: { tenantName: tenant.name || "" }
+    });
+
+    await writeDb(db);
+    return json(res, 200, { ok: true, deletedTenantId: tenantId, deletedUsers: orphanUserIds.length });
+  }
+
   if (req.method === "GET" && urlObj.pathname === "/api/admin/trend") {
     const user = requireAdmin();
     if (!user) return;

@@ -1241,6 +1241,7 @@ async function loadAdminDashboard() {
       <td>${fmtNum(row.sessions || 0)}</td>
       <td>${fmtPct(row.cvr || 0)}</td>
       <td>${row.latestSyncAt ? new Date(row.latestSyncAt).toLocaleString() : "-"}</td>
+      <td><button type="button" class="ghost admin-danger admin-delete-tenant" data-id="${escapeHtml(row.id)}" data-name="${escapeHtml(row.companyName || row.accountName || "")}">削除</button></td>
     </tr>
   `).join("");
 
@@ -1625,6 +1626,24 @@ q("admin-export-projects").addEventListener("click", () => {
       row.lastSyncError || ""
     ])
   );
+});
+q("admin-tenants-body").addEventListener("click", async (e) => {
+  const target = e.target.closest(".admin-delete-tenant");
+  if (!target) return;
+  const tenantId = target.getAttribute("data-id");
+  const tenantName = target.getAttribute("data-name") || "";
+  const typed = prompt(`企業アカウントを削除します。\n確認のため企業名を入力してください。\n\n${tenantName}`);
+  if (typed === null) return;
+  try {
+    await api(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      method: "DELETE",
+      body: { confirmName: typed }
+    });
+    q("admin-status").textContent = `企業「${tenantName}」を削除しました。`;
+    await loadAdminDashboard();
+  } catch (err) {
+    q("admin-status").textContent = `削除失敗: ${err.message}`;
+  }
 });
 q("run-signup-diagnosis").addEventListener("click", () => {
   renderSiteDiagnosis();
