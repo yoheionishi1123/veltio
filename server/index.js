@@ -1633,6 +1633,8 @@ function reprioritizedTemplateScore(template, context) {
 async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
   if (reqPath === "/") reqPath = "/index.html";
+  if (reqPath.endsWith("/")) reqPath = `${reqPath}index.html`;
+  if (!path.extname(reqPath)) reqPath = `${reqPath}.html`;
   const fsPath = path.join(PUBLIC_DIR, reqPath);
 
   if (!fsPath.startsWith(PUBLIC_DIR)) {
@@ -1650,6 +1652,8 @@ async function serveStatic(req, res, urlObj) {
           ? "text/css; charset=utf-8"
           : ext === ".js"
             ? "application/javascript; charset=utf-8"
+            : ext === ".svg"
+              ? "image/svg+xml"
             : "application/octet-stream";
 
     res.writeHead(200, { "Content-Type": contentType });
@@ -1716,10 +1720,6 @@ async function handleApi(req, res, urlObj) {
     try {
       delivery = await sendVerificationEmail(user.email, code);
     } catch (err) {
-      console.error("[auth/signup] email_delivery_failed", {
-        email: user.email,
-        message: String(err?.message || err)
-      });
       return json(res, 500, {
         error: "email_delivery_failed",
         message: "確認コードの送信に失敗しました。メール送信設定を確認してください。",
@@ -1782,10 +1782,6 @@ async function handleApi(req, res, urlObj) {
     try {
       delivery = await sendVerificationEmail(user.email, code);
     } catch (err) {
-      console.error("[auth/resend-verification] email_delivery_failed", {
-        email: user.email,
-        message: String(err?.message || err)
-      });
       return json(res, 500, {
         error: "email_delivery_failed",
         message: "確認コードの再送に失敗しました。メール送信設定を確認してください。",
@@ -1953,10 +1949,6 @@ async function handleApi(req, res, urlObj) {
         previewCode: delivery.previewCode
       });
     } catch (err) {
-      console.error("[account/email-delivery/test] email_delivery_failed", {
-        email: user.email,
-        message: String(err?.message || err)
-      });
       return json(res, 500, {
         error: "email_delivery_failed",
         message: "テスト送信に失敗しました。Resend設定または送信元ドメインを確認してください。",
