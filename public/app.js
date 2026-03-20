@@ -654,7 +654,7 @@ function showApp() {
 }
 
 function syncAppPath() {
-  const nextPath = state.activePage === "admin" ? "/analytics" : "/";
+  const nextPath = state.activePage === "admin" ? "/analytics/admin" : "/analytics";
   if (location.pathname !== nextPath) {
     history.replaceState({}, "", `${nextPath}${location.search || ""}${location.hash || ""}`);
   }
@@ -1022,8 +1022,8 @@ async function bootstrap() {
   if (
     location.pathname === "/admin" ||
     location.pathname.startsWith("/admin/") ||
-    location.pathname === "/analytics" ||
-    location.pathname.startsWith("/analytics/")
+    location.pathname === "/analytics/admin" ||
+    location.pathname.startsWith("/analytics/admin/")
   ) {
     state.activePage = "admin";
   }
@@ -1042,9 +1042,11 @@ async function bootstrap() {
   renderSiteDiagnosis();
   void trackVisitor("page_view", {
     activePage:
-      location.pathname.startsWith("/admin") || location.pathname.startsWith("/analytics")
+      (location.pathname.startsWith("/admin") || location.pathname.startsWith("/analytics/admin"))
         ? "admin"
-        : "auth_or_dashboard",
+        : location.pathname.startsWith("/analytics")
+          ? "analytics"
+          : "auth_or_dashboard",
   });
 
   try {

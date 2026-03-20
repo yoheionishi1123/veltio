@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veltio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EG54MXFRWQ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-EG54MXFRWQ");
+    </script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-brand">
+        <h1 class="brand-lockup">
+          <img src="/veltio-logo.svg" alt="Veltio" class="brand-logo" />
+          <span class="sr-only">Veltio</span>
+        </h1>
+        <nav id="topbar-nav" class="topbar-nav hidden">
+          <button id="tab-dashboard" class="ghost active" type="button">分析</button>
+          <button id="tab-validation" class="ghost" type="button">施策検証</button>
+          <button id="tab-account" class="ghost" type="button">アカウント</button>
+          <button id="tab-assistant" class="ghost" type="button">AIアシスタント</button>
+          <button id="tab-admin" class="ghost hidden" type="button">運営管理</button>
+        </nav>
+      </div>
+      <button id="logout" class="ghost hidden">ログアウト</button>
+    </header>
+
+    <main class="container">
+      <section id="auth-view" class="panel">
+        <div class="tabs">
+          <button id="show-login" class="active">ログイン</button>
+          <button id="show-signup">新規登録</button>
+        </div>
+
+        <form id="login-form" class="stack">
+          <label>メール <input type="email" id="login-email" required /></label>
+          <label>パスワード <input type="password" id="login-password" required /></label>
+          <button type="submit">ログイン</button>
+          <button id="show-forgot" class="ghost auth-aux" type="button">パスワードを忘れた方</button>
+        </form>
+
+        <form id="signup-form" class="stack hidden">
+          <section class="diagnosis-hero">
+            <h2>1. サイトタイプ診断</h2>
+            <p class="muted">登録前にサイトの型を判定し、初期KPIの考え方を整理します。</p>
+            <div id="site-diagnosis-result" class="diagnosis-result-box"></div>
+            <div class="grid2">
+              <label>販売モデル
+                <select id="diag-model">
+                  <option value="web_complete_ec">Web完結型 / EC</option>
+                  <option value="web_complete_non_ec">Web完結型 / EC以外</option>
+                  <option value="lead_btob">Web to 営業 / BtoB</option>
+                  <option value="lead_btoc">Web to 営業 / BtoC</option>
+                </select>
+              </label>
+              <label>購買・検討タイプ
+                <select id="diag-intent">
+                  <option value="emotional">感性・世界観重視</option>
+                  <option value="rational">理性・比較重視</option>
+                  <option value="urgent">切迫・即時対応重視</option>
+                  <option value="consultative">提案・比較検討重視</option>
+                </select>
+              </label>
+              <label>店舗連携
+                <select id="diag-store">
+                  <option value="connected">店舗あり・OMOあり</option>
+                  <option value="none">店舗なし / Web中心</option>
+                </select>
+              </label>
+              <label>主なサイト目的
+                <select id="diag-goal">
+                  <option value="sell">販売・購入完了</option>
+                  <option value="lead">資料請求・問い合わせ</option>
+                  <option value="media">回遊・閲覧・送客</option>
+                  <option value="brand">認知・ブランド形成</option>
+                </select>
+              </label>
+            </div>
+            <button id="run-signup-diagnosis" type="button">診断する</button>
+          </section>
+
+          <h2>2. アカウント登録</h2>
+          <label>会社名 <input type="text" id="signup-tenant" required /></label>
+          <label>表示名 <input type="text" id="signup-name" required /></label>
+          <label>メール <input type="email" id="signup-email" required /></label>
+          <label>パスワード <input type="password" id="signup-password" required /></label>
+          <button type="submit">登録して開始</button>
+          <div id="signup-status" class="tiny"></div>
+        </form>
+
+        <form id="verify-form" class="stack hidden">
+          <h2>メール認証</h2>
+          <p class="muted tiny">登録後、確認コードの入力が完了するまでログインできません。</p>
+          <label>メール <input type="email" id="verify-email" required /></label>
+          <label>確認コード <input type="text" id="verify-code" required maxlength="6" /></label>
+          <button type="submit">メール認証を完了</button>
+          <button id="resend-code" type="button" class="ghost">確認コードを再送</button>
+          <div id="verify-status" class="tiny"></div>
+        </form>
+
+        <form id="forgot-form" class="stack hidden">
+          <h2>パスワード再設定</h2>
+          <p class="muted tiny">登録メールに6桁コードを送信します。</p>
+          <label>メール <input type="email" id="forgot-email" required /></label>
+          <button type="submit">再設定コードを送信</button>
+          <button id="back-to-login" class="ghost auth-aux" type="button">ログイン画面へ戻る</button>
+          <div id="forgot-status" class="tiny"></div>
+        </form>
+
+        <form id="reset-form" class="stack hidden">
+          <h2>新しいパスワードを設定</h2>
+          <label>メール <input type="email" id="reset-email" required /></label>
+          <label>再設定コード <input type="text" id="reset-code" maxlength="6" required /></label>
+          <label>新しいパスワード <input type="password" id="reset-password" required /></label>
+          <button type="submit">パスワードを更新</button>
+          <button id="back-to-login-2" class="ghost auth-aux" type="button">ログイン画面へ戻る</button>
+          <div id="reset-status" class="tiny"></div>
+        </form>
+      </section>
+
+      <section id="app-view" class="hidden">
+        <div id="page-dashboard" class="app-page">
+          <section class="panel">
+            <h2>分析設定</h2>
+            <p class="muted tiny">1サイト=1プロジェクトです。GA4連携、期間分析、診断、メモ、レポートはこの単位で分かれます。</p>
+            <h3>プロジェクト</h3>
+            <div id="project-empty-state" class="inline">
+              <select id="project-select"></select>
+              <button id="refresh-project">更新</button>
+            </div>
+            <div id="project-current-card" class="card hidden"></div>
+            <div id="project-actions" class="inline hidden">
+              <button id="show-add-project" type="button" class="ghost">別プロパティを追加</button>
+              <span id="project-status" class="tiny"></span>
+            </div>
+            <form id="project-form" class="grid3 hidden">
+              <input type="text" id="project-name" placeholder="プロジェクト名" required />
+              <input type="text" id="project-domain" placeholder="example.com" required />
+              <button type="submit">新規作成</button>
+            </form>
+
+            <h3>GA4連携</h3>
+            <form id="ga4-quick-form" class="grid3">
+              <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
+              <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
+              <button type="submit">かんたん接続</button>
+            </form>
+            <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
+            <div id="ga4-status" class="ga4-status-card"></div>
+            <button id="ga4-reconnect" class="ghost hidden" type="button">連携し直す</button>
+            <div id="ga4-quick-status" class="tiny"></div>
+
+            <h3>CVR目標</h3>
+            <form id="project-goal-form" class="inline">
+              <input id="project-target-cvr" type="number" min="0.01" max="99.99" step="0.01" placeholder="目標CVR（%）" />
+              <button type="submit">保存</button>
+              <span id="project-goal-status" class="tiny"></span>
+            </form>
+
+            <h3>期間</h3>
+            <div class="inline">
+              <input type="date" id="from-date" />
+              <input type="date" id="to-date" />
+              <select id="compare-preset">
+                <option value="none">比較なし</option>
+                <option value="prev_year">前年</option>
+                <option value="prev_year_same_week">前年同週</option>
+                <option value="prev_month">前月</option>
+                <option value="prev_month_same_week">前月同週</option>
+                <option value="custom">カスタム期間</option>
+              </select>
+              <input type="date" id="compare-from-date" class="hidden" />
+              <input type="date" id="compare-to-date" class="hidden" />
+              <select id="granularity-select">
+                <option value="day">日別</option>
+                <option value="week">週別</option>
+                <option value="month">月別</option>
+              </select>
+              <button id="apply-range">適用</button>
+            </div>
+            <div id="compare-status" class="tiny"></div>
+          </section>
+
+          <section class="panel">
+            <h2>ダッシュボード（7指標）</h2>
+            <details class="formula-details">
+              <summary>見たい人はこちら: 各指標の計算式</summary>
+              <div class="tiny muted">
+                <div>CVR = 購入セッション数 / 全セッション数</div>
+                <div>直帰率 = 1 - engagement rate</div>
+                <div>PDP到達率 = PDP閲覧セッション数 / 全セッション数</div>
+                <div>カート追加率 = add_to_cart セッション数 / PDP閲覧セッション数</div>
+                <div>カート離脱率 = (カート到達セッション数 - 購入セッション数) / カート到達セッション数</div>
+                <div>checkout到達率 = begin_checkout セッション数 / add_to_cart セッション数</div>
+                <div>購入完了率 = purchase セッション数 / begin_checkout セッション数</div>
+              </div>
+            </details>
+            <div id="metric-cards" class="cards"></div>
+            <div id="top-action-card" class="card action-focus-card hidden"></div>
+            <div class="chart-grid">
+              <div class="chart-card">
+                <div class="inline">
+                  <h3>推移</h3>
+                  <select id="chart-metric-select">
+                    <option value="sessions">Sessions</option>
+                    <option value="bounce_rate">直帰率</option>
+                    <option value="pdp_reach_rate">PDP到達率</option>
+                    <option value="add_to_cart_rate">カート追加率</option>
+                    <option value="cart_abandon_rate">カート離脱率</option>
+                    <option value="checkout_reach_rate">checkout到達率</option>
+                    <option value="purchase_rate">購入完了率</option>
+                    <option value="cvr">CVR</option>
+                  </select>
+                </div>
+                <div id="chart-summary" class="chart-summary"></div>
+                <div id="trend-chart" class="chart"></div>
+              </div>
+              <div class="chart-card">
+                <h3>ファネル</h3>
+                <div id="funnel-chart" class="chart"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>離脱 / カスタマージャーニー</h2>
+            <p class="muted tiny">どのフェーズで失速しているかを、全体とチャネル/デバイス別で確認します。</p>
+            <div id="journey-summary" class="journey-summary"></div>
+            <div id="journey-steps" class="journey-steps"></div>
+            <div class="journey-segments">
+              <div class="chart-card">
+                <h3>離脱が大きいチャネル TOP3</h3>
+                <div id="journey-channel-top" class="journey-rank"></div>
+              </div>
+              <div class="chart-card">
+                <h3>離脱が大きいデバイス TOP3</h3>
+                <div id="journey-device-top" class="journey-rank"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>分解 / ワースト</h2>
+            <div class="inline">
+              <select id="dimension-select">
+                <option value="channel">channel</option>
+                <option value="device">device</option>
+                <option value="landing_page">landing_page</option>
+              </select>
+              <button id="load-breakdown">読込</button>
+            </div>
+            <div id="breakdown-table-wrap" class="table-wrap">
+              <table class="breakdown-table">
+                <thead>
+                  <tr><th>Dimension</th><th>Sessions</th><th>Bounce</th><th>PDP</th><th>AddCart</th><th>CartAbandon</th></tr>
+                </thead>
+                <tbody id="breakdown-body"></tbody>
+              </table>
+            </div>
+            <div id="breakdown-cards" class="breakdown-cards"></div>
+          </section>
+
+          <section class="panel">
+            <h2>診断 / 施策</h2>
+            <button id="run-diagnosis">診断実行</button>
+            <div id="diagnosis-result"></div>
+            <h3>推奨施策</h3>
+            <div id="recommendation-list" class="recommendations"></div>
+          </section>
+
+          <section class="panel">
+            <h2>セール / キャンペーン影響</h2>
+            <form id="campaign-form" class="grid3">
+              <input id="campaign-name" placeholder="例: GWセール" required />
+              <select id="campaign-type">
+                <option value="sale">セール</option>
+                <option value="campaign">キャンペーン</option>
+              </select>
+              <label><input id="campaign-recurring" type="checkbox" /> 毎年同時期に実施</label>
+              <input id="campaign-start-date" type="date" required />
+              <input id="campaign-end-date" type="date" required />
+              <button type="submit">保存</button>
+            </form>
+            <div id="campaign-status" class="tiny"></div>
+            <div id="campaign-list" class="breakdown-cards landing-mode"></div>
+          </section>
+
+          <section class="panel">
+            <h2>レポート出力</h2>
+            <div class="inline">
+              <button id="create-report-pdf">PDF生成</button>
+              <button id="create-report-ppt">PPT生成</button>
+            </div>
+            <div id="report-status" class="tiny"></div>
+            <ul id="report-list"></ul>
+          </section>
+        </div>
+
+        <div id="page-account" class="app-page hidden">
+          <section class="panel">
+            <h2>アカウント管理</h2>
+            <form id="account-form" class="grid2">
+              <label>アカウント名<input id="account-name" required /></label>
+              <label>会社名<input id="company-name" required /></label>
+              <label>氏名<input id="contact-name" required /></label>
+              <label>役職<input id="job-title" required /></label>
+              <button type="submit">プロフィール保存</button>
+            </form>
+            <div id="account-plan" class="tiny"></div>
+            <button id="upgrade-plan" type="button">Proにアップグレード</button>
+            <div class="inline">
+              <button id="send-test-email" type="button">認証メール送信テスト</button>
+              <span id="test-email-status" class="tiny"></span>
+            </div>
+            <h3>登録サイトURL</h3>
+            <ul id="account-sites"></ul>
+            <h3>招待ユーザー（最大3名）</h3>
+            <form id="invite-form" class="inline">
+              <input id="invite-email" type="email" placeholder="user@example.com" />
+              <button type="submit">招待追加</button>
+            </form>
+            <div id="invite-status" class="tiny"></div>
+            <ul id="invite-list"></ul>
+          </section>
+        </div>
+
+        <div id="page-validation" class="app-page hidden">
+          <section class="panel">
+            <h2>施策検証</h2>
+            <p class="muted tiny">施策ログの保存、履歴確認、効果検証はこの画面で行います。</p>
+            <form id="assistant-context-form" class="stack">
+              <input id="editing-action-log-id" type="hidden" />
+              <label>企業メモ
+                <textarea id="company-note" rows="3" placeholder="例: 高単価アパレル。店舗受取が主導線。今月は新生活特集を強化。"></textarea>
+              </label>
+              <label>施策ログ
+                <textarea id="action-log" rows="4" placeholder="例: 3/1 LPファーストビュー差し替え、3/2 送料無料訴求をカートに追加"></textarea>
+              </label>
+              <div class="grid3">
+                <label>担当者
+                  <input id="action-owner" placeholder="例: 田中" required />
+                </label>
+                <label>ステータス
+                  <select id="action-status">
+                    <option value="todo">未着手</option>
+                    <option value="doing">進行中</option>
+                    <option value="done">完了</option>
+                  </select>
+                </label>
+                <label>優先度
+                  <select id="action-priority">
+                    <option value="high">高</option>
+                    <option value="medium">中</option>
+                    <option value="low">低</option>
+                  </select>
+                </label>
+                <label>完了日
+                  <input id="action-completed-date" type="date" />
+                </label>
+              </div>
+              <div class="inline">
+                <button type="submit">メモ保存</button>
+                <button id="cancel-edit-action-log" type="button" class="ghost hidden">編集をやめる</button>
+                <span id="assistant-context-status" class="tiny"></span>
+              </div>
+            </form>
+            <div class="timeline-grid">
+              <section class="timeline-card">
+                <h3>企業メモ履歴</h3>
+                <div id="company-note-timeline" class="timeline-list"></div>
+              </section>
+              <section class="timeline-card">
+                <h3>施策ログ履歴</h3>
+                <div id="action-log-timeline" class="timeline-list"></div>
+              </section>
+            </div>
+            <section class="timeline-card">
+              <h3>施策前後の比較</h3>
+              <div id="validation-detail-summary" class="tiny muted"></div>
+              <div class="suggestion-row">
+                <button id="validation-window-7" class="ghost" type="button">7日後</button>
+                <button id="validation-window-14" class="ghost" type="button">14日後</button>
+                <button id="validation-window-30" class="ghost" type="button">30日後</button>
+              </div>
+              <div id="validation-detail-cards" class="cards"></div>
+              <div id="validation-detail-chart" class="chart"></div>
+            </section>
+            <div id="validation-suggestions" class="suggestion-row">
+              <button class="suggestion-chip" type="button" data-message="今やる施策の優先順を教えて">今やる施策の優先順を教えて</button>
+              <button class="suggestion-chip" type="button" data-message="直近の施策ログの効果を教えて">直近の施策ログの効果を教えて</button>
+            </div>
+          </section>
+        </div>
+
+        <div id="page-assistant" class="app-page hidden">
+          <section class="panel">
+            <h2>AIアシスタント</h2>
+            <p class="muted tiny">現在のGA4指標、診断結果、施策検証データを参照して回答します。</p>
+            <div id="assistant-suggestions" class="suggestion-row">
+              <button class="suggestion-chip" type="button" data-message="今の最大ボトルネックはどこ？">今の最大ボトルネックはどこ？</button>
+              <button class="suggestion-chip" type="button" data-message="直帰率を下げる優先施策を教えて">直帰率を下げる優先施策を教えて</button>
+              <button class="suggestion-chip" type="button" data-message="チャネル別の見方を教えて">チャネル別の見方を教えて</button>
+            </div>
+            <div id="assistant-reference-card" class="timeline-card hidden">
+              <h3>参照した根拠メモ</h3>
+              <div id="assistant-references" class="timeline-list"></div>
+            </div>
+            <div id="assistant-chat" class="chat-log"></div>
+            <form id="assistant-form" class="chat-compose">
+              <textarea id="assistant-input" rows="3" placeholder="例: PDP到達率が低い理由と、今やるべき施策を教えて"></textarea>
+              <div class="inline">
+                <button type="submit">送信</button>
+                <span id="assistant-status" class="tiny"></span>
+              </div>
+            </form>
+          </section>
+        </div>
+
+        <div id="page-admin" class="app-page hidden">
+          <section class="panel">
+            <h2>運営管理</h2>
+            <p class="muted tiny">サービス全体の企業・ユーザー・プロジェクト状況を確認できます。</p>
+            <div class="inline admin-toolbar">
+              <input id="admin-from-date" type="date" />
+              <input id="admin-to-date" type="date" />
+              <input id="admin-search" type="search" placeholder="企業名 / メール / ドメイン検索" />
+              <button id="admin-apply" type="button">反映</button>
+              <button id="admin-export-tenants" class="ghost" type="button">企業CSV</button>
+              <button id="admin-export-users" class="ghost" type="button">ユーザーCSV</button>
+              <button id="admin-export-projects" class="ghost" type="button">プロジェクトCSV</button>
+            </div>
+            <div id="admin-status" class="tiny muted"></div>
+            <div id="admin-overview-cards" class="cards"></div>
+            <div class="chart-card">
+              <h3>日次トレンド（企業数 / 有効プロジェクト数 / 売上）</h3>
+              <div id="admin-trend-chart" class="chart"></div>
+            </div>
+            <div class="chart-card">
+              <h3>Veltio 事業KPI（自社指標）</h3>
+              <div id="admin-business-kpi-cards" class="cards"></div>
+              <div id="admin-ga4-funnel" class="journey-steps"></div>
+            </div>
+          </section>
+          <section class="panel">
+            <h3>企業一覧</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>会社名</th><th>プラン</th><th>ユーザー数</th><th>プロジェクト数</th><th>期間Sessions</th><th>期間CVR</th><th>最終同期</th><th>操作</th></tr>
+                </thead>
+                <tbody id="admin-tenants-body"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel">
+            <h3>ユーザー一覧</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>メール</th><th>表示名</th><th>認証</th><th>セッション</th><th>所属企業</th><th>認証日時</th></tr>
+                </thead>
+                <tbody id="admin-users-body"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel">
+            <h3>プロジェクト一覧</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>企業</th><th>プロジェクト</th><th>ドメイン</th><th>GA4 Property</th><th>期間Sessions</th><th>期間CVR</th><th>同期状態</th></tr>
+                </thead>
+                <tbody id="admin-projects-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <a href="/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
+      <a href="/terms" target="_blank" rel="noopener">利用規約</a>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
