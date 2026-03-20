@@ -94,6 +94,30 @@ body {
   box-shadow: 0 8px 20px rgba(16, 24, 40, 0.04);
 }
 
+.auth-intro {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.auth-kicker {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0a58ca;
+  font-weight: 700;
+}
+
+.auth-notice {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b42318;
+}
+
 .diagnosis-hero {
   border: 1px solid #bfdbfe;
   border-radius: 12px;
@@ -415,6 +439,8 @@ th, td {
 
 .muted { color: var(--muted); }
 .tiny { font-size: 12px; margin: 6px 0 8px; }
+.status-success { color: #0f766e; }
+.status-error { color: #b42318; }
 .locked { color: #b45309; }
 .recommendations {
   display: grid;

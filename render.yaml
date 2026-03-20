@@ -22,6 +22,16 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         sync: false
+      - key: SELF_GA4_PROPERTY_ID
+        sync: false
+      - key: SELF_GA4_MEASUREMENT_ID
+        value: G-VBKYWDLGE5
+      - key: SELF_GA4_STREAM_ID
+        value: 14131607973
+      - key: SELF_GA4_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: SELF_GA4_SERVICE_ACCOUNT_PRIVATE_KEY
+        sync: false
     disk:
       name: veltio-data
       mountPath: /var/data

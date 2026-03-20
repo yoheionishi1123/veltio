@@ -16,11 +16,19 @@ const REPORT_DIR = path.join(APP_STORAGE_ROOT, "reports");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const PORT = Number(process.env.PORT || 3210);
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "cvr_sid";
+const AUTH_PROVIDER = String(process.env.AUTH_PROVIDER || "local").trim().toLowerCase() === "supabase" ? "supabase" : "local";
+const SUPABASE_URL = String(process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 const GOOGLE_OAUTH_CLIENT_ID = process.env.GA4_OAUTH_CLIENT_ID || "";
 const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GA4_OAUTH_CLIENT_SECRET || "";
 const GOOGLE_OAUTH_REDIRECT_URI = process.env.GA4_OAUTH_REDIRECT_URI || `http://localhost:${PORT}/api/ga4/oauth/callback`;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "";
+const SELF_GA4_PROPERTY_ID = process.env.SELF_GA4_PROPERTY_ID || "";
+const SELF_GA4_MEASUREMENT_ID = process.env.SELF_GA4_MEASUREMENT_ID || "G-VBKYWDLGE5";
+const SELF_GA4_STREAM_ID = process.env.SELF_GA4_STREAM_ID || "14131607973";
+const SELF_GA4_SERVICE_ACCOUNT_EMAIL = process.env.SELF_GA4_SERVICE_ACCOUNT_EMAIL || "";
+const SELF_GA4_SERVICE_ACCOUNT_PRIVATE_KEY = process.env.SELF_GA4_SERVICE_ACCOUNT_PRIVATE_KEY || "";
 const ADMIN_EMAILS = new Set(
   String(process.env.ADMIN_EMAILS || "")
     .split(",")
@@ -438,6 +446,150 @@ async function parseBody(req) {
   }
 }
 
+
+function base64UrlEncode(value) {
+  const buf = Buffer.isBuffer(value) ? value : Buffer.from(value);
+  return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function normalizePrivateKey(value) {
+  return String(value || "").replace(/\\n/g, "\n");
+}
+
+function selfGaConfigured() {
+  return Boolean(SELF_GA4_PROPERTY_ID && SELF_GA4_SERVICE_ACCOUNT_EMAIL && SELF_GA4_SERVICE_ACCOUNT_PRIVATE_KEY);
+}
+
+async function fetchSelfGaAccessToken() {
+  if (!selfGaConfigured()) throw new Error("self_ga4_not_configured");
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const payload = {
+    iss: SELF_GA4_SERVICE_ACCOUNT_EMAIL,
+    scope: "https://www.googleapis.com/auth/analytics.readonly",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now
+  };
+  const unsigned = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`;
+  const signer = crypto.createSign("RSA-SHA256");
+  signer.update(unsigned);
+  signer.end();
+  const signature = signer.sign(normalizePrivateKey(SELF_GA4_SERVICE_ACCOUNT_PRIVATE_KEY));
+  const assertion = `${unsigned}.${base64UrlEncode(signature)}`;
+  const body = new URLSearchParams({
+    grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    assertion
+  });
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  });
+  const txt = await res.text();
+  if (!res.ok) throw new Error(`self_ga4_token_failed:${txt}`);
+  const data = JSON.parse(txt);
+  return data.access_token;
+}
+
+async function runSelfGa4Report(accessToken, body) {
+  const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${SELF_GA4_PROPERTY_ID}:runReport`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const txt = await res.text();
+  if (!res.ok) throw new Error(`self_ga4_run_report_failed:${txt}`);
+  return JSON.parse(txt);
+}
+
+function metricNumber(value) {
+  const num = Number(value || 0);
+  return Number.isFinite(num) ? num : 0;
+}
+
+async function fetchSelfGa4Analytics(from, to) {
+  const accessToken = await fetchSelfGaAccessToken();
+  const [summary, trend, events] = await Promise.all([
+    runSelfGa4Report(accessToken, {
+      dateRanges: [{ startDate: from, endDate: to }],
+      metrics: [
+        { name: "sessions" },
+        { name: "totalUsers" },
+        { name: "conversions" },
+        { name: "bounceRate" },
+        { name: "screenPageViews" }
+      ]
+    }),
+    runSelfGa4Report(accessToken, {
+      dateRanges: [{ startDate: from, endDate: to }],
+      dimensions: [{ name: "date" }],
+      metrics: [
+        { name: "sessions" },
+        { name: "totalUsers" },
+        { name: "conversions" }
+      ],
+      orderBys: [{ dimension: { dimensionName: "date" } }]
+    }),
+    runSelfGa4Report(accessToken, {
+      dateRanges: [{ startDate: from, endDate: to }],
+      dimensions: [{ name: "eventName" }],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: {
+        filter: {
+          fieldName: "eventName",
+          inListFilter: {
+            values: ["page_view", "sign_up", "login", "upgrade_to_pro", "report_generated", "ga4_connected"]
+          }
+        }
+      }
+    })
+  ]);
+
+  const s = summary.rows?.[0]?.metricValues || [];
+  const summaryData = {
+    sessions: metricNumber(s[0]?.value),
+    users: metricNumber(s[1]?.value),
+    conversions: metricNumber(s[2]?.value),
+    bounceRate: metricNumber(s[3]?.value),
+    pageViews: metricNumber(s[4]?.value)
+  };
+
+  const trendData = (trend.rows || []).map((row) => {
+    const raw = row.dimensionValues?.[0]?.value || "";
+    const label = raw.length === 8 ? `${raw.slice(4, 6)}/${raw.slice(6, 8)}` : raw;
+    return {
+      date: raw,
+      label,
+      sessions: metricNumber(row.metricValues?.[0]?.value),
+      users: metricNumber(row.metricValues?.[1]?.value),
+      conversions: metricNumber(row.metricValues?.[2]?.value)
+    };
+  });
+
+  const eventCounts = {};
+  (events.rows || []).forEach((row) => {
+    eventCounts[row.dimensionValues?.[0]?.value || "unknown"] = metricNumber(row.metricValues?.[0]?.value);
+  });
+
+  const days = dayList(from, to).length;
+  return {
+    propertyId: SELF_GA4_PROPERTY_ID,
+    measurementId: SELF_GA4_MEASUREMENT_ID,
+    streamId: SELF_GA4_STREAM_ID,
+    from,
+    to,
+    days,
+    syncedAt: new Date().toISOString(),
+    summary: summaryData,
+    trend: trendData,
+    eventCounts
+  };
+}
+
 function safeDivide(num, den) {
   if (!den || den <= 0) return 0;
   return num / den;
@@ -603,6 +755,19 @@ function currentUser(db, req) {
 function isAdminUser(user) {
   const email = String(user?.email || "").toLowerCase();
   return ADMIN_EMAILS.has(email);
+}
+
+function authConfigPayload() {
+  const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+  return {
+    provider: "local",
+    requestedProvider: AUTH_PROVIDER,
+    hasEmailDelivery: Boolean(RESEND_API_KEY && RESEND_FROM_EMAIL),
+    supportsVerificationCode: true,
+    supportsPasswordResetCode: true,
+    hasSupabaseConfig,
+    supabaseUrl: hasSupabaseConfig ? SUPABASE_URL : null
+  };
 }
 
 function validateDate(s) {
@@ -1772,6 +1937,8 @@ function reprioritizedTemplateScore(template, context) {
 async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
   if (reqPath === "/") reqPath = "/index.html";
+  if (reqPath === "/login" || reqPath.startsWith("/login/")) reqPath = "/analytics.html";
+  if (reqPath === "/signin" || reqPath.startsWith("/signin/")) reqPath = "/analytics.html";
   if (reqPath === "/dashboard" || reqPath.startsWith("/dashboard/")) reqPath = "/analytics.html";
   if (reqPath === "/analytics" || reqPath.startsWith("/analytics/")) reqPath = "/analytics.html";
   if (reqPath === "/experiments" || reqPath.startsWith("/experiments/")) reqPath = "/analytics.html";
@@ -2067,6 +2234,10 @@ async function handleApi(req, res, urlObj) {
       "Set-Cookie": `${SESSION_COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`
     });
     return res.end(JSON.stringify({ ok: true }));
+  }
+
+  if (req.method === "GET" && urlObj.pathname === "/api/auth/config") {
+    return json(res, 200, authConfigPayload());
   }
 
   if (req.method === "GET" && urlObj.pathname === "/api/me") {
@@ -2375,6 +2546,28 @@ async function handleApi(req, res, urlObj) {
       };
     });
     return json(res, 200, { from: range.from, to: range.to, series });
+  }
+
+
+  if (req.method === "GET" && urlObj.pathname === "/api/admin/self-ga4") {
+    const user = requireAdmin();
+    if (!user) return;
+    const range = adminRangeFromQuery(urlObj);
+    if (!range) return json(res, 400, { error: "invalid_date_range" });
+    try {
+      const data = await fetchSelfGa4Analytics(range.from, range.to);
+      return json(res, 200, data);
+    } catch (err) {
+      return json(res, 200, {
+        error: String(err.message || err),
+        propertyId: SELF_GA4_PROPERTY_ID || null,
+        measurementId: SELF_GA4_MEASUREMENT_ID,
+        streamId: SELF_GA4_STREAM_ID,
+        from: range.from,
+        to: range.to,
+        days: dayList(range.from, range.to).length
+      });
+    }
   }
 
   if (req.method === "GET" && urlObj.pathname === "/api/admin/business-kpi") {

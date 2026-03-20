@@ -36,16 +36,24 @@
 
     <main class="container">
       <section id="auth-view" class="panel">
-        <div class="tabs">
-          <button id="show-login" class="active">ログイン</button>
-          <button id="show-signup">新規登録</button>
+        <div class="auth-intro">
+          <p id="auth-kicker" class="auth-kicker">Veltio Account</p>
+          <h2 id="auth-title">ログイン</h2>
+          <p id="auth-description" class="muted">Veltio にログインして、プロジェクトの分析と改善を再開します。</p>
         </div>
+        <div class="tabs">
+          <button id="show-login" class="active" type="button">ログイン</button>
+          <button id="show-signup" type="button">新規登録</button>
+        </div>
+        <div id="auth-meta" class="tiny muted"></div>
+        <div id="auth-notice" class="tiny auth-notice hidden"></div>
 
         <form id="login-form" class="stack">
           <label>メール <input type="email" id="login-email" required /></label>
           <label>パスワード <input type="password" id="login-password" required /></label>
           <button type="submit">ログイン</button>
           <button id="show-forgot" class="ghost auth-aux" type="button">パスワードを忘れた方</button>
+          <div id="login-status" class="tiny"></div>
         </form>
 
         <form id="signup-form" class="stack hidden">

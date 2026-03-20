@@ -25,10 +25,40 @@ const state = {
   adminTo: null,
   adminSearch: "",
   adminCache: { tenants: [], users: [], projects: [] },
-  adminBusiness: null
+  adminBusiness: null,
+  adminSelfGa: null,
+  authConfig: null
 };
 
 const q = (id) => document.getElementById(id);
+
+const SELF_GA_MEASUREMENT_ID = "G-VBKYWDLGE5";
+const SELF_GA_STREAM_ID = "14131607973";
+const SELF_GA_STREAM_NAME = "app.vel-tio.com";
+const AUTH_ROUTE_MODE_MAP = {
+  "/login": "login",
+  "/signin": "signup"
+};
+const AUTH_PRIMARY_CONTENT = {
+  login: {
+    kicker: "Veltio Account",
+    title: "ログイン",
+    description: "Veltio にログインして、プロジェクトの分析と改善を再開します。"
+  },
+  signup: {
+    kicker: "Get Started",
+    title: "新規登録",
+    description: "会社情報と担当者情報を登録して、Veltio の初期設定を始めます。"
+  }
+};
+const APP_ROUTE_PAGE_MAP = {
+  "/dashboard": "dashboard",
+  "/analytics": "dashboard",
+  "/experiments": "validation",
+  "/account": "account",
+  "/agent": "assistant",
+  "/admin": "admin"
+};
 
 const SITE_DIAGNOSIS_MAP = {
   ec_emotional_connected_sell: {
@@ -248,6 +278,80 @@ function currentProject() {
   return state.projects.find((item) => item.id === state.projectId) || state.projects[0] || null;
 }
 
+function authPrimaryMode(mode = "login") {
+  return ["signup", "verify"].includes(mode) ? "signup" : "login";
+}
+
+function authModeForPath(pathname = location.pathname) {
+  return AUTH_ROUTE_MODE_MAP[pathname] || "login";
+}
+
+function authPathForMode(mode = "login") {
+  return authPrimaryMode(mode) === "signup" ? "/signin" : "/login";
+}
+
+function currentAppPath() {
+  const pathMap = {
+    dashboard: "/dashboard",
+    validation: "/experiments",
+    account: "/account",
+    assistant: "/agent",
+    admin: "/admin"
+  };
+  return pathMap[state.activePage] || "/dashboard";
+}
+
+function requestedAppPage(pathname = location.pathname) {
+  const key = pathname.replace(/\/$/, "") || "/";
+  return APP_ROUTE_PAGE_MAP[key] || null;
+}
+
+function authRedirectPath(defaultPath = "/dashboard") {
+  const params = new URLSearchParams(location.search);
+  const raw = params.get("next");
+  if (!raw || !raw.startsWith("/")) return defaultPath;
+  return raw;
+}
+
+function authPathWithNext(mode = "login", nextPath = "") {
+  const path = authPathForMode(mode);
+  if (!nextPath || nextPath === "/login" || nextPath === "/signin") return path;
+  const params = new URLSearchParams();
+  params.set("next", nextPath);
+  return `${path}?${params.toString()}`;
+}
+
+function resetAuthState() {
+  state.user = null;
+  state.tenants = [];
+  state.projects = [];
+  state.projectId = null;
+  state.account = null;
+  state.isAdmin = false;
+  state.assistantHistoryLoaded = false;
+}
+
+function updateAuthContent(mode = "login") {
+  const primary = authPrimaryMode(mode);
+  const content = AUTH_PRIMARY_CONTENT[primary];
+  q("auth-kicker").textContent = content.kicker;
+  q("auth-title").textContent = content.title;
+  q("auth-description").textContent = content.description;
+  const config = state.authConfig;
+  if (!config) {
+    q("auth-meta").textContent = "";
+    return;
+  }
+  const verificationText = config.supportsVerificationCode
+    ? (config.hasEmailDelivery ? "確認コードでメール認証" : "開発環境では確認コードを画面表示")
+    : "確認メールは認証基盤側で処理";
+  const providerText = config.provider === "supabase" ? "Supabase Auth" : "Veltio Auth";
+  const stagedText = config.requestedProvider === "supabase" && config.hasSupabaseConfig
+    ? " / Supabase切替の設定を検出"
+    : "";
+  q("auth-meta").textContent = `${providerText} / ${verificationText}${stagedText}`;
+}
+
 function comparePresetLabel(value) {
   const map = {
     none: "",
@@ -280,6 +384,34 @@ function uiErrorText(err) {
   const detail = err?.data?.detail ? ` (${err.data.detail})` : "";
   if (err?.message) return `${err.message}${detail}`;
   return "不明なエラーが発生しました。";
+}
+
+function clearStatus(id) {
+  const el = q(id);
+  if (!el) return;
+  el.textContent = "";
+  el.classList.remove("status-success", "status-error");
+}
+
+function setStatus(id, message = "", tone = "error") {
+  const el = q(id);
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove("status-success", "status-error");
+  if (message) {
+    el.classList.add(tone === "success" ? "status-success" : "status-error");
+  }
+}
+
+function setAuthNotice(message = "") {
+  const el = q("auth-notice");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle("hidden", !message);
+}
+
+function clearAuthStatuses() {
+  ["login-status", "signup-status", "verify-status", "forgot-status", "reset-status"].forEach(clearStatus);
 }
 
 function compactDimensionLabel(value, max = 56) {
@@ -626,12 +758,20 @@ async function api(path, options = {}) {
     err.code = body.error || `HTTP_${res.status}`;
     err.status = res.status;
     err.data = body;
+    if (res.status === 401 && !options.allowUnauthorized && path !== "/api/me" && !path.startsWith("/api/auth/")) {
+      resetAuthState();
+      setAuthNotice("セッションの有効期限が切れました。もう一度ログインしてください。");
+      showAuth("login", { nextPath: currentAppPath() });
+    }
     throw err;
   }
   return body;
 }
 
-function showAuth(mode = "login") {
+function showAuth(mode = "login", options = {}) {
+  const syncPath = options.syncPath !== false;
+  const nextPath = options.nextPath || "";
+  const primary = authPrimaryMode(mode);
   q("auth-view").classList.remove("hidden");
   q("app-view").classList.add("hidden");
   q("logout").classList.add("hidden");
@@ -641,8 +781,15 @@ function showAuth(mode = "login") {
   q("verify-form").classList.toggle("hidden", mode !== "verify");
   q("forgot-form").classList.toggle("hidden", mode !== "forgot");
   q("reset-form").classList.toggle("hidden", mode !== "reset");
-  q("show-login").classList.toggle("active", mode === "login");
-  q("show-signup").classList.toggle("active", mode === "signup");
+  q("show-login").classList.toggle("active", primary === "login");
+  q("show-signup").classList.toggle("active", primary === "signup");
+  updateAuthContent(mode);
+  if (syncPath) {
+    const route = authPathWithNext(mode, nextPath);
+    if (`${location.pathname}${location.search}` !== route) {
+      history.replaceState({}, "", `${route}${location.hash || ""}`);
+    }
+  }
 }
 
 function showApp() {
@@ -650,21 +797,52 @@ function showApp() {
   q("app-view").classList.remove("hidden");
   q("logout").classList.remove("hidden");
   q("topbar-nav").classList.remove("hidden");
+  setAuthNotice("");
   setActivePage(state.activePage || "dashboard");
 }
 
 function syncAppPath() {
-  const pathMap = {
-    dashboard: "/dashboard",
-    validation: "/experiments",
-    account: "/account",
-    assistant: "/agent",
-    admin: "/admin",
-  };
-  const nextPath = pathMap[state.activePage] || "/dashboard";
-  if (location.pathname !== nextPath) {
-    history.replaceState({}, "", `${nextPath}${location.search || ""}${location.hash || ""}`);
+  const nextPath = currentAppPath();
+  if (`${location.pathname}${location.search}` !== nextPath) {
+    history.replaceState({}, "", `${nextPath}${location.hash || ""}`);
   }
+}
+
+async function loadAuthConfig() {
+  try {
+    state.authConfig = await api("/api/auth/config", { allowUnauthorized: true });
+  } catch {
+    state.authConfig = {
+      provider: "local",
+      requestedProvider: "local",
+      hasEmailDelivery: false,
+      supportsVerificationCode: true,
+      supportsPasswordResetCode: true,
+      hasSupabaseConfig: false,
+      supabaseUrl: null
+    };
+  }
+}
+
+function applyRouteState(options = {}) {
+  const mode = authModeForPath(location.pathname);
+  const appPage = requestedAppPage(location.pathname);
+  if (state.user) {
+    if (appPage) {
+      state.activePage = appPage;
+      showApp();
+      return;
+    }
+    state.activePage = "dashboard";
+    showApp();
+    return;
+  }
+  if (appPage) {
+    setAuthNotice(options.notice || "このページを開くにはログインが必要です。");
+    showAuth("login", { nextPath: location.pathname, syncPath: true });
+    return;
+  }
+  showAuth(mode, { syncPath: false });
 }
 
 function renderProjectHeader() {
@@ -1016,6 +1194,8 @@ async function loadCampaigns() {
 }
 
 async function bootstrap() {
+  const initialAuthMode = authModeForPath(location.pathname);
+  await loadAuthConfig();
   state.from = daysAgoISO(29);
   state.to = todayISO();
   state.adminFrom = daysAgoISO(29);
@@ -1036,6 +1216,8 @@ async function bootstrap() {
     state.activePage = "assistant";
   } else if (location.pathname === "/admin" || location.pathname.startsWith("/admin/")) {
     state.activePage = "admin";
+  } else if (location.pathname === "/dashboard" || location.pathname === "/analytics" || location.pathname === "/") {
+    state.activePage = "dashboard";
   }
   q("from-date").value = state.from;
   q("to-date").value = state.to;
@@ -1071,11 +1253,18 @@ async function bootstrap() {
     state.tenants = me.tenants;
     state.isAdmin = Boolean(me.isAdmin);
     q("tab-admin").classList.toggle("hidden", !state.isAdmin);
+    const nextPath = authRedirectPath(currentAppPath());
+    const routePage = requestedAppPage(nextPath);
+    if (routePage) state.activePage = routePage;
     showApp();
     showGa4CallbackMessage();
     await loadProjects();
+    if (`${location.pathname}${location.search}` !== nextPath) {
+      history.replaceState({}, "", `${nextPath}${location.hash || ""}`);
+    }
   } catch {
-    showAuth("login");
+    showAuth(initialAuthMode, { syncPath: false });
+    applyRouteState();
   }
 }
 
@@ -1123,6 +1312,75 @@ function renderAdminTrendChart(data) {
       ${xLabels}
     </svg>
   `;
+}
+
+
+function renderAdminSelfGa(data) {
+  state.adminSelfGa = data || null;
+  const status = q("admin-self-ga4-status");
+  const cards = q("admin-self-ga4-cards");
+  const chart = q("admin-self-ga4-chart");
+  const events = q("admin-self-ga4-events");
+  if (!data || data.error) {
+    status.textContent = `同期エラー: ${data?.error || "self_ga4_unavailable"}`;
+    cards.innerHTML = `<div class="card"><div class="k">Measurement ID</div><div class="v">${SELF_GA_MEASUREMENT_ID}</div><div class="k">設定を確認してください</div></div>`;
+    chart.textContent = "データがありません。";
+    events.innerHTML = "";
+    return;
+  }
+  status.textContent = `Property ${data.propertyId || "-"} / 最終同期 ${new Date(data.syncedAt).toLocaleString()}`;
+  const s = data.summary || {};
+  cards.innerHTML = `
+    <div class="card"><div class="k">Sessions</div><div class="v">${fmtNum(s.sessions || 0)}</div><div class="k">Measurement ${escapeHtml(data.measurementId || SELF_GA_MEASUREMENT_ID)}</div></div>
+    <div class="card"><div class="k">Users</div><div class="v">${fmtNum(s.users || 0)}</div><div class="k">${escapeHtml(SELF_GA_STREAM_NAME)}</div></div>
+    <div class="card"><div class="k">Conversions</div><div class="v">${fmtNum(s.conversions || 0)}</div><div class="k">ページビュー ${fmtNum(s.pageViews || 0)}</div></div>
+    <div class="card"><div class="k">Bounce</div><div class="v">${fmtPct((s.bounceRate || 0) / 100)}</div><div class="k">期間 ${fmtNum(data.days || 0)}日</div></div>
+  `;
+
+  const rows = data.trend || [];
+  if (!rows.length) {
+    chart.textContent = "データがありません。";
+  } else {
+    const width = 860;
+    const height = 240;
+    const pad = 36;
+    const innerW = width - pad * 2;
+    const innerH = height - pad * 2;
+    const maxSessions = Math.max(...rows.map((r) => r.sessions || 0), 1);
+    const maxUsers = Math.max(...rows.map((r) => r.users || 0), 1);
+    const maxConv = Math.max(...rows.map((r) => r.conversions || 0), 1);
+    const points = (arr, maxVal) => arr.map((item, idx) => {
+      const x = pad + (idx / Math.max(arr.length - 1, 1)) * innerW;
+      const y = pad + (1 - ((item / maxVal) || 0)) * innerH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    const xLabels = [0, Math.floor(rows.length / 2), rows.length - 1]
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .map((idx) => {
+        const x = pad + (idx / Math.max(rows.length - 1, 1)) * innerW;
+        return `<text x="${x.toFixed(1)}" y="${height - 8}" fill="#64748b" font-size="11" text-anchor="middle">${rows[idx].label}</text>`;
+      })
+      .join("");
+    chart.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}">
+        <rect x="0" y="0" width="${width}" height="${height}" fill="#fff"/>
+        <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" stroke="#e2e8f0"/>
+        <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" stroke="#e2e8f0"/>
+        <polyline fill="none" stroke="#0a58ca" stroke-width="2.4" points="${points(rows.map((r) => r.sessions || 0), maxSessions)}"></polyline>
+        <polyline fill="none" stroke="#0f766e" stroke-width="2.4" points="${points(rows.map((r) => r.users || 0), maxUsers)}"></polyline>
+        <polyline fill="none" stroke="#b45309" stroke-width="2.4" points="${points(rows.map((r) => r.conversions || 0), maxConv)}"></polyline>
+        <text x="${pad}" y="16" fill="#0a58ca" font-size="12">Sessions</text>
+        <text x="${pad + 70}" y="16" fill="#0f766e" font-size="12">Users</text>
+        <text x="${pad + 130}" y="16" fill="#b45309" font-size="12">Conversions</text>
+        ${xLabels}
+      </svg>
+    `;
+  }
+
+  const ec = data.eventCounts || {};
+  events.innerHTML = ["page_view", "sign_up", "login", "upgrade_to_pro", "report_generated", "ga4_connected"].map((key) => `
+    <article class="journey-step-card"><div class="journey-step-head"><div class="journey-step-name">${escapeHtml(key)}</div><div class="journey-step-value">${fmtNum(ec[key] || 0)}</div></div><div class="journey-step-meta">Veltio自身のGA4イベント</div></article>
+  `).join("");
 }
 
 function renderAdminBusinessKpi(data) {
@@ -1232,10 +1490,11 @@ async function loadAdminDashboard() {
   if (state.adminSearch) {
     params.set("q", state.adminSearch);
   }
-  const [overview, trend, business, tenants, users, projects] = await Promise.all([
+  const [overview, trend, business, selfGa4, tenants, users, projects] = await Promise.all([
     api(`/api/admin/overview?${params.toString()}`),
     api(`/api/admin/trend?${params.toString()}`),
     api(`/api/admin/business-kpi?${params.toString()}`),
+    api(`/api/admin/self-ga4?${params.toString()}`).catch((err) => ({ error: err.message || String(err) })),
     api(`/api/admin/tenants?${params.toString()}`),
     api(`/api/admin/users?${params.toString()}`),
     api(`/api/admin/projects?${params.toString()}`)
@@ -1248,6 +1507,7 @@ async function loadAdminDashboard() {
   q("admin-status").textContent = `集計期間: ${overview.from} 〜 ${overview.to}${state.adminSearch ? ` / 検索: ${state.adminSearch}` : ""}`;
   renderAdminTrendChart(trend);
   renderAdminBusinessKpi(business);
+  renderAdminSelfGa(selfGa4);
 
   q("admin-overview-cards").innerHTML = `
     <div class="card"><div class="k">企業数</div><div class="v">${fmtNum(overview.totalTenants)}</div></div>
@@ -1600,15 +1860,15 @@ async function loadProjectContext() {
   renderValidationDetail(out.context);
 }
 
-q("show-login").addEventListener("click", () => showAuth("login"));
-q("show-signup").addEventListener("click", () => showAuth("signup"));
+q("show-login").addEventListener("click", () => showAuth("login", { nextPath: authRedirectPath("") }));
+q("show-signup").addEventListener("click", () => showAuth("signup", { nextPath: authRedirectPath("") }));
 q("show-forgot").addEventListener("click", () => {
   q("forgot-email").value = q("login-email").value || "";
-  q("forgot-status").textContent = "";
-  showAuth("forgot");
+  clearStatus("forgot-status");
+  showAuth("forgot", { nextPath: authRedirectPath("") });
 });
-q("back-to-login").addEventListener("click", () => showAuth("login"));
-q("back-to-login-2").addEventListener("click", () => showAuth("login"));
+q("back-to-login").addEventListener("click", () => showAuth("login", { nextPath: authRedirectPath("") }));
+q("back-to-login-2").addEventListener("click", () => showAuth("login", { nextPath: authRedirectPath("") }));
 q("tab-dashboard").addEventListener("click", () => setActivePage("dashboard"));
 q("tab-validation").addEventListener("click", () => setActivePage("validation"));
 q("tab-account").addEventListener("click", () => setActivePage("account"));
@@ -1689,6 +1949,8 @@ q("run-signup-diagnosis").addEventListener("click", () => {
 
 q("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  clearAuthStatuses();
+  setAuthNotice("");
   try {
     await api("/api/auth/login", {
       method: "POST",
@@ -1702,16 +1964,18 @@ q("login-form").addEventListener("submit", async (e) => {
   } catch (err) {
     if (err.code === "email_not_verified") {
       q("verify-email").value = q("login-email").value;
-      q("verify-status").textContent = uiErrorText(err);
-      showAuth("verify");
+      setStatus("verify-status", uiErrorText(err));
+      showAuth("verify", { nextPath: authRedirectPath("") });
       return;
     }
-    alert(`ログイン失敗: ${err.message}`);
+    setStatus("login-status", uiErrorText(err));
   }
 });
 
 q("signup-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  clearAuthStatuses();
+  setAuthNotice("");
   try {
     const out = await api("/api/auth/signup", {
       method: "POST",
@@ -1725,18 +1989,19 @@ q("signup-form").addEventListener("submit", async (e) => {
     trackGa4("sign_up", { method: "email_password" });
     q("verify-email").value = q("signup-email").value;
     q("verify-code").value = "";
-    q("signup-status").textContent = "";
-    q("verify-status").textContent = out.previewCode
+    setStatus("signup-status", "アカウントを作成しました。確認コードの入力に進みます。", "success");
+    setStatus("verify-status", out.previewCode
       ? `確認コードを送信しました。開発環境プレビューコード: ${out.previewCode}`
-      : "確認コードを送信しました。メールを確認してください。";
-    showAuth("verify");
+      : "確認コードを送信しました。メールを確認してください。", "success");
+    showAuth("verify", { nextPath: authRedirectPath("") });
   } catch (err) {
-    alert(`登録失敗: ${err.message}`);
+    setStatus("signup-status", uiErrorText(err));
   }
 });
 
 q("verify-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  clearStatus("verify-status");
   try {
     await api("/api/auth/verify-email", {
       method: "POST",
@@ -1748,12 +2013,14 @@ q("verify-form").addEventListener("submit", async (e) => {
     trackGa4("email_verify_completed", {});
     await bootstrap();
   } catch (err) {
-    q("verify-status").textContent = uiErrorText(err);
+    setStatus("verify-status", uiErrorText(err));
   }
 });
 
 q("forgot-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  clearStatus("forgot-status");
+  clearStatus("reset-status");
   try {
     const out = await api("/api/auth/forgot-password", {
       method: "POST",
@@ -1762,18 +2029,18 @@ q("forgot-form").addEventListener("submit", async (e) => {
     q("reset-email").value = q("forgot-email").value;
     q("reset-code").value = "";
     q("reset-password").value = "";
-    q("forgot-status").textContent = out.previewCode
+    setStatus("forgot-status", out.previewCode
       ? `コード送信済み（開発プレビュー: ${out.previewCode}）`
-      : (out.message || "コードを送信しました。");
-    q("reset-status").textContent = "";
-    showAuth("reset");
+      : (out.message || "コードを送信しました。"), "success");
+    showAuth("reset", { nextPath: authRedirectPath("") });
   } catch (err) {
-    q("forgot-status").textContent = uiErrorText(err);
+    setStatus("forgot-status", uiErrorText(err));
   }
 });
 
 q("reset-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  clearStatus("reset-status");
   try {
     const out = await api("/api/auth/reset-password", {
       method: "POST",
@@ -1784,30 +2051,38 @@ q("reset-form").addEventListener("submit", async (e) => {
       }
     });
     q("login-email").value = q("reset-email").value;
-    q("reset-status").textContent = out.message || "パスワードを更新しました。";
-    showAuth("login");
+    setStatus("login-status", out.message || "パスワードを更新しました。", "success");
+    showAuth("login", { nextPath: authRedirectPath("") });
   } catch (err) {
-    q("reset-status").textContent = uiErrorText(err);
+    setStatus("reset-status", uiErrorText(err));
   }
 });
 
 q("resend-code").addEventListener("click", async () => {
+  clearStatus("verify-status");
   try {
     const out = await api("/api/auth/resend-verification", {
       method: "POST",
       body: { email: q("verify-email").value }
     });
-    q("verify-status").textContent = out.previewCode
+    setStatus("verify-status", out.previewCode
       ? `確認コードを再送しました。開発環境プレビューコード: ${out.previewCode}`
-      : out.message;
+      : out.message, "success");
   } catch (err) {
-    q("verify-status").textContent = uiErrorText(err);
+    setStatus("verify-status", uiErrorText(err));
   }
 });
 
 q("logout").addEventListener("click", async () => {
   await api("/api/auth/logout", { method: "POST" });
-  location.reload();
+  resetAuthState();
+  clearAuthStatuses();
+  setAuthNotice("ログアウトしました。");
+  showAuth("login");
+});
+
+window.addEventListener("popstate", () => {
+  applyRouteState();
 });
 
 q("project-form").addEventListener("submit", async (e) => {

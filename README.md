@@ -25,6 +25,7 @@ npm start
 
 - データは既定で `server/data/db.json` に保存されます。
 - 既存アプリと分離したい場合は `PORT` と `CVR_STORAGE_DIR` を指定してください。
+- 認証は既定で `AUTH_PROVIDER=local` です。Supabase を使う場合は `AUTH_PROVIDER=supabase`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` を設定し、切り替え準備状態として UI と設定検知を確認できます。
 
 ```bash
 PORT=3210 CVR_STORAGE_DIR=./server npm start
