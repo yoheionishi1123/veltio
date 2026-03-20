@@ -654,7 +654,7 @@ function showApp() {
 }
 
 function syncAppPath() {
-  const nextPath = state.activePage === "admin" ? "/admin" : "/";
+  const nextPath = state.activePage === "admin" ? "/analytics" : "/";
   if (location.pathname !== nextPath) {
     history.replaceState({}, "", `${nextPath}${location.search || ""}${location.hash || ""}`);
   }
@@ -1019,7 +1019,12 @@ async function bootstrap() {
   state.compareTo = "";
   state.granularity = "day";
   state.chartMetric = "sessions";
-  if (location.pathname === "/admin" || location.pathname.startsWith("/admin/")) {
+  if (
+    location.pathname === "/admin" ||
+    location.pathname.startsWith("/admin/") ||
+    location.pathname === "/analytics" ||
+    location.pathname.startsWith("/analytics/")
+  ) {
     state.activePage = "admin";
   }
   q("from-date").value = state.from;
@@ -1035,7 +1040,12 @@ async function bootstrap() {
   syncComparePresetUI();
   syncActionStatusUI();
   renderSiteDiagnosis();
-  void trackVisitor("page_view", { activePage: location.pathname.startsWith("/admin") ? "admin" : "auth_or_dashboard" });
+  void trackVisitor("page_view", {
+    activePage:
+      location.pathname.startsWith("/admin") || location.pathname.startsWith("/analytics")
+        ? "admin"
+        : "auth_or_dashboard",
+  });
 
   try {
     const me = await api("/api/me");

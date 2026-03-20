@@ -1772,7 +1772,12 @@ function reprioritizedTemplateScore(template, context) {
 async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
   if (reqPath === "/") reqPath = "/index.html";
-  if (reqPath === "/admin" || reqPath.startsWith("/admin/")) reqPath = "/index.html";
+  if (
+    reqPath === "/admin" ||
+    reqPath.startsWith("/admin/") ||
+    reqPath === "/analytics" ||
+    reqPath.startsWith("/analytics/")
+  ) reqPath = "/index.html";
   if (reqPath.endsWith("/")) reqPath = `${reqPath}index.html`;
   if (!path.extname(reqPath)) reqPath = `${reqPath}.html`;
   const fsPath = path.join(PUBLIC_DIR, reqPath);
