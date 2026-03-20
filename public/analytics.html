@@ -129,87 +129,132 @@
 
       <section id="app-view" class="hidden">
         <div id="page-dashboard" class="app-page">
-          <section class="panel">
-            <h2>分析設定</h2>
-            <p class="muted tiny">1サイト=1プロジェクトです。GA4連携、期間分析、診断、メモ、レポートはこの単位で分かれます。</p>
-            <h3>プロジェクト</h3>
-            <div id="project-empty-state" class="inline">
-              <select id="project-select"></select>
-              <button id="refresh-project">更新</button>
+          <section class="panel dashboard-hero-panel">
+            <div class="dashboard-hero-head">
+              <div>
+                <p class="dashboard-kicker">Veltio Dashboard</p>
+                <h2>分析ダッシュボード</h2>
+                <p class="muted dashboard-lead">KPI、推移、ボトルネック、推奨施策、キャンペーン影響を1画面で追えるように整理しました。</p>
+              </div>
+              <div class="dashboard-hero-actions">
+                <button id="refresh-project" type="button" class="ghost dashboard-ghost">更新</button>
+                <button id="create-report-pdf" type="button">PDF生成</button>
+                <button id="create-report-ppt" type="button">PPT生成</button>
+              </div>
             </div>
-            <div id="project-current-card" class="card hidden"></div>
-            <div id="project-actions" class="inline hidden">
-              <button id="show-add-project" type="button" class="ghost">別プロパティを追加</button>
-              <span id="project-status" class="tiny"></span>
+            <div class="dashboard-control-grid">
+              <article class="dashboard-control-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <p class="dashboard-card-kicker">Project</p>
+                    <h3>分析対象</h3>
+                  </div>
+                  <span id="project-status" class="tiny"></span>
+                </div>
+                <div id="project-empty-state" class="inline dashboard-inline-control">
+                  <select id="project-select"></select>
+                </div>
+                <div id="project-current-card" class="card dashboard-current-card hidden"></div>
+                <div id="project-actions" class="inline hidden dashboard-inline-control">
+                  <button id="show-add-project" type="button" class="ghost dashboard-ghost">別プロパティを追加</button>
+                </div>
+                <form id="project-form" class="grid3 hidden dashboard-form-grid">
+                  <input type="text" id="project-name" placeholder="プロジェクト名" required />
+                  <input type="text" id="project-domain" placeholder="example.com" required />
+                  <button type="submit">新規作成</button>
+                </form>
+              </article>
+
+              <article class="dashboard-control-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <p class="dashboard-card-kicker">GA4 Connection</p>
+                    <h3>GA4連携</h3>
+                  </div>
+                </div>
+                <form id="ga4-quick-form" class="dashboard-stack-form">
+                  <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
+                  <div class="dashboard-inline-control">
+                    <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
+                    <button type="submit">かんたん接続</button>
+                  </div>
+                </form>
+                <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
+                <div id="ga4-status" class="ga4-status-card"></div>
+                <div class="dashboard-inline-control">
+                  <button id="ga4-reconnect" class="ghost hidden dashboard-ghost" type="button">連携し直す</button>
+                  <span id="ga4-quick-status" class="tiny"></span>
+                </div>
+              </article>
+
+              <article class="dashboard-control-card">
+                <div class="dashboard-card-head">
+                  <div>
+                    <p class="dashboard-card-kicker">Range & Goal</p>
+                    <h3>期間と目標</h3>
+                  </div>
+                </div>
+                <form id="project-goal-form" class="dashboard-inline-control dashboard-goal-form">
+                  <input id="project-target-cvr" type="number" min="0.01" max="99.99" step="0.01" placeholder="目標CVR（%）" />
+                  <button type="submit">保存</button>
+                  <span id="project-goal-status" class="tiny"></span>
+                </form>
+                <div class="dashboard-range-grid">
+                  <input type="date" id="from-date" />
+                  <input type="date" id="to-date" />
+                  <select id="compare-preset">
+                    <option value="none">比較なし</option>
+                    <option value="prev_year">前年</option>
+                    <option value="prev_year_same_week">前年同週</option>
+                    <option value="prev_month">前月</option>
+                    <option value="prev_month_same_week">前月同週</option>
+                    <option value="custom">カスタム期間</option>
+                  </select>
+                  <select id="granularity-select">
+                    <option value="day">日別</option>
+                    <option value="week">週別</option>
+                    <option value="month">月別</option>
+                  </select>
+                  <input type="date" id="compare-from-date" class="hidden" />
+                  <input type="date" id="compare-to-date" class="hidden" />
+                  <button id="apply-range" type="button">適用</button>
+                </div>
+                <div id="compare-status" class="tiny"></div>
+              </article>
             </div>
-            <form id="project-form" class="grid3 hidden">
-              <input type="text" id="project-name" placeholder="プロジェクト名" required />
-              <input type="text" id="project-domain" placeholder="example.com" required />
-              <button type="submit">新規作成</button>
-            </form>
-
-            <h3>GA4連携</h3>
-            <form id="ga4-quick-form" class="grid3">
-              <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
-              <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
-              <button type="submit">かんたん接続</button>
-            </form>
-            <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
-            <div id="ga4-status" class="ga4-status-card"></div>
-            <button id="ga4-reconnect" class="ghost hidden" type="button">連携し直す</button>
-            <div id="ga4-quick-status" class="tiny"></div>
-
-            <h3>CVR目標</h3>
-            <form id="project-goal-form" class="inline">
-              <input id="project-target-cvr" type="number" min="0.01" max="99.99" step="0.01" placeholder="目標CVR（%）" />
-              <button type="submit">保存</button>
-              <span id="project-goal-status" class="tiny"></span>
-            </form>
-
-            <h3>期間</h3>
-            <div class="inline">
-              <input type="date" id="from-date" />
-              <input type="date" id="to-date" />
-              <select id="compare-preset">
-                <option value="none">比較なし</option>
-                <option value="prev_year">前年</option>
-                <option value="prev_year_same_week">前年同週</option>
-                <option value="prev_month">前月</option>
-                <option value="prev_month_same_week">前月同週</option>
-                <option value="custom">カスタム期間</option>
-              </select>
-              <input type="date" id="compare-from-date" class="hidden" />
-              <input type="date" id="compare-to-date" class="hidden" />
-              <select id="granularity-select">
-                <option value="day">日別</option>
-                <option value="week">週別</option>
-                <option value="month">月別</option>
-              </select>
-              <button id="apply-range">適用</button>
-            </div>
-            <div id="compare-status" class="tiny"></div>
           </section>
 
-          <section class="panel">
-            <h2>ダッシュボード（7指標）</h2>
-            <details class="formula-details">
-              <summary>見たい人はこちら: 各指標の計算式</summary>
-              <div class="tiny muted">
-                <div>CVR = 購入セッション数 / 全セッション数</div>
-                <div>直帰率 = 1 - engagement rate</div>
-                <div>PDP到達率 = PDP閲覧セッション数 / 全セッション数</div>
-                <div>カート追加率 = add_to_cart セッション数 / PDP閲覧セッション数</div>
-                <div>カート離脱率 = (カート到達セッション数 - 購入セッション数) / カート到達セッション数</div>
-                <div>checkout到達率 = begin_checkout セッション数 / add_to_cart セッション数</div>
-                <div>購入完了率 = purchase セッション数 / begin_checkout セッション数</div>
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Overview</p>
+                <h2>KPI 7指標</h2>
               </div>
-            </details>
-            <div id="metric-cards" class="cards"></div>
+              <details class="formula-details dashboard-formula-details">
+                <summary>計算式を見る</summary>
+                <div class="tiny muted">
+                  <div>CVR = 購入セッション数 / 全セッション数</div>
+                  <div>直帰率 = 1 - engagement rate</div>
+                  <div>PDP到達率 = PDP閲覧セッション数 / 全セッション数</div>
+                  <div>カート追加率 = add_to_cart セッション数 / PDP閲覧セッション数</div>
+                  <div>カート離脱率 = (カート到達セッション数 - 購入セッション数) / カート到達セッション数</div>
+                  <div>checkout到達率 = begin_checkout セッション数 / add_to_cart セッション数</div>
+                  <div>購入完了率 = purchase セッション数 / begin_checkout セッション数</div>
+                </div>
+              </details>
+            </div>
+            <div id="metric-cards" class="dashboard-kpi-grid"></div>
             <div id="top-action-card" class="card action-focus-card hidden"></div>
-            <div class="chart-grid">
-              <div class="chart-card">
-                <div class="inline">
-                  <h3>推移</h3>
+          </section>
+
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Trend & Funnel</p>
+                <h2>CVR推移とファネル</h2>
+              </div>
+              <div class="dashboard-inline-control">
+                <label class="dashboard-select-label">表示指標
                   <select id="chart-metric-select">
                     <option value="sessions">Sessions</option>
                     <option value="bounce_rate">直帰率</option>
@@ -220,43 +265,56 @@
                     <option value="purchase_rate">購入完了率</option>
                     <option value="cvr">CVR</option>
                   </select>
-                </div>
+                </label>
+              </div>
+            </div>
+            <div class="dashboard-chart-grid">
+              <article class="chart-card dashboard-chart-card dashboard-chart-card-wide">
                 <div id="chart-summary" class="chart-summary"></div>
                 <div id="trend-chart" class="chart"></div>
-              </div>
-              <div class="chart-card">
+              </article>
+              <article class="chart-card dashboard-chart-card">
                 <h3>ファネル</h3>
                 <div id="funnel-chart" class="chart"></div>
-              </div>
+              </article>
             </div>
           </section>
 
-          <section class="panel">
-            <h2>離脱 / カスタマージャーニー</h2>
-            <p class="muted tiny">どのフェーズで失速しているかを、全体とチャネル/デバイス別で確認します。</p>
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Journey</p>
+                <h2>カスタマージャーニー</h2>
+              </div>
+            </div>
             <div id="journey-summary" class="journey-summary"></div>
             <div id="journey-steps" class="journey-steps"></div>
             <div class="journey-segments">
-              <div class="chart-card">
+              <div class="chart-card dashboard-chart-card">
                 <h3>離脱が大きいチャネル TOP3</h3>
                 <div id="journey-channel-top" class="journey-rank"></div>
               </div>
-              <div class="chart-card">
+              <div class="chart-card dashboard-chart-card">
                 <h3>離脱が大きいデバイス TOP3</h3>
                 <div id="journey-device-top" class="journey-rank"></div>
               </div>
             </div>
           </section>
 
-          <section class="panel">
-            <h2>分解 / ワースト</h2>
-            <div class="inline">
-              <select id="dimension-select">
-                <option value="channel">channel</option>
-                <option value="device">device</option>
-                <option value="landing_page">landing_page</option>
-              </select>
-              <button id="load-breakdown">読込</button>
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Analysis Table</p>
+                <h2>分解分析</h2>
+              </div>
+              <div class="dashboard-inline-control">
+                <select id="dimension-select">
+                  <option value="channel">channel</option>
+                  <option value="device">device</option>
+                  <option value="landing_page">landing_page</option>
+                </select>
+                <button id="load-breakdown" type="button">読込</button>
+              </div>
             </div>
             <div id="breakdown-table-wrap" class="table-wrap">
               <table class="breakdown-table">
@@ -269,39 +327,49 @@
             <div id="breakdown-cards" class="breakdown-cards"></div>
           </section>
 
-          <section class="panel">
-            <h2>診断 / 施策</h2>
-            <button id="run-diagnosis">診断実行</button>
-            <div id="diagnosis-result"></div>
-            <h3>推奨施策</h3>
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Diagnosis</p>
+                <h2>診断と推奨施策</h2>
+              </div>
+              <button id="run-diagnosis" type="button">診断実行</button>
+            </div>
+            <div id="diagnosis-result" class="diagnosis-grid"></div>
             <div id="recommendation-list" class="recommendations"></div>
           </section>
 
-          <section class="panel">
-            <h2>セール / キャンペーン影響</h2>
-            <form id="campaign-form" class="grid3">
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Campaign Impact</p>
+                <h2>キャンペーン影響</h2>
+              </div>
+            </div>
+            <form id="campaign-form" class="dashboard-campaign-form">
               <input id="campaign-name" placeholder="例: GWセール" required />
               <select id="campaign-type">
                 <option value="sale">セール</option>
                 <option value="campaign">キャンペーン</option>
               </select>
-              <label><input id="campaign-recurring" type="checkbox" /> 毎年同時期に実施</label>
+              <label class="dashboard-checkbox"><input id="campaign-recurring" type="checkbox" /> 毎年同時期に実施</label>
               <input id="campaign-start-date" type="date" required />
               <input id="campaign-end-date" type="date" required />
               <button type="submit">保存</button>
             </form>
             <div id="campaign-status" class="tiny"></div>
-            <div id="campaign-list" class="breakdown-cards landing-mode"></div>
+            <div id="campaign-list" class="breakdown-cards landing-mode dashboard-campaign-grid"></div>
           </section>
 
-          <section class="panel">
-            <h2>レポート出力</h2>
-            <div class="inline">
-              <button id="create-report-pdf">PDF生成</button>
-              <button id="create-report-ppt">PPT生成</button>
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Reports</p>
+                <h2>レポート出力</h2>
+              </div>
             </div>
             <div id="report-status" class="tiny"></div>
-            <ul id="report-list"></ul>
+            <ul id="report-list" class="dashboard-report-list"></ul>
           </section>
         </div>
 

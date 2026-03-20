@@ -1772,6 +1772,7 @@ function reprioritizedTemplateScore(template, context) {
 async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
   if (reqPath === "/") reqPath = "/index.html";
+  if (reqPath === "/dashboard" || reqPath.startsWith("/dashboard/")) reqPath = "/analytics.html";
   if (reqPath === "/analytics" || reqPath.startsWith("/analytics/")) reqPath = "/analytics.html";
   if (reqPath === "/experiments" || reqPath.startsWith("/experiments/")) reqPath = "/analytics.html";
   if (reqPath === "/account" || reqPath.startsWith("/account/")) reqPath = "/analytics.html";
@@ -2723,17 +2724,17 @@ async function handleApi(req, res, urlObj) {
     const state = urlObj.searchParams.get("state");
     const error = urlObj.searchParams.get("error");
     if (error) {
-      res.writeHead(302, { Location: `/?ga4=error&reason=${encodeURIComponent(error)}` });
+      res.writeHead(302, { Location: `/dashboard?ga4=error&reason=${encodeURIComponent(error)}` });
       return res.end();
     }
     if (!code || !state) {
-      res.writeHead(302, { Location: "/?ga4=error&reason=missing_code_or_state" });
+      res.writeHead(302, { Location: "/dashboard?ga4=error&reason=missing_code_or_state" });
       return res.end();
     }
 
     const pending = db.oauthStates.find((s) => s.state === state && new Date(s.expiresAt).getTime() > Date.now());
     if (!pending) {
-      res.writeHead(302, { Location: "/?ga4=error&reason=invalid_or_expired_state" });
+      res.writeHead(302, { Location: "/dashboard?ga4=error&reason=invalid_or_expired_state" });
       return res.end();
     }
 
@@ -2776,12 +2777,12 @@ async function handleApi(req, res, urlObj) {
       }
       db.oauthStates = db.oauthStates.filter((s) => s.state !== state);
       await writeDb(db);
-      res.writeHead(302, { Location: `/?ga4=connected&projectId=${encodeURIComponent(pending.projectId)}` });
+      res.writeHead(302, { Location: `/dashboard?ga4=connected&projectId=${encodeURIComponent(pending.projectId)}` });
       return res.end();
     } catch (err) {
       db.oauthStates = db.oauthStates.filter((s) => s.state !== state);
       await writeDb(db);
-      res.writeHead(302, { Location: `/?ga4=error&reason=${encodeURIComponent(String(err.message || err))}` });
+      res.writeHead(302, { Location: `/dashboard?ga4=error&reason=${encodeURIComponent(String(err.message || err))}` });
       return res.end();
     }
   }

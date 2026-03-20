@@ -655,13 +655,13 @@ function showApp() {
 
 function syncAppPath() {
   const pathMap = {
-    dashboard: "/analytics",
+    dashboard: "/dashboard",
     validation: "/experiments",
     account: "/account",
     assistant: "/agent",
     admin: "/admin",
   };
-  const nextPath = pathMap[state.activePage] || "/analytics";
+  const nextPath = pathMap[state.activePage] || "/dashboard";
   if (location.pathname !== nextPath) {
     history.replaceState({}, "", `${nextPath}${location.search || ""}${location.hash || ""}`);
   }
@@ -962,7 +962,7 @@ function renderCampaignList(campaigns) {
       ? `${((impact.current.metrics?.cvr || 0) - (impact.yearly.metrics?.cvr || 0)) >= 0 ? "+" : ""}${(((impact.current.metrics?.cvr || 0) - (impact.yearly.metrics?.cvr || 0)) * 100).toFixed(2)}pt`
       : "未比較";
     const card = document.createElement("div");
-    card.className = "breakdown-row-card";
+    card.className = "breakdown-row-card dashboard-campaign-card";
     card.innerHTML = `
       <div class="breakdown-row-title">${escapeHtml(item.name)} <span class="tiny muted">(${item.type === "sale" ? "セール" : "キャンペーン"})</span></div>
       <div class="tiny muted">${item.startDate} 〜 ${item.endDate}${item.recurringAnnual ? ` / 毎年比較あり${impact.linkedPreviousCampaignId ? `（前回登録: ${impact.linkedPreviousCampaignName}）` : ""}` : ""}</div>
@@ -1026,7 +1026,7 @@ async function bootstrap() {
   state.compareTo = "";
   state.granularity = "day";
   state.chartMetric = "sessions";
-  if (location.pathname === "/analytics" || location.pathname.startsWith("/analytics/")) {
+  if (location.pathname === "/dashboard" || location.pathname.startsWith("/dashboard/") || location.pathname === "/analytics" || location.pathname.startsWith("/analytics/")) {
     state.activePage = "dashboard";
   } else if (location.pathname === "/experiments" || location.pathname.startsWith("/experiments/")) {
     state.activePage = "validation";
@@ -1054,7 +1054,7 @@ async function bootstrap() {
     activePage:
       location.pathname.startsWith("/admin")
         ? "admin"
-        : location.pathname.startsWith("/analytics")
+        : location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/analytics")
           ? "analytics"
           : location.pathname.startsWith("/experiments")
             ? "experiments"
@@ -1359,25 +1359,29 @@ async function loadMetrics() {
 
   orderedComparisons.forEach((item) => {
     const card = document.createElement("div");
-    card.className = item.metricKey === "cvr" ? "card action-focus-card" : "card";
+    card.className = item.metricKey === "cvr" ? "metric-card metric-card-primary" : "metric-card";
     const status = item.status === "ok" ? "基準内" : `要改善 ${Math.abs(item.gap * 100).toFixed(2)}pt`;
     const delta = data.compare?.delta?.[item.metricKey];
     const currentText = metricActualText(data, item.metricKey);
-    const compareText = data.compare ? metricActualText(data.compare, item.metricKey) : "";
+    const compareText = data.compare ? metricActualText(data.compare, item.metricKey) : "前回値なし";
     const compareRateMeta = data.compare ? metricCompareRatioMeta(data, data.compare, item.metricKey, "") : null;
     const cvrProgress = item.metricKey === "cvr" && item.target > 0 ? (item.value / item.target) : null;
     const cvrRemaining = item.metricKey === "cvr" ? Math.max(0, item.target - item.value) : null;
+    const badgeClass = item.status === "ok" ? "metric-card-badge" : "metric-card-badge is-alert";
+    const trendTone = !compareRateMeta ? "is-flat" : compareRateMeta.tone === "good" ? "is-up" : compareRateMeta.tone === "bad" ? "is-down" : "is-flat";
+    const trendIcon = !compareRateMeta ? "-" : compareRateMeta.tone === "good" ? "↑" : compareRateMeta.tone === "bad" ? "↓" : "→";
     card.innerHTML = `
-      <div class="k">${item.label}</div>
-      <div class="v">${escapeHtml(currentText)}</div>
-      <div class="k">現在期間 (${data.from} 〜 ${data.to})</div>
-      <div class="k">基準 ${fmtPct(item.target)}</div>
-      ${cvrProgress !== null ? `<div class="k">目標進捗 ${Math.max(0, cvrProgress * 100).toFixed(2)}%</div>` : ""}
-      ${cvrRemaining !== null ? `<div class="k">目標まで ${fmtPct(cvrRemaining)}</div>` : ""}
-      <div class="k">${status}</div>
-      ${data.compare ? `<div class="k">比較値 ${escapeHtml(compareText)}</div>` : ""}
-      ${compareRateMeta ? `<div class="v compare-${compareRateMeta.tone}">${escapeHtml(compareRateMeta.text)}</div>` : ""}
-      ${typeof delta === "number" ? `<div class="k">比較差 ${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt</div>` : ""}
+      <div class="metric-card-head">
+        <span class="metric-card-label">${escapeHtml(item.label)}</span>
+        <span class="${badgeClass}">${escapeHtml(status)}</span>
+      </div>
+      <div class="metric-card-main">${escapeHtml(currentText)}</div>
+      <div class="metric-card-sub">現在期間 ${data.from} 〜 ${data.to}</div>
+      <div class="metric-card-caption">基準値 ${fmtPct(item.target)}</div>
+      ${data.compare ? `<div class="metric-card-caption">比較値 ${escapeHtml(compareText)}</div>` : ""}
+      ${compareRateMeta ? `<div class="metric-card-trend ${trendTone}">${trendIcon} ${escapeHtml(compareRateMeta.text)}</div>` : `<div class="metric-card-trend is-flat">- 比較なし</div>`}
+      ${typeof delta === "number" ? `<div class="metric-card-meta">比較差 ${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt</div>` : ""}
+      ${cvrProgress !== null ? `<div class="metric-card-meta">目標進捗 ${Math.max(0, cvrProgress * 100).toFixed(2)}% / 残り ${fmtPct(cvrRemaining)}</div>` : ""}
     `;
     cards.appendChild(card);
   });
@@ -1468,14 +1472,20 @@ function renderDiagnosis(result) {
     return;
   }
 
-  const ul = document.createElement("ul");
   result.findings.forEach((f) => {
-    const li = document.createElement("li");
-    const worstText = f.worstHint ? ` / 悪化箇所 ${f.worstHint.dimension}:${f.worstHint.dimensionValue}` : "";
-    li.textContent = `${f.title} [${f.severity}] - ${f.reason}${worstText}`;
-    ul.appendChild(li);
+    const card = document.createElement("article");
+    card.className = `diagnosis-finding ${f.severity}`;
+    const worstText = f.worstHint ? `${f.worstHint.dimension}: ${f.worstHint.dimensionValue}` : "-";
+    card.innerHTML = `
+      <div class="diagnosis-title">
+        <span>${escapeHtml(f.title)}</span>
+        <span class="diagnosis-severity">${escapeHtml(f.severity)}</span>
+      </div>
+      <div class="tiny muted">${escapeHtml(f.reason)}</div>
+      <div class="tiny muted">悪化箇所: ${escapeHtml(worstText)}</div>
+    `;
+    el.appendChild(card);
   });
-  el.appendChild(ul);
 
   result.recommendations.forEach((r) => {
     const card = document.createElement("div");
@@ -1488,7 +1498,7 @@ function renderDiagnosis(result) {
       <img alt="${escapeHtml(r.title)}" src="${recommendationImage(r.imageLabel, r.imageColor)}" />
       <div>
         <div class="rec-title">${escapeHtml(r.title)}</div>
-        <div class="rec-meta">Impact:${r.impactScore} / Ease:${r.easeScore} / 検証:${escapeHtml(r.validationMetric)}</div>
+        <div class="rec-meta">Impact ${r.impactScore} / Ease ${r.easeScore} / 検証 ${escapeHtml(r.validationMetric)}</div>
         <div class="rec-summary">${escapeHtml(r.summary || "")}</div>
         ${firstSteps}
       </div>
