@@ -1773,6 +1773,9 @@ async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
   if (reqPath === "/") reqPath = "/index.html";
   if (reqPath === "/analytics" || reqPath.startsWith("/analytics/")) reqPath = "/analytics.html";
+  if (reqPath === "/experiments" || reqPath.startsWith("/experiments/")) reqPath = "/analytics.html";
+  if (reqPath === "/account" || reqPath.startsWith("/account/")) reqPath = "/analytics.html";
+  if (reqPath === "/agent" || reqPath.startsWith("/agent/")) reqPath = "/analytics.html";
   if (reqPath === "/admin" || reqPath.startsWith("/admin/")) reqPath = "/analytics.html";
   if (reqPath.endsWith("/")) reqPath = `${reqPath}index.html`;
   if (!path.extname(reqPath)) reqPath = `${reqPath}.html`;

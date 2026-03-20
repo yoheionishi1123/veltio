@@ -654,7 +654,14 @@ function showApp() {
 }
 
 function syncAppPath() {
-  const nextPath = state.activePage === "admin" ? "/analytics/admin" : "/analytics";
+  const pathMap = {
+    dashboard: "/analytics",
+    validation: "/experiments",
+    account: "/account",
+    assistant: "/agent",
+    admin: "/admin",
+  };
+  const nextPath = pathMap[state.activePage] || "/analytics";
   if (location.pathname !== nextPath) {
     history.replaceState({}, "", `${nextPath}${location.search || ""}${location.hash || ""}`);
   }
@@ -1019,12 +1026,15 @@ async function bootstrap() {
   state.compareTo = "";
   state.granularity = "day";
   state.chartMetric = "sessions";
-  if (
-    location.pathname === "/admin" ||
-    location.pathname.startsWith("/admin/") ||
-    location.pathname === "/analytics/admin" ||
-    location.pathname.startsWith("/analytics/admin/")
-  ) {
+  if (location.pathname === "/analytics" || location.pathname.startsWith("/analytics/")) {
+    state.activePage = "dashboard";
+  } else if (location.pathname === "/experiments" || location.pathname.startsWith("/experiments/")) {
+    state.activePage = "validation";
+  } else if (location.pathname === "/account" || location.pathname.startsWith("/account/")) {
+    state.activePage = "account";
+  } else if (location.pathname === "/agent" || location.pathname.startsWith("/agent/")) {
+    state.activePage = "assistant";
+  } else if (location.pathname === "/admin" || location.pathname.startsWith("/admin/")) {
     state.activePage = "admin";
   }
   q("from-date").value = state.from;
@@ -1042,11 +1052,17 @@ async function bootstrap() {
   renderSiteDiagnosis();
   void trackVisitor("page_view", {
     activePage:
-      (location.pathname.startsWith("/admin") || location.pathname.startsWith("/analytics/admin"))
+      location.pathname.startsWith("/admin")
         ? "admin"
         : location.pathname.startsWith("/analytics")
           ? "analytics"
-          : "auth_or_dashboard",
+          : location.pathname.startsWith("/experiments")
+            ? "experiments"
+            : location.pathname.startsWith("/account")
+              ? "account"
+              : location.pathname.startsWith("/agent")
+                ? "agent"
+                : "auth_or_dashboard",
   });
 
   try {
