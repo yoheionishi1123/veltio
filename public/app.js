@@ -682,12 +682,16 @@ function renderFunnelChart(funnel) {
   const max = funnel[0].value || 1;
   host.innerHTML = funnel
     .map((item) => {
-      const width = Math.max(8, (item.value / max) * 100);
+      const width = Math.max(4, (item.value / max) * 100);
+      const pct = ((item.value / max) * 100).toFixed(1);
       return `
-        <div style="margin-bottom:8px;">
-          <div class="tiny">${item.label} (${item.value})</div>
-          <div style="background:#e2e8f0;border-radius:999px;overflow:hidden;">
-            <div style="width:${width}%;background:#0a58ca;height:12px;"></div>
+        <div class="funnel-row">
+          <div class="funnel-row-head">
+            <span>${escapeHtml(item.label)}</span>
+            <span>${fmtNum(item.value)} <span class="funnel-row-pct">(${pct}%)</span></span>
+          </div>
+          <div class="funnel-bar-track">
+            <div class="funnel-bar-fill" style="width:${width}%"></div>
           </div>
         </div>
       `;
