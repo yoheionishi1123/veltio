@@ -403,31 +403,95 @@
         </div>
 
         <div id="page-account" class="app-page hidden">
-          <section class="panel">
-            <h2>アカウント管理</h2>
-            <form id="account-form" class="grid2">
-              <label>アカウント名<input id="account-name" required /></label>
-              <label>会社名<input id="company-name" required /></label>
-              <label>氏名<input id="contact-name" required /></label>
-              <label>役職<input id="job-title" required /></label>
-              <button type="submit">プロフィール保存</button>
-            </form>
-            <div id="account-plan" class="tiny"></div>
-            <button id="upgrade-plan" type="button">Proにアップグレード</button>
-            <div class="inline">
-              <button id="send-test-email" type="button">認証メール送信テスト</button>
-              <span id="test-email-status" class="tiny"></span>
-            </div>
-            <h3>登録サイトURL</h3>
-            <ul id="account-sites"></ul>
-            <h3>招待ユーザー（最大3名）</h3>
-            <form id="invite-form" class="inline">
-              <input id="invite-email" type="email" placeholder="user@example.com" />
-              <button type="submit">招待追加</button>
-            </form>
-            <div id="invite-status" class="tiny"></div>
-            <ul id="invite-list"></ul>
-          </section>
+          <div class="account-layout">
+
+            <!-- プロフィール -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Profile</p>
+                  <h2>プロフィール</h2>
+                </div>
+              </div>
+              <form id="account-form" class="account-profile-form">
+                <div class="account-form-grid">
+                  <label class="account-field">
+                    <span class="account-field-label">アカウント名</span>
+                    <input id="account-name" required />
+                  </label>
+                  <label class="account-field">
+                    <span class="account-field-label">会社名</span>
+                    <input id="company-name" required />
+                  </label>
+                  <label class="account-field">
+                    <span class="account-field-label">氏名</span>
+                    <input id="contact-name" required />
+                  </label>
+                  <label class="account-field">
+                    <span class="account-field-label">役職</span>
+                    <input id="job-title" />
+                  </label>
+                </div>
+                <div class="account-form-footer">
+                  <button type="submit" class="btn-primary account-save-btn">プロフィール保存</button>
+                </div>
+              </form>
+            </section>
+
+            <!-- プラン -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Plan</p>
+                  <h2>プラン管理</h2>
+                </div>
+              </div>
+              <div id="account-plan" class="account-plan-info"></div>
+              <div class="account-plan-actions">
+                <button id="upgrade-plan" type="button" class="account-upgrade-btn">Proにアップグレード</button>
+              </div>
+              <div class="account-divider"></div>
+              <div class="account-email-test-row">
+                <div>
+                  <div class="account-field-label">メール配信テスト</div>
+                  <div class="account-hint">認証メールの送信動作を確認します</div>
+                </div>
+                <div class="account-email-test-action">
+                  <button id="send-test-email" type="button" class="btn-ghost">送信テスト</button>
+                  <span id="test-email-status" class="account-status-text"></span>
+                </div>
+              </div>
+            </section>
+
+            <!-- 登録サイト -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Sites</p>
+                  <h2>登録サイトURL</h2>
+                </div>
+              </div>
+              <ul id="account-sites" class="account-sites-list"></ul>
+            </section>
+
+            <!-- 招待 -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Team</p>
+                  <h2>招待ユーザー</h2>
+                </div>
+                <span class="account-invite-limit">最大3名</span>
+              </div>
+              <form id="invite-form" class="account-invite-form">
+                <input id="invite-email" type="email" placeholder="user@example.com" />
+                <button type="submit">招待追加</button>
+              </form>
+              <div id="invite-status" class="account-status-text" style="margin-top:8px;"></div>
+              <ul id="invite-list" class="account-invite-list"></ul>
+            </section>
+
+          </div>
         </div>
 
         <div id="page-validation" class="app-page hidden">
