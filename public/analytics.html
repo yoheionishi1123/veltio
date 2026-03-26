@@ -336,16 +336,18 @@
               </div>
               <div class="dashboard-inline-control">
                 <select id="dimension-select">
-                  <option value="channel">channel</option>
-                  <option value="device">device</option>
-                  <option value="landing_page">landing_page</option>
+                  <option value="channel">チャネル</option>
+                  <option value="device">デバイス</option>
+                  <option value="landing_page">ランディングページ</option>
+                  <option value="item_name">アイテム名</option>
+                  <option value="item_category">カテゴリ</option>
                 </select>
                 <button id="load-breakdown" type="button">読込</button>
               </div>
             </div>
             <div id="breakdown-table-wrap" class="table-wrap">
               <table class="breakdown-table">
-                <thead>
+                <thead id="breakdown-thead">
                   <tr><th>Dimension</th><th>Sessions</th><th>Bounce</th><th>PDP</th><th>AddCart</th><th>CartAbandon</th></tr>
                 </thead>
                 <tbody id="breakdown-body"></tbody>

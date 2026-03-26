@@ -1677,29 +1677,69 @@ async function loadBreakdown() {
   const body = q("breakdown-body");
   const cards = q("breakdown-cards");
   const tableWrap = q("breakdown-table-wrap");
+  const thead = q("breakdown-thead");
   body.innerHTML = "";
   cards.innerHTML = "";
+
+  const isItem = data.isItemDimension === true;
   const useCards = dimension === "landing_page" || window.innerWidth <= 768;
   tableWrap.classList.toggle("hidden", useCards);
-  cards.classList.toggle("landing-mode", useCards);
+  cards.classList.toggle("landing-mode", useCards && !isItem);
 
   const cmp = data.compareRows || null;
 
-  // helper: format value + compare delta as "X% (±Δpt)"
   function fmtWithDelta(current, prevRow, key, isRate = true) {
-    const cur = isRate ? current.metrics[key] : current.sessions;
-    const prev = prevRow ? (isRate ? prevRow.metrics[key] : prevRow.sessions) : null;
-    const curFmt = isRate ? fmtPct(cur) : cur;
+    const cur = isRate ? current.metrics[key] : current[key];
+    const prev = prevRow ? (isRate ? prevRow.metrics?.[key] : prevRow[key]) : null;
+    const curFmt = isRate ? fmtPct(cur) : fmtNum(cur);
     if (prev == null) return `<span>${curFmt}</span>`;
     const delta = isRate ? (cur - prev) * 100 : cur - prev;
     const sign = delta >= 0 ? "+" : "";
-    // bounce_rate and cart_abandon_rate: up = bad
     const badIfUp = key === "bounce_rate" || key === "cart_abandon_rate";
     const tone = Math.abs(delta) < 0.5 ? "neutral" : (delta > 0) === badIfUp ? "bad" : "good";
     const cls = tone === "good" ? "compare-good" : tone === "bad" ? "compare-bad" : "compare-neutral";
     const deltaFmt = isRate ? `${sign}${delta.toFixed(1)}pt` : `${sign}${delta}`;
     return `<span>${curFmt} <small class="breakdown-delta ${cls}">${deltaFmt}</small></span>`;
   }
+
+  if (isItem) {
+    // アイテム/カテゴリ専用テーブルヘッダー
+    thead.innerHTML = `<tr><th>アイテム</th><th>閲覧数</th><th>カート追加</th><th>購入数</th><th>売上</th><th>閲覧→カート率</th><th>カート→購入率</th></tr>`;
+
+    data.rows.slice(0, 20).forEach((row) => {
+      const prev = cmp ? cmp[row.dimensionValue] : null;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="breakdown-dimension" title="${escapeHtml(row.dimensionValue)}">${escapeHtml(row.dimensionValue)}</span></td>
+        <td>${fmtWithDelta(row, prev, "itemsViewed", false)}</td>
+        <td>${fmtWithDelta(row, prev, "addToCarts", false)}</td>
+        <td>${fmtWithDelta(row, prev, "itemsPurchased", false)}</td>
+        <td>${fmtWithDelta(row, prev, "itemRevenue", false)}</td>
+        <td>${fmtWithDelta(row, prev, "view_to_cart_rate")}</td>
+        <td>${fmtWithDelta(row, prev, "cart_to_purchase_rate")}</td>
+      `;
+      body.appendChild(tr);
+
+      const card = document.createElement("div");
+      card.className = "breakdown-row-card";
+      card.innerHTML = `
+        <div class="breakdown-row-title">${escapeHtml(row.dimensionValue)}</div>
+        <div class="breakdown-row-metrics">
+          <div class="k">閲覧</div><div>${fmtWithDelta(row, prev, "itemsViewed", false)}</div>
+          <div class="k">カート追加</div><div>${fmtWithDelta(row, prev, "addToCarts", false)}</div>
+          <div class="k">購入</div><div>${fmtWithDelta(row, prev, "itemsPurchased", false)}</div>
+          <div class="k">売上</div><div>${fmtWithDelta(row, prev, "itemRevenue", false)}</div>
+          <div class="k">閲覧→カート</div><div>${fmtWithDelta(row, prev, "view_to_cart_rate")}</div>
+          <div class="k">カート→購入</div><div>${fmtWithDelta(row, prev, "cart_to_purchase_rate")}</div>
+        </div>
+      `;
+      cards.appendChild(card);
+    });
+    return;
+  }
+
+  // 通常（channel/device/landing_page）
+  thead.innerHTML = `<tr><th>Dimension</th><th>Sessions</th><th>Bounce</th><th>PDP</th><th>AddCart</th><th>CartAbandon</th></tr>`;
 
   data.rows.slice(0, 12).forEach((row) => {
     const prev = cmp ? cmp[row.dimensionValue] : null;

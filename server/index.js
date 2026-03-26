@@ -389,6 +389,9 @@ async function readDb() {
   if (!Array.isArray(db.projectContexts)) {
     db.projectContexts = [];
   }
+  if (!Array.isArray(db.metricItemDaily)) {
+    db.metricItemDaily = [];
+  }
   if (!Array.isArray(db.appEvents)) {
     db.appEvents = [];
   }
@@ -1041,6 +1044,46 @@ async function syncProjectMetricsFromGa4(db, project, from, to) {
   db.metricDaily = db.metricDaily.filter((r) => !(r.projectId === project.id && dates.includes(r.date)));
   db.metricDaily.push(...baseMap.values());
 
+  // Item-level report (itemName × itemCategory)
+  const itemReport = await runGa4Report(conn.ga4PropertyId, conn.accessToken, {
+    dateRanges: [{ startDate: from, endDate: to }],
+    dimensions: [
+      { name: "date" },
+      { name: "itemName" },
+      { name: "itemCategory" }
+    ],
+    metrics: [
+      { name: "itemsViewed" },
+      { name: "addToCarts" },
+      { name: "itemsPurchased" },
+      { name: "itemRevenue" }
+    ],
+    keepEmptyRows: false,
+    limit: "50000"
+  }).catch(() => ({ rows: [] }));
+
+  const itemMap = new Map();
+  for (const row of itemReport.rows || []) {
+    const date = normalizeGa4Date(row.dimensionValues?.[0]?.value || "");
+    const itemName = cleanDimensionValue(row.dimensionValues?.[1]?.value, "(not set)");
+    const itemCategory = cleanDimensionValue(row.dimensionValues?.[2]?.value, "(not set)");
+    const key = `${date}|${itemName}|${itemCategory}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, {
+        id: uid(), projectId: project.id, date, itemName, itemCategory,
+        itemsViewed: 0, addToCarts: 0, itemsPurchased: 0, itemRevenue: 0
+      });
+    }
+    const r = itemMap.get(key);
+    r.itemsViewed += Number(row.metricValues?.[0]?.value || 0);
+    r.addToCarts += Number(row.metricValues?.[1]?.value || 0);
+    r.itemsPurchased += Number(row.metricValues?.[2]?.value || 0);
+    r.itemRevenue += Number(row.metricValues?.[3]?.value || 0);
+  }
+  if (!Array.isArray(db.metricItemDaily)) db.metricItemDaily = [];
+  db.metricItemDaily = db.metricItemDaily.filter((r) => !(r.projectId === project.id && dates.includes(r.date)));
+  db.metricItemDaily.push(...itemMap.values());
+
   conn.lastSyncedAt = new Date().toISOString();
   conn.updatedAt = new Date().toISOString();
 }
@@ -1217,6 +1260,54 @@ function generateDailyMetrics(project, stageRules, date) {
   return rows;
 }
 
+function generateItemMetrics(project, date) {
+  const rng = seedRng(`${project.id}-item-${date}`);
+  const items = [
+    { name: "Tシャツ A", category: "トップス" },
+    { name: "デニム B", category: "ボトムス" },
+    { name: "スニーカー C", category: "シューズ" },
+    { name: "コート D", category: "アウター" },
+    { name: "バッグ E", category: "アクセサリー" },
+    { name: "ワンピース F", category: "ワンピース" },
+    { name: "パーカー G", category: "トップス" },
+    { name: "スカート H", category: "ボトムス" }
+  ];
+  return items.map((item) => {
+    const itemsViewed = Math.floor(80 + rng() * 400);
+    const addToCarts = Math.floor(itemsViewed * (0.1 + rng() * 0.25));
+    const itemsPurchased = Math.floor(addToCarts * (0.2 + rng() * 0.5));
+    const itemRevenue = itemsPurchased * (2000 + Math.floor(rng() * 15000));
+    return {
+      id: uid(), projectId: project.id, date,
+      itemName: item.name, itemCategory: item.category,
+      itemsViewed, addToCarts, itemsPurchased, itemRevenue
+    };
+  });
+}
+
+function groupedItemBreakdown(rows, dimension) {
+  const map = new Map();
+  for (const row of rows) {
+    const key = dimension === "item_name" ? row.itemName : row.itemCategory;
+    if (!map.has(key)) {
+      map.set(key, { dimensionValue: key, itemsViewed: 0, addToCarts: 0, itemsPurchased: 0, itemRevenue: 0 });
+    }
+    const g = map.get(key);
+    g.itemsViewed += row.itemsViewed;
+    g.addToCarts += row.addToCarts;
+    g.itemsPurchased += row.itemsPurchased;
+    g.itemRevenue += row.itemRevenue;
+  }
+  return [...map.values()].map((g) => ({
+    ...g,
+    metrics: {
+      view_to_cart_rate: g.itemsViewed > 0 ? g.addToCarts / g.itemsViewed : 0,
+      cart_to_purchase_rate: g.addToCarts > 0 ? g.itemsPurchased / g.addToCarts : 0,
+      purchase_rate: g.itemsViewed > 0 ? g.itemsPurchased / g.itemsViewed : 0
+    }
+  }));
+}
+
 function worstRowForMetric(metricKey, groupedRows, db) {
   if (!groupedRows.length) return null;
   const badWhen = metricBadWhen(metricKey, db);
@@ -1313,8 +1404,11 @@ async function syncProjectMetrics(db, project) {
   const rules = db.stageRules.find((r) => r.projectId === project.id) || { ...DEFAULT_STAGE_RULES, projectId: project.id };
   const dates = dayList(from, to);
   db.metricDaily = db.metricDaily.filter((r) => !(r.projectId === project.id && dates.includes(r.date)));
+  if (!Array.isArray(db.metricItemDaily)) db.metricItemDaily = [];
+  db.metricItemDaily = db.metricItemDaily.filter((r) => !(r.projectId === project.id && dates.includes(r.date)));
   for (const date of dates) {
     db.metricDaily.push(...generateDailyMetrics(project, rules, date));
+    db.metricItemDaily.push(...generateItemMetrics(project, date));
   }
 }
 
@@ -3180,8 +3274,31 @@ async function handleApi(req, res, urlObj) {
     const range = dateRangeFromQuery(urlObj);
     const dimension = urlObj.searchParams.get("dimension") || "channel";
     if (!range) return json(res, 400, { error: "invalid_date_range" });
-    if (!["channel", "device", "landing_page"].includes(dimension)) {
+    if (!["channel", "device", "landing_page", "item_name", "item_category"].includes(dimension)) {
       return json(res, 400, { error: "invalid_dimension" });
+    }
+
+    const isItemDimension = dimension === "item_name" || dimension === "item_category";
+
+    if (isItemDimension) {
+      if (!Array.isArray(db.metricItemDaily)) db.metricItemDaily = [];
+      const itemRows = db.metricItemDaily.filter(
+        (r) => r.projectId === projectId && r.date >= range.from && r.date <= range.to
+      );
+      const grouped = groupedItemBreakdown(itemRows, dimension);
+      grouped.sort((a, b) => b.itemsViewed - a.itemsViewed);
+
+      const compareFrom = urlObj.searchParams.get("compare_from");
+      const compareTo = urlObj.searchParams.get("compare_to");
+      let compareRows = null;
+      if (compareFrom && compareTo && validateDate(compareFrom) && validateDate(compareTo)) {
+        const cmpRows = db.metricItemDaily.filter(
+          (r) => r.projectId === projectId && r.date >= compareFrom && r.date <= compareTo
+        );
+        const cmpGrouped = groupedItemBreakdown(cmpRows, dimension);
+        compareRows = Object.fromEntries(cmpGrouped.map((r) => [r.dimensionValue, r]));
+      }
+      return json(res, 200, { dimension, rows: grouped, compareRows, isItemDimension: true });
     }
 
     const rows = selectRowsForPeriod(db, projectId, range.from, range.to);
