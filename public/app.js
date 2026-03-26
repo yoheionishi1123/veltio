@@ -2045,9 +2045,12 @@ async function loadReports() {
     const li = document.createElement("li");
     const a = document.createElement("a");
     a.href = `/api/reports/${r.id}/download`;
-    a.textContent = `${String(r.format || "pdf").toUpperCase()} ${r.fromDate}〜${r.toDate}`;
+    const fmtLabel = String(r.format || "pdf").toUpperCase();
+    a.textContent = `${fmtLabel} レポート ${r.fromDate}〜${r.toDate}`;
     a.target = "_blank";
-    a.download = "";
+    // PDF reports open in browser (as HTML) so user can use Print → PDF
+    // PPT reports are text files — keep as download
+    if (r.format === "ppt") a.download = `veltio-report-${r.fromDate}.txt`;
     li.appendChild(a);
     list.appendChild(li);
   });

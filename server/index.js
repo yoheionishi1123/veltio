@@ -1496,39 +1496,135 @@ function asciiReportLines(project, from, to, metrics, comparisons, worstRows, fi
   return lines;
 }
 
-function buildReportHtml(lines) {
-  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const title = esc(lines[0] || "Veltio レポート");
-  let bodyHtml = "";
-  lines.slice(1).forEach((line) => {
-    if (line.startsWith("[") && line.endsWith("]")) {
-      bodyHtml += `<h2>${esc(line.slice(1, -1))}</h2>`;
-    } else if (line.startsWith("- ")) {
-      bodyHtml += `<p class="item">${esc(line)}</p>`;
-    } else if (line === "") {
-      bodyHtml += "<br>";
-    } else {
-      bodyHtml += `<p>${esc(line)}</p>`;
-    }
-  });
+const METRIC_LABEL_MAP = {
+  bounce_rate: "直帰率", pdp_reach_rate: "PDP到達率", add_to_cart_rate: "カート追加率",
+  cart_abandon_rate: "カート離脱率", checkout_reach_rate: "チェックアウト到達率",
+  purchase_rate: "購入完了率", cvr: "CVR"
+};
+const SEVERITY_LABEL_MAP = { critical: "重大", high: "高", medium: "中", low: "低" };
+
+function buildReportHtml(lines, project, from, to, comparisons, worstRows, findings, recommendations) {
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const fmtPctReport = (v) => v != null ? `${(Number(v) * 100).toFixed(2)}%` : "-";
+
+  const severityColor = { critical: "#e03137", high: "#f59e0b", medium: "#3b82f6", low: "#6b7280" };
+
+  // Key Metrics rows
+  const metricsHtml = (comparisons || []).map((item) => {
+    const pct = (item.value * 100).toFixed(2);
+    const bm = (item.target * 100).toFixed(2);
+    const isGood = item.badWhen === "higher" ? item.value <= item.target : item.value >= item.target;
+    const color = isGood ? "#047857" : "#b91c1c";
+    const label = METRIC_LABEL_MAP[item.metricKey] || item.metricKey;
+    const barWidth = Math.min(100, (item.value / Math.max(item.target, item.value)) * 100).toFixed(1);
+    return `
+      <tr>
+        <td>${esc(label)}</td>
+        <td style="text-align:right;font-weight:700;color:${color};">${esc(pct)}%</td>
+        <td style="text-align:right;color:#64748b;">${esc(bm)}%</td>
+        <td style="color:${color};text-align:center;">${isGood ? "✓" : "✗"}</td>
+      </tr>`;
+  }).join("");
+
+  // Worst landing pages
+  const worstHtml = (worstRows || []).slice(0, 5).map((row) => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px;">${esc(row.dimensionValue)}</td>
+      <td style="text-align:right;">${esc(fmtPctReport(row.metrics?.pdp_reach_rate))}</td>
+      <td style="text-align:right;">${esc(fmtPctReport(row.metrics?.add_to_cart_rate))}</td>
+      <td style="text-align:right;">${esc(fmtPctReport(row.metrics?.cvr))}</td>
+    </tr>`).join("");
+
+  // Findings
+  const findingsHtml = (!findings || findings.length === 0)
+    ? `<p style="color:#64748b;">ボトルネックは検出されませんでした。</p>`
+    : (findings || []).slice(0, 5).map((f) => {
+        const col = severityColor[f.severity] || "#64748b";
+        const sevLabel = SEVERITY_LABEL_MAP[f.severity] || f.severity;
+        return `
+          <div style="border-left:4px solid ${col};padding:10px 14px;margin-bottom:10px;background:#fafafa;border-radius:0 6px 6px 0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <strong>${esc(f.title)}</strong>
+              <span style="font-size:11px;background:${col};color:#fff;padding:2px 8px;border-radius:999px;">${esc(sevLabel)}</span>
+            </div>
+            <div style="font-size:12px;color:#475569;">${esc(f.reason || "")}</div>
+            ${f.value != null ? `<div style="font-size:12px;color:#94a3b8;margin-top:4px;">実測値: ${esc(fmtPctReport(f.value))} / 基準: ${esc(fmtPctReport(f.benchmark))}</div>` : ""}
+          </div>`;
+      }).join("");
+
+  // Recommendations
+  const recsHtml = (recommendations || []).slice(0, 5).map((rec) => `
+    <div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:700;margin-bottom:8px;">${esc(rec.title)}</div>
+      <ul style="margin:0;padding-left:18px;">
+        ${(rec.actionSteps || []).slice(0, 4).map((step) => `<li style="font-size:13px;color:#475569;margin-bottom:4px;">${esc(step)}</li>`).join("")}
+      </ul>
+    </div>`).join("");
+
   const html = `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title>
+<title>Veltio CVR レポート — ${esc(project?.name || "")} (${esc(from)}〜${esc(to)})</title>
 <style>
-  body{font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;max-width:800px;margin:40px auto;padding:24px;color:#0f172a;font-size:14px;line-height:1.8;}
-  h1{font-size:22px;border-bottom:3px solid #f97316;padding-bottom:10px;margin-bottom:24px;}
-  h2{font-size:15px;color:#f97316;font-weight:700;margin-top:28px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;}
-  p{margin:3px 0;color:#334155;}
-  p.item{padding-left:12px;border-left:2px solid #e2e8f0;color:#475569;}
-  @media print{body{margin:0;padding:16px;}}
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  *{box-sizing:border-box;}
+  body{font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',Meiryo,sans-serif;max-width:860px;margin:0 auto;padding:36px 24px 60px;color:#0f172a;font-size:13.5px;line-height:1.8;background:#fff;}
+  .report-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0a58ca;padding-bottom:16px;margin-bottom:32px;}
+  .report-title{font-size:22px;font-weight:800;color:#0b1320;margin:0 0 4px;}
+  .report-meta{font-size:12px;color:#64748b;}
+  .report-badge{background:#0a58ca;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;}
+  h2{font-size:14px;font-weight:700;color:#0b1320;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:.08em;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{background:#f8fafc;text-align:left;padding:8px 12px;font-weight:700;font-size:12px;color:#475569;border-bottom:2px solid #e2e8f0;}
+  td{padding:8px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+  .no-print{margin-bottom:20px;padding:12px 16px;background:#f0f7ff;border-radius:8px;font-size:12px;color:#0a58ca;display:flex;align-items:center;gap:10px;}
+  @media print{
+    .no-print{display:none!important;}
+    body{padding:16px;font-size:12px;}
+    h2{margin-top:20px;}
+  }
 </style>
 </head>
 <body>
-<h1>${title}</h1>
-${bodyHtml}
+<div class="no-print">
+  💡 印刷 → PDF保存 でPDFファイルにできます。
+  <button onclick="window.print()" style="background:#0a58ca;color:#fff;border:none;border-radius:6px;padding:6px 16px;font-size:12px;cursor:pointer;">印刷 / PDF保存</button>
+</div>
+<div class="report-header">
+  <div>
+    <div class="report-title">CVR分析レポート</div>
+    <div class="report-meta">
+      プロジェクト: ${esc(project?.name || "-")} &nbsp;|&nbsp;
+      ドメイン: ${esc(project?.domain || "-")} &nbsp;|&nbsp;
+      期間: ${esc(from)} 〜 ${esc(to)}
+    </div>
+  </div>
+  <span class="report-badge">Veltio</span>
+</div>
+
+<h2>主要KPI指標</h2>
+<table>
+  <thead><tr><th>指標</th><th style="text-align:right;">実測値</th><th style="text-align:right;">基準値</th><th style="text-align:center;">判定</th></tr></thead>
+  <tbody>${metricsHtml}</tbody>
+</table>
+
+<h2>流入ページ別パフォーマンス（下位）</h2>
+${worstHtml ? `<table>
+  <thead><tr><th>ページ</th><th style="text-align:right;">PDP到達率</th><th style="text-align:right;">カート追加率</th><th style="text-align:right;">CVR</th></tr></thead>
+  <tbody>${worstHtml}</tbody>
+</table>` : "<p style='color:#64748b;'>データなし</p>"}
+
+<h2>診断結果 — ボトルネック</h2>
+${findingsHtml}
+
+<h2>改善提案</h2>
+${recsHtml || "<p style='color:#64748b;'>提案なし</p>"}
+
+<div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">
+  Generated by Veltio — ${new Date().toLocaleDateString("ja-JP")}
+</div>
 </body>
 </html>`;
   return Buffer.from(html, "utf8");
@@ -3771,7 +3867,7 @@ async function handleApi(req, res, urlObj) {
     );
     const binary =
       format === "pdf"
-        ? buildReportHtml(outlineLines)
+        ? buildReportHtml(outlineLines, project, from, to, comparisons, worstRows, diagnosis.findings, recommendations)
         : buildSimplePptOutline(outlineLines);
     await fs.writeFile(filePath, binary);
 
@@ -3826,15 +3922,19 @@ async function handleApi(req, res, urlObj) {
 
     const content = await fs.readFile(report.filePath);
     const ext = path.extname(report.filePath).toLowerCase();
+    if (ext === ".html") {
+      // Open HTML report inline in browser (user uses browser Print → PDF)
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(content);
+    }
     const contentType =
-      ext === ".html"
-        ? "text/html; charset=utf-8"
-        : ext === ".pdf"
-          ? "application/pdf"
-          : "text/plain; charset=utf-16le";
+      ext === ".pdf"
+        ? "application/pdf"
+        : "text/plain; charset=utf-16le";
+    const dispName = report.format === "ppt" ? `veltio-report-${report.fromDate}.txt` : `report${ext}`;
     res.writeHead(200, {
       "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${report.id}${ext}"`
+      "Content-Disposition": `attachment; filename="${dispName}"`
     });
     return res.end(content);
   }
