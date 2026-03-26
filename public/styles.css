@@ -1419,6 +1419,65 @@ tr:hover td { background: var(--panel-2); }
 
 .account-upgrade-btn:hover { opacity: 0.88; }
 
+.account-downgrade-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.account-downgrade-btn:hover { background: var(--panel-3); }
+
+/* ── Plan badge (in account-card-head) ── */
+.plan-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+.plan-starter { background: #f2f4f7; color: #667085; border: 1px solid #d0d5dd; }
+.plan-pro { background: #0a58ca; color: #fff; border: 1px solid #0a58ca; }
+
+/* ── Plan feature comparison table ── */
+.plan-feature-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.plan-feature-table th,
+.plan-feature-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+.plan-feature-table th:first-child,
+.plan-feature-table td:first-child { text-align: left; color: var(--ink-2); }
+.plan-feature-table th { font-size: 11px; color: var(--muted); font-weight: 700; }
+.plan-lock-cell { color: var(--danger); }
+
+/* ── Pro lock badge (on compare/PPT) ── */
+.compare-select-wrap { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+.ppt-wrap { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+.pro-lock-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f97316;
+  color: #fff;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
 .account-divider { height: 1px; background: var(--line); margin: 0 0 20px; }
 
 .account-email-test-row {

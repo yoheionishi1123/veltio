@@ -1175,7 +1175,8 @@ function normalizeGranularity(input) {
 }
 
 function userHasProPlan(db, userId) {
-  return true;
+  const tenant = primaryTenantForUser(db, userId);
+  return tenant?.plan === "pro";
 }
 
 function buildSeries(rows, granularity) {

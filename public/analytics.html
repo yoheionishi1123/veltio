@@ -238,14 +238,17 @@
                 <div class="dashboard-range-grid">
                   <input type="date" id="from-date" />
                   <input type="date" id="to-date" />
-                  <select id="compare-preset">
-                    <option value="none">比較なし</option>
-                    <option value="prev_year">前年</option>
-                    <option value="prev_year_same_week">前年同週</option>
-                    <option value="prev_month">前月</option>
-                    <option value="prev_month_same_week">前月同週</option>
-                    <option value="custom">カスタム期間</option>
-                  </select>
+                  <div class="compare-select-wrap">
+                    <select id="compare-preset">
+                      <option value="none">比較なし</option>
+                      <option value="prev_year">前年</option>
+                      <option value="prev_year_same_week">前年同週</option>
+                      <option value="prev_month">前月</option>
+                      <option value="prev_month_same_week">前月同週</option>
+                      <option value="custom">カスタム期間</option>
+                    </select>
+                    <span id="compare-lock-badge" class="pro-lock-badge hidden">Pro</span>
+                  </div>
                   <select id="granularity-select">
                     <option value="day">日別</option>
                     <option value="week">週別</option>
@@ -407,7 +410,10 @@
               </div>
               <div class="dashboard-inline-control">
                 <button id="create-report-pdf" type="button">PDF生成</button>
-                <button id="create-report-ppt" type="button">PPT生成</button>
+                <span class="ppt-wrap">
+                  <button id="create-report-ppt" type="button">PPT生成</button>
+                  <span id="ppt-lock-badge" class="pro-lock-badge hidden">Pro</span>
+                </span>
               </div>
             </div>
             <div id="report-status" class="tiny"></div>
@@ -458,11 +464,25 @@
                   <p class="dashboard-card-kicker">Plan</p>
                   <h2>プラン管理</h2>
                 </div>
+                <div id="account-plan-badge" class="plan-badge plan-starter">STARTER</div>
               </div>
               <div id="account-plan" class="account-plan-info"></div>
+              <table class="plan-feature-table">
+                <thead>
+                  <tr><th>機能</th><th>Starter</th><th>Pro</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>プロジェクト数</td><td>1件</td><td>複数</td></tr>
+                  <tr><td>期間比較（ブレークダウン）</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
+                  <tr><td>PPTレポート出力</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
+                  <tr><td>その他すべての機能</td><td>✅</td><td>✅</td></tr>
+                </tbody>
+              </table>
               <div class="account-plan-actions">
-                <button id="upgrade-plan" type="button" class="account-upgrade-btn">Proにアップグレード</button>
+                <button id="upgrade-plan" type="button" class="account-upgrade-btn hidden">Proにアップグレード</button>
+                <button id="downgrade-plan" type="button" class="account-downgrade-btn hidden">Starterに戻す</button>
               </div>
+              <div id="plan-switch-status" class="tiny"></div>
               <div class="account-divider"></div>
               <div class="account-email-test-row">
                 <div>

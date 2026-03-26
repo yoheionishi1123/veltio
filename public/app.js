@@ -1994,6 +1994,34 @@ async function loadReports() {
   });
 }
 
+function syncPlanUI(plan) {
+  const isPro = plan === "pro";
+  state.isPro = isPro;
+  const badge = q("account-plan-badge");
+  if (badge) {
+    badge.textContent = isPro ? "PRO" : "STARTER";
+    badge.className = `plan-badge ${isPro ? "plan-pro" : "plan-starter"}`;
+  }
+  q("upgrade-plan")?.classList.toggle("hidden", isPro);
+  q("downgrade-plan")?.classList.toggle("hidden", !isPro);
+  // Compare lock badge
+  const compareLock = document.getElementById("compare-lock-badge");
+  if (compareLock) compareLock.classList.toggle("hidden", isPro);
+  // PPT lock badge
+  const pptLock = document.getElementById("ppt-lock-badge");
+  if (pptLock) pptLock.classList.toggle("hidden", isPro);
+  // Disable compare select options when on Starter
+  const comparePreset = q("compare-preset");
+  if (comparePreset) {
+    Array.from(comparePreset.options).forEach((opt) => {
+      if (opt.value !== "none") opt.disabled = !isPro;
+    });
+    if (!isPro && comparePreset.value !== "none") {
+      comparePreset.value = "none";
+    }
+  }
+}
+
 async function loadAccount() {
   const data = await api("/api/account");
   state.account = data.account;
@@ -2001,7 +2029,8 @@ async function loadAccount() {
   q("company-name").value = data.account.companyName || "";
   q("contact-name").value = data.account.contactName || "";
   q("job-title").value = data.account.jobTitle || "";
-  q("account-plan").textContent = `プラン: ${String(data.account.plan).toUpperCase()}`;
+  q("account-plan").textContent = `現在のプラン: ${data.account.plan === "pro" ? "Pro（全機能解放）" : "Starter（無料）"}`;
+  syncPlanUI(data.account.plan || "starter");
   const sites = q("account-sites");
   sites.innerHTML = "";
   (data.account.projectSites || data.account.projectUrls?.map(d => ({ name: d, domain: d })) || []).forEach((site) => {
@@ -2525,14 +2554,27 @@ q("invite-form").addEventListener("submit", async (e) => {
 });
 
 q("upgrade-plan").addEventListener("click", async () => {
-  await api("/api/account/plan", {
-    method: "POST",
-    body: { plan: "pro" }
-  });
-  trackGa4("upgrade_to_pro", {});
-  q("report-status").className = "tiny";
-  q("report-status").textContent = "Proプランに更新しました。";
-  await loadAccount();
+  q("plan-switch-status").textContent = "切替中...";
+  try {
+    await api("/api/account/plan", { method: "POST", body: { plan: "pro" } });
+    trackGa4("upgrade_to_pro", {});
+    q("plan-switch-status").textContent = "✅ Proプランに切り替えました。";
+    await loadAccount();
+  } catch (err) {
+    q("plan-switch-status").textContent = uiErrorText(err);
+  }
+});
+
+q("downgrade-plan").addEventListener("click", async () => {
+  if (!confirm("Starterプランに戻しますか？一部機能が制限されます。")) return;
+  q("plan-switch-status").textContent = "切替中...";
+  try {
+    await api("/api/account/plan", { method: "POST", body: { plan: "starter" } });
+    q("plan-switch-status").textContent = "⬇️ Starterプランに戻しました。";
+    await loadAccount();
+  } catch (err) {
+    q("plan-switch-status").textContent = uiErrorText(err);
+  }
 });
 
 q("send-test-email").addEventListener("click", async () => {
