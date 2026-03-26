@@ -1566,12 +1566,10 @@ async function loadGa4Status() {
   state.ga4Connection = data.connection || null;
   if (!data.connected) {
     q("ga4-reconnect").classList.add("hidden");
-    q("ga4-status").innerHTML = `
-      <div class="ga4-kicker">GA4</div>
-      <div class="ga4-main">未接続</div>
-      <div class="ga4-sub">Property ID を入力してかんたん接続してください。</div>
-    `;
+    q("ga4-connect-form-wrap").classList.remove("hidden");
+    q("ga4-status").innerHTML = "";
   } else {
+    q("ga4-connect-form-wrap").classList.add("hidden");
     q("ga4-reconnect").classList.remove("hidden");
     const statusLine = data.connection.lastSyncError
       ? `更新エラー: ${data.connection.lastSyncError}`
@@ -1703,8 +1701,11 @@ async function loadBreakdown() {
   }
 
   if (isItem) {
-    // アイテム/カテゴリ専用テーブルヘッダー
     thead.innerHTML = `<tr><th>アイテム</th><th>閲覧数</th><th>カート追加</th><th>購入数</th><th>売上</th><th>閲覧→カート率</th><th>カート→購入率</th></tr>`;
+    if (data.rows.length === 0) {
+      body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">アイテムデータがありません。ダッシュボードの「更新」ボタンでGA4同期を実行してください。</td></tr>`;
+      return;
+    }
 
     data.rows.slice(0, 20).forEach((row) => {
       const prev = cmp ? cmp[row.dimensionValue] : null;
@@ -1799,17 +1800,27 @@ function renderDiagnosis(result) {
     return;
   }
 
+  const dimLabel = { channel: "チャネル", device: "デバイス", landing_page: "LP", item_name: "アイテム", item_category: "カテゴリ" };
+
   result.findings.forEach((f) => {
     const card = document.createElement("article");
     card.className = `diagnosis-finding ${f.severity}`;
-    const worstText = f.worstHint ? `${f.worstHint.dimension}: ${f.worstHint.dimensionValue}` : "-";
+    const pct = (f.value * 100).toFixed(1);
+    const bm = (f.benchmark * 100).toFixed(1);
+    const candidates = (f.worstCandidates || (f.worstHint ? [f.worstHint] : []));
+    const worstHtml = candidates.length
+      ? candidates.map((w) =>
+          `<span class="diagnosis-worst-tag">${escapeHtml(dimLabel[w.dimension] || w.dimension)}: ${escapeHtml(w.dimensionValue)} (${(w.metricValue * 100).toFixed(1)}%)</span>`
+        ).join("")
+      : "<span class='muted'>データなし</span>";
     card.innerHTML = `
       <div class="diagnosis-title">
         <span>${escapeHtml(f.title)}</span>
         <span class="diagnosis-severity">${escapeHtml(f.severity)}</span>
       </div>
+      <div class="diagnosis-values">${pct}% <span class="muted">（基準 ${bm}%）</span></div>
       <div class="tiny muted">${escapeHtml(f.reason)}</div>
-      <div class="tiny muted">悪化箇所: ${escapeHtml(worstText)}</div>
+      <div class="diagnosis-worst-row">悪化箇所: ${worstHtml}</div>
     `;
     el.appendChild(card);
   });
@@ -1817,19 +1828,47 @@ function renderDiagnosis(result) {
   result.recommendations.forEach((r) => {
     const card = document.createElement("div");
     card.className = "rec-card";
-    const firstSteps = (r.actionSteps || [])
-      .slice(0, 3)
-      .map((step) => `<div class="rec-step">- ${escapeHtml(step)}</div>`)
+    const allSteps = (r.actionSteps || [])
+      .map((step) => `<li>${escapeHtml(step)}</li>`)
       .join("");
     card.innerHTML = `
       <img alt="${escapeHtml(r.title)}" src="${recommendationImage(r.imageLabel, r.imageColor)}" />
-      <div>
+      <div class="rec-body">
         <div class="rec-title">${escapeHtml(r.title)}</div>
-        <div class="rec-meta">Impact ${r.impactScore} / Ease ${r.easeScore} / 検証 ${escapeHtml(r.validationMetric)}</div>
+        <div class="rec-scores">
+          <span class="rec-score-tag">Impact <strong>${r.impactScore}</strong></span>
+          <span class="rec-score-tag">Ease <strong>${r.easeScore}</strong></span>
+          <span class="rec-score-tag muted">検証指標: ${escapeHtml(r.validationMetric)}</span>
+        </div>
         <div class="rec-summary">${escapeHtml(r.summary || "")}</div>
-        ${firstSteps}
+        ${allSteps ? `<ul class="rec-steps">${allSteps}</ul>` : ""}
+        <button type="button" class="rec-register-btn ghost" data-title="${escapeHtml(r.title)}">施策検証に登録</button>
       </div>
     `;
+    card.querySelector(".rec-register-btn").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      if (!state.projectId) return;
+      try {
+        await api(`/api/projects/${state.projectId}/context`, {
+          method: "POST",
+          body: {
+            actionLog: r.title,
+            actionOwner: "",
+            actionStatus: "todo",
+            actionPriority: "high",
+            actionCompletedAtDate: "",
+            from: state.from,
+            to: state.to
+          }
+        });
+        btn.textContent = "✓ 登録済み";
+        btn.disabled = true;
+        btn.classList.add("rec-register-done");
+        await loadProjectContext();
+      } catch (err) {
+        btn.textContent = "登録失敗";
+      }
+    });
     rec.appendChild(card);
   });
 }
@@ -1860,9 +1899,9 @@ async function loadAccount() {
   q("account-plan").textContent = `プラン: ${String(data.account.plan).toUpperCase()}`;
   const sites = q("account-sites");
   sites.innerHTML = "";
-  (data.account.projectUrls || []).forEach((url) => {
+  (data.account.projectSites || data.account.projectUrls?.map(d => ({ name: d, domain: d })) || []).forEach((site) => {
     const li = document.createElement("li");
-    li.textContent = url;
+    li.innerHTML = `<strong>${escapeHtml(site.name)}</strong> <span class="muted">— ${escapeHtml(site.domain)}</span>`;
     sites.appendChild(li);
   });
   const inviteList = q("invite-list");
@@ -2273,22 +2312,17 @@ q("ga4-quick-form").addEventListener("submit", async (e) => {
   }
 });
 
-q("ga4-reconnect").addEventListener("click", async () => {
-  if (!state.projectId || !state.ga4Connection?.propertyId) return;
-  q("ga4-quick-status").textContent = "再連携中...";
-  try {
-    const out = await api(`/api/projects/${state.projectId}/ga4/quick-connect`, {
-      method: "POST",
-      body: {
-        ga4Input: state.ga4Connection.propertyId,
-        accountEmail: state.ga4Connection.accountEmail || ""
-      }
-    });
-    location.href = out.authUrl;
-  } catch (err) {
-    q("ga4-quick-status").textContent = "";
-    alert(`GA4再連携失敗: ${err.message}`);
+q("ga4-reconnect").addEventListener("click", () => {
+  // 連携し直す = フォームを再表示して入力できるようにする
+  if (state.ga4Connection?.propertyId) {
+    q("ga4-quick-input").value = state.ga4Connection.propertyId;
   }
+  if (state.ga4Connection?.accountEmail) {
+    q("ga4-quick-email").value = state.ga4Connection.accountEmail;
+  }
+  q("ga4-connect-form-wrap").classList.remove("hidden");
+  q("ga4-reconnect").classList.add("hidden");
+  q("ga4-status").innerHTML = "";
 });
 
 q("apply-range").addEventListener("click", async () => {

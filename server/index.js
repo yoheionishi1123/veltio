@@ -1360,7 +1360,12 @@ function runDiagnosisFromAggregate(db, agg, breakdownSets, project = null) {
             dimensionValue: worstHint.dimensionValue,
             metricValue: worstHint.metrics[rule.metricKey]
           }
-        : null
+        : null,
+      worstCandidates: worstCandidates.slice(0, 3).map((w) => ({
+        dimension: w.dimension,
+        dimensionValue: w.dimensionValue,
+        metricValue: w.metrics[rule.metricKey]
+      }))
     });
   }
 
@@ -1490,40 +1495,42 @@ function asciiReportLines(project, from, to, metrics, comparisons, worstRows, fi
   return lines;
 }
 
-function escapePdfText(value) {
-  return String(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-}
-
-function buildSimplePdf(lines) {
-  const pageLines = lines.slice(0, 35);
-  const content = ["BT", "/F1 12 Tf", "50 780 Td"];
-  pageLines.forEach((line, index) => {
-    if (index > 0) content.push("0 -18 Td");
-    content.push(`(${escapePdfText(line)}) Tj`);
+function buildReportHtml(lines) {
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const title = esc(lines[0] || "Veltio レポート");
+  let bodyHtml = "";
+  lines.slice(1).forEach((line) => {
+    if (line.startsWith("[") && line.endsWith("]")) {
+      bodyHtml += `<h2>${esc(line.slice(1, -1))}</h2>`;
+    } else if (line.startsWith("- ")) {
+      bodyHtml += `<p class="item">${esc(line)}</p>`;
+    } else if (line === "") {
+      bodyHtml += "<br>";
+    } else {
+      bodyHtml += `<p>${esc(line)}</p>`;
+    }
   });
-  content.push("ET");
-  const stream = content.join("\n");
-  const objects = [
-    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
-    "2 0 obj << /Type /Pages /Count 1 /Kids [3 0 R] >> endobj",
-    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
-    "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
-    `5 0 obj << /Length ${Buffer.byteLength(stream, "utf8")} >> stream\n${stream}\nendstream endobj`
-  ];
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-  for (const obj of objects) {
-    offsets.push(Buffer.byteLength(pdf, "utf8"));
-    pdf += `${obj}\n`;
-  }
-  const xrefOffset = Buffer.byteLength(pdf, "utf8");
-  pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += "0000000000 65535 f \n";
-  for (let i = 1; i < offsets.length; i += 1) {
-    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
-  }
-  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return Buffer.from(pdf, "utf8");
+  const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+  body{font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;max-width:800px;margin:40px auto;padding:24px;color:#0f172a;font-size:14px;line-height:1.8;}
+  h1{font-size:22px;border-bottom:3px solid #f97316;padding-bottom:10px;margin-bottom:24px;}
+  h2{font-size:15px;color:#f97316;font-weight:700;margin-top:28px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;}
+  p{margin:3px 0;color:#334155;}
+  p.item{padding-left:12px;border-left:2px solid #e2e8f0;color:#475569;}
+  @media print{body{margin:0;padding:16px;}}
+</style>
+</head>
+<body>
+<h1>${title}</h1>
+${bodyHtml}
+</body>
+</html>`;
+  return Buffer.from(html, "utf8");
 }
 
 function buildSimplePptOutline(lines) {
@@ -2367,7 +2374,9 @@ async function handleApi(req, res, urlObj) {
     if (!user) return;
     const tenant = primaryTenantForUser(db, user.id);
     if (!tenant) return json(res, 404, { error: "tenant_not_found" });
-    const projectUrls = db.projects.filter((p) => p.tenantId === tenant.id).map((p) => p.domain);
+    const projectSites = db.projects
+      .filter((p) => p.tenantId === tenant.id)
+      .map((p) => ({ name: p.name, domain: p.domain }));
     return json(res, 200, {
       account: {
         id: tenant.id,
@@ -2377,7 +2386,7 @@ async function handleApi(req, res, urlObj) {
         jobTitle: tenant.jobTitle,
         plan: tenant.plan,
         invitedUsers: tenant.invitedUsers,
-        projectUrls
+        projectSites
       }
     });
   }
@@ -3632,7 +3641,8 @@ async function handleApi(req, res, urlObj) {
     const recommendations = pickTemplates(db, diagnosis.findings, projectId);
 
     const reportId = uid();
-    const fileName = `${reportId}.${format}`;
+    const fileExt = format === "pdf" ? "html" : format;
+    const fileName = `${reportId}.${fileExt}`;
     const filePath = path.join(REPORT_DIR, fileName);
     const outlineLines = asciiReportLines(
       project,
@@ -3646,7 +3656,7 @@ async function handleApi(req, res, urlObj) {
     );
     const binary =
       format === "pdf"
-        ? buildSimplePdf(outlineLines)
+        ? buildReportHtml(outlineLines)
         : buildSimplePptOutline(outlineLines);
     await fs.writeFile(filePath, binary);
 
@@ -3702,9 +3712,11 @@ async function handleApi(req, res, urlObj) {
     const content = await fs.readFile(report.filePath);
     const ext = path.extname(report.filePath).toLowerCase();
     const contentType =
-      ext === ".pdf"
-        ? "application/pdf"
-        : "text/plain; charset=utf-16le";
+      ext === ".html"
+        ? "text/html; charset=utf-8"
+        : ext === ".pdf"
+          ? "application/pdf"
+          : "text/plain; charset=utf-16le";
     res.writeHead(200, {
       "Content-Type": contentType,
       "Content-Disposition": `attachment; filename="${report.id}${ext}"`

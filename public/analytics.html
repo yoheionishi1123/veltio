@@ -199,14 +199,16 @@
                     <h3>GA4連携</h3>
                   </div>
                 </div>
-                <form id="ga4-quick-form" class="dashboard-stack-form">
-                  <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
-                  <div class="dashboard-inline-control">
-                    <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
-                    <button type="submit">かんたん接続</button>
-                  </div>
-                </form>
-                <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
+                <div id="ga4-connect-form-wrap">
+                  <form id="ga4-quick-form" class="dashboard-stack-form">
+                    <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
+                    <div class="dashboard-inline-control">
+                      <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
+                      <button type="submit">かんたん接続</button>
+                    </div>
+                  </form>
+                  <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
+                </div>
                 <div id="ga4-status" class="ga4-status-card"></div>
                 <div class="dashboard-inline-control">
                   <button id="ga4-reconnect" class="ghost hidden dashboard-ghost" type="button">連携し直す</button>
