@@ -1717,7 +1717,17 @@ async function loadBreakdown() {
   if (isItem) {
     thead.innerHTML = `<tr><th>アイテム</th><th>閲覧数</th><th>カート追加</th><th>購入数</th><th>売上</th><th>閲覧→カート率</th><th>カート→購入率</th></tr>`;
     if (data.rows.length === 0) {
-      body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">アイテムデータがありません。ダッシュボードの「更新」ボタンでGA4同期を実行してください。</td></tr>`;
+      body.innerHTML = `<tr><td colspan="7" class="item-empty-cell">
+        <div class="item-empty-state">
+          <div class="item-empty-title">アイテム別データが取得できませんでした</div>
+          <div class="item-empty-body">
+            <strong>考えられる原因:</strong><br>
+            ① GA4のデータ閾値 — 小規模サイト（セッション数・イベント数が少ない）は、GA4がプライバシー保護のためアイテムレベルのデータを返さない仕様です。<br>
+            ② GA4同期が未実行 — 右上の「更新」ボタンを押してGA4データを取得してください。<br>
+            ③ eコマースイベント未設定 — <code>view_item</code>/<code>add_to_cart</code> イベントに <code>items</code> パラメータが必要です。
+          </div>
+        </div>
+      </td></tr>`;
       return;
     }
 
@@ -2313,12 +2323,18 @@ q("resend-code").addEventListener("click", async () => {
   }
 });
 
-q("logout").addEventListener("click", async () => {
+async function doLogout() {
   await api("/api/auth/logout", { method: "POST" });
   resetAuthState();
   clearAuthStatuses();
   setAuthNotice("ログアウトしました。");
   showAuth("login");
+}
+
+q("logout").addEventListener("click", doLogout);
+
+document.addEventListener("click", (e) => {
+  if (e.target?.id === "onboard-logout") doLogout();
 });
 
 window.addEventListener("popstate", () => {
