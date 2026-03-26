@@ -3186,9 +3186,18 @@ async function handleApi(req, res, urlObj) {
 
     const rows = selectRowsForPeriod(db, projectId, range.from, range.to);
     const grouped = groupedBreakdown(rows, dimension);
-
     grouped.sort((a, b) => b.sessions - a.sessions);
-    return json(res, 200, { dimension, rows: grouped });
+
+    const compareFrom = urlObj.searchParams.get("compare_from");
+    const compareTo = urlObj.searchParams.get("compare_to");
+    let compareRows = null;
+    if (compareFrom && compareTo && validateDate(compareFrom) && validateDate(compareTo)) {
+      const cmpRawRows = selectRowsForPeriod(db, projectId, compareFrom, compareTo);
+      const cmpGrouped = groupedBreakdown(cmpRawRows, dimension);
+      compareRows = Object.fromEntries(cmpGrouped.map((r) => [r.dimensionValue, r]));
+    }
+
+    return json(res, 200, { dimension, rows: grouped, compareRows });
   }
 
   const worstMatch = urlObj.pathname.match(/^\/api\/projects\/([^/]+)\/worst$/);

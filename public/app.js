@@ -1669,7 +1669,11 @@ async function loadJourney() {
 
 async function loadBreakdown() {
   const dimension = q("dimension-select").value;
-  const data = await api(`/api/projects/${state.projectId}/breakdown?dimension=${dimension}&from=${state.from}&to=${state.to}`);
+  let url = `/api/projects/${state.projectId}/breakdown?dimension=${dimension}&from=${state.from}&to=${state.to}`;
+  if (state.compareFrom && state.compareTo) {
+    url += `&compare_from=${state.compareFrom}&compare_to=${state.compareTo}`;
+  }
+  const data = await api(url);
   const body = q("breakdown-body");
   const cards = q("breakdown-cards");
   const tableWrap = q("breakdown-table-wrap");
@@ -1679,15 +1683,34 @@ async function loadBreakdown() {
   tableWrap.classList.toggle("hidden", useCards);
   cards.classList.toggle("landing-mode", useCards);
 
+  const cmp = data.compareRows || null;
+
+  // helper: format value + compare delta as "X% (±Δpt)"
+  function fmtWithDelta(current, prevRow, key, isRate = true) {
+    const cur = isRate ? current.metrics[key] : current.sessions;
+    const prev = prevRow ? (isRate ? prevRow.metrics[key] : prevRow.sessions) : null;
+    const curFmt = isRate ? fmtPct(cur) : cur;
+    if (prev == null) return `<span>${curFmt}</span>`;
+    const delta = isRate ? (cur - prev) * 100 : cur - prev;
+    const sign = delta >= 0 ? "+" : "";
+    // bounce_rate and cart_abandon_rate: up = bad
+    const badIfUp = key === "bounce_rate" || key === "cart_abandon_rate";
+    const tone = Math.abs(delta) < 0.5 ? "neutral" : (delta > 0) === badIfUp ? "bad" : "good";
+    const cls = tone === "good" ? "compare-good" : tone === "bad" ? "compare-bad" : "compare-neutral";
+    const deltaFmt = isRate ? `${sign}${delta.toFixed(1)}pt` : `${sign}${delta}`;
+    return `<span>${curFmt} <small class="breakdown-delta ${cls}">${deltaFmt}</small></span>`;
+  }
+
   data.rows.slice(0, 12).forEach((row) => {
+    const prev = cmp ? cmp[row.dimensionValue] : null;
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><span class="breakdown-dimension" title="${escapeHtml(row.dimensionValue)}">${escapeHtml(row.dimensionValue)}</span></td>
-      <td>${row.sessions}</td>
-      <td>${fmtPct(row.metrics.bounce_rate)}</td>
-      <td>${fmtPct(row.metrics.pdp_reach_rate)}</td>
-      <td>${fmtPct(row.metrics.add_to_cart_rate)}</td>
-      <td>${fmtPct(row.metrics.cart_abandon_rate)}</td>
+      <td>${fmtWithDelta(row, prev, "sessions", false)}</td>
+      <td>${fmtWithDelta(row, prev, "bounce_rate")}</td>
+      <td>${fmtWithDelta(row, prev, "pdp_reach_rate")}</td>
+      <td>${fmtWithDelta(row, prev, "add_to_cart_rate")}</td>
+      <td>${fmtWithDelta(row, prev, "cart_abandon_rate")}</td>
     `;
     body.appendChild(tr);
 
@@ -1698,21 +1721,21 @@ async function loadBreakdown() {
       ? `
         <div class="breakdown-row-title breakdown-row-title-inline" title="${escapeHtml(row.dimensionValue)}">${escapeHtml(compactDimensionLabel(row.dimensionValue))}</div>
         <div class="breakdown-inline-metrics-grid">
-          <span><strong>Sessions</strong><em>${row.sessions}</em></span>
-          <span><strong>Bounce</strong><em>${fmtPct(row.metrics.bounce_rate)}</em></span>
-          <span><strong>PDP</strong><em>${fmtPct(row.metrics.pdp_reach_rate)}</em></span>
-          <span><strong>AddCart</strong><em>${fmtPct(row.metrics.add_to_cart_rate)}</em></span>
-          <span><strong>CartAbandon</strong><em>${fmtPct(row.metrics.cart_abandon_rate)}</em></span>
+          <span><strong>Sessions</strong><em>${fmtWithDelta(row, prev, "sessions", false)}</em></span>
+          <span><strong>Bounce</strong><em>${fmtWithDelta(row, prev, "bounce_rate")}</em></span>
+          <span><strong>PDP</strong><em>${fmtWithDelta(row, prev, "pdp_reach_rate")}</em></span>
+          <span><strong>AddCart</strong><em>${fmtWithDelta(row, prev, "add_to_cart_rate")}</em></span>
+          <span><strong>CartAbandon</strong><em>${fmtWithDelta(row, prev, "cart_abandon_rate")}</em></span>
         </div>
       `
       : `
         <div class="breakdown-row-title">${escapeHtml(row.dimensionValue)}</div>
         <div class="breakdown-row-metrics">
-          <div class="k">Sessions</div><div>${row.sessions}</div>
-          <div class="k">Bounce</div><div>${fmtPct(row.metrics.bounce_rate)}</div>
-          <div class="k">PDP</div><div>${fmtPct(row.metrics.pdp_reach_rate)}</div>
-          <div class="k">AddCart</div><div>${fmtPct(row.metrics.add_to_cart_rate)}</div>
-          <div class="k">CartAbandon</div><div>${fmtPct(row.metrics.cart_abandon_rate)}</div>
+          <div class="k">Sessions</div><div>${fmtWithDelta(row, prev, "sessions", false)}</div>
+          <div class="k">Bounce</div><div>${fmtWithDelta(row, prev, "bounce_rate")}</div>
+          <div class="k">PDP</div><div>${fmtWithDelta(row, prev, "pdp_reach_rate")}</div>
+          <div class="k">AddCart</div><div>${fmtWithDelta(row, prev, "add_to_cart_rate")}</div>
+          <div class="k">CartAbandon</div><div>${fmtWithDelta(row, prev, "cart_abandon_rate")}</div>
         </div>
       `;
     cards.appendChild(card);
