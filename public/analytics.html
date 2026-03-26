@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Veltio</title>
+    <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -505,10 +506,28 @@
               <div class="account-card-head">
                 <div>
                   <p class="dashboard-card-kicker">Sites</p>
-                  <h2>登録サイトURL</h2>
+                  <h2>登録サイト</h2>
                 </div>
               </div>
               <ul id="account-sites" class="account-sites-list"></ul>
+              <div id="project-edit-wrap" class="hidden">
+                <div class="account-divider"></div>
+                <p class="account-field-label">プロジェクト編集</p>
+                <form id="project-edit-form" class="account-project-edit-form">
+                  <input type="hidden" id="edit-project-id" />
+                  <label>プロジェクト名
+                    <input id="edit-project-name" type="text" placeholder="例: melety store" />
+                  </label>
+                  <label>ドメイン
+                    <input id="edit-project-domain" type="text" placeholder="例: melety.store" />
+                  </label>
+                  <div class="account-form-footer">
+                    <button type="submit" class="btn-primary">保存</button>
+                    <button type="button" id="project-edit-cancel" class="btn-ghost">キャンセル</button>
+                  </div>
+                  <div id="project-edit-status" class="account-status-text"></div>
+                </form>
+              </div>
             </section>
 
             <!-- 招待 -->
@@ -526,6 +545,31 @@
               </form>
               <div id="invite-status" class="account-status-text" style="margin-top:8px;"></div>
               <ul id="invite-list" class="account-invite-list"></ul>
+            </section>
+
+            <!-- アカウント削除 -->
+            <section class="panel account-card account-danger-zone">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker danger-kicker">Danger Zone</p>
+                  <h2>アカウント削除</h2>
+                </div>
+              </div>
+              <p class="account-danger-desc">アカウントを削除すると、すべてのプロジェクト・GA4連携・施策ログ・データが完全に削除されます。この操作は取り消せません。</p>
+              <button id="open-delete-account" type="button" class="account-delete-btn">アカウントを削除する</button>
+
+              <div id="delete-account-confirm" class="account-delete-confirm hidden">
+                <div class="account-divider"></div>
+                <p class="account-danger-label">本当に削除しますか？確認のためパスワードを入力してください。</p>
+                <form id="delete-account-form">
+                  <input id="delete-account-password" type="password" placeholder="パスワード" autocomplete="current-password" />
+                  <div class="account-form-footer" style="margin-top:10px;">
+                    <button type="submit" class="account-delete-confirm-btn">削除を実行する</button>
+                    <button type="button" id="cancel-delete-account" class="btn-ghost">キャンセル</button>
+                  </div>
+                  <div id="delete-account-status" class="account-status-text" style="color:#b42318;"></div>
+                </form>
+              </div>
             </section>
 
           </div>

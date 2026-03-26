@@ -1535,6 +1535,104 @@ tr:hover td { background: var(--panel-2); }
   color: var(--ink-2);
 }
 
+.account-site-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.account-project-edit-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.account-project-edit-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.account-project-edit-form input {
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  color: var(--ink-1);
+  width: 100%;
+}
+
+/* ── Danger Zone ── */
+.account-danger-zone {
+  border-color: #fecdca !important;
+  background: #fffbfb !important;
+}
+.danger-kicker {
+  color: #b42318 !important;
+}
+.account-danger-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #6b2d27;
+  margin: 0 0 16px;
+}
+.account-danger-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b2d27;
+  margin: 0 0 12px;
+}
+.account-delete-btn {
+  padding: 9px 20px;
+  border: 1.5px solid #f97066;
+  border-radius: 999px;
+  background: transparent;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.account-delete-btn:hover {
+  background: #b42318;
+  color: #fff;
+}
+.account-delete-confirm {
+  margin-top: 4px;
+}
+.account-delete-confirm input[type="password"] {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid #fda29b;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  color: #121926;
+}
+.account-delete-confirm input[type="password"]:focus {
+  outline: none;
+  border-color: #b42318;
+}
+.account-delete-confirm-btn {
+  padding: 9px 20px;
+  border: none;
+  border-radius: 999px;
+  background: #b42318;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.account-delete-confirm-btn:hover { background: #8a1a12; }
+
 .account-invite-limit {
   font-size: 11px;
   font-weight: 600;

@@ -1439,7 +1439,10 @@ function showGa4CallbackMessage() {
     q("ga4-quick-status").textContent = "GA4 OAuth連携が完了しました。";
     trackGa4("ga4_connected", {});
   } else if (ga4 === "error") {
-    q("ga4-quick-status").textContent = `GA4 OAuth連携に失敗しました: ${reason || "unknown_error"}`;
+    const errMsg = reason === "property_already_registered"
+      ? "このGA4プロパティはすでに別のプロジェクトで使用されています。"
+      : `GA4 OAuth連携に失敗しました: ${reason || "unknown_error"}`;
+    q("ga4-quick-status").textContent = errMsg;
     trackGa4("ga4_connect_error", { reason: String(reason || "unknown_error").slice(0, 80) });
   }
   history.replaceState({}, "", location.pathname + location.hash);
@@ -2045,7 +2048,8 @@ async function loadAccount() {
   sites.innerHTML = "";
   (data.account.projectSites || data.account.projectUrls?.map(d => ({ name: d, domain: d })) || []).forEach((site) => {
     const li = document.createElement("li");
-    li.innerHTML = `<strong>${escapeHtml(site.name)}</strong> <span class="muted">— ${escapeHtml(site.domain)}</span>`;
+    li.className = "account-site-item";
+    li.innerHTML = `<span><strong>${escapeHtml(site.name)}</strong> <span class="muted">— ${escapeHtml(site.domain)}</span></span><button type="button" class="btn-ghost btn-sm project-edit-btn" data-id="${escapeHtml(site.id)}" data-name="${escapeHtml(site.name)}" data-domain="${escapeHtml(site.domain)}">編集</button>`;
     sites.appendChild(li);
   });
   const inviteList = q("invite-list");
@@ -2458,7 +2462,10 @@ q("ga4-quick-form").addEventListener("submit", async (e) => {
     location.href = out.authUrl;
   } catch (err) {
     q("ga4-quick-status").textContent = "";
-    alert(`GA4かんたん接続失敗: ${err.message}`);
+    const msg = err.message?.includes("property_already_registered")
+      ? "このGA4プロパティはすでに別のプロジェクトで登録されています。別のプロパティIDをご使用ください。"
+      : `GA4かんたん接続失敗: ${err.message}`;
+    alert(msg);
   }
 });
 
@@ -2553,6 +2560,44 @@ q("account-form").addEventListener("submit", async (e) => {
   }
 });
 
+// Project name/domain edit via delegation on account-sites list
+q("account-sites").addEventListener("click", (e) => {
+  const btn = e.target.closest(".project-edit-btn");
+  if (!btn) return;
+  q("edit-project-id").value = btn.dataset.id;
+  q("edit-project-name").value = btn.dataset.name;
+  q("edit-project-domain").value = btn.dataset.domain;
+  q("project-edit-status").textContent = "";
+  q("project-edit-wrap").classList.remove("hidden");
+  q("edit-project-name").focus();
+});
+
+q("project-edit-cancel").addEventListener("click", () => {
+  q("project-edit-wrap").classList.add("hidden");
+});
+
+q("project-edit-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = q("edit-project-id").value;
+  if (!id) return;
+  q("project-edit-status").textContent = "保存中...";
+  try {
+    await api(`/api/projects/${id}`, {
+      method: "PATCH",
+      body: {
+        name: q("edit-project-name").value,
+        domain: q("edit-project-domain").value
+      }
+    });
+    q("project-edit-wrap").classList.add("hidden");
+    q("project-edit-status").textContent = "";
+    await loadAccount();
+    await loadProjects();
+  } catch (err) {
+    q("project-edit-status").textContent = `保存失敗: ${err.message}`;
+  }
+});
+
 q("invite-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
@@ -2604,6 +2649,40 @@ q("send-test-email").addEventListener("click", async () => {
       : "送信しました。受信箱を確認してください。";
   } catch (err) {
     q("test-email-status").textContent = uiErrorText(err);
+  }
+});
+
+q("open-delete-account").addEventListener("click", () => {
+  q("delete-account-confirm").classList.remove("hidden");
+  q("delete-account-password").focus();
+  q("delete-account-status").textContent = "";
+});
+
+q("cancel-delete-account").addEventListener("click", () => {
+  q("delete-account-confirm").classList.add("hidden");
+  q("delete-account-password").value = "";
+  q("delete-account-status").textContent = "";
+});
+
+q("delete-account-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pwd = q("delete-account-password").value;
+  if (!pwd) {
+    q("delete-account-status").textContent = "パスワードを入力してください。";
+    return;
+  }
+  if (!confirm("本当にアカウントを削除しますか？この操作は取り消せません。")) return;
+  try {
+    await api("/api/account", {
+      method: "DELETE",
+      body: { password: pwd }
+    });
+    // redirect to top after deletion
+    location.href = "/";
+  } catch (err) {
+    q("delete-account-status").textContent = err.message?.includes("invalid_password")
+      ? "パスワードが正しくありません。"
+      : `削除に失敗しました: ${err.message}`;
   }
 });
 

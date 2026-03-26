@@ -2377,7 +2377,7 @@ async function handleApi(req, res, urlObj) {
     if (!tenant) return json(res, 404, { error: "tenant_not_found" });
     const projectSites = db.projects
       .filter((p) => p.tenantId === tenant.id)
-      .map((p) => ({ name: p.name, domain: p.domain }));
+      .map((p) => ({ id: p.id, name: p.name, domain: p.domain }));
     return json(res, 200, {
       account: {
         id: tenant.id,
@@ -2844,6 +2844,79 @@ async function handleApi(req, res, urlObj) {
     }
   }
 
+  if (req.method === "DELETE" && urlObj.pathname === "/api/account") {
+    const user = requireAuth();
+    if (!user) return;
+
+    // require password confirmation
+    const body = await parseBody(req);
+    const password = String(body.password || "").trim();
+    if (!password) {
+      return json(res, 400, { error: "missing_password", message: "確認のためパスワードを入力してください" });
+    }
+    const ok = verifyPassword(password, user.passwordHash);
+    if (!ok) {
+      return json(res, 401, { error: "invalid_password", message: "パスワードが正しくありません" });
+    }
+
+    // collect all data belonging to this user
+    const membershipRows = (db.memberships || []).filter((m) => m.userId === user.id);
+    const tenantIds = membershipRows.map((m) => m.tenantId);
+    // only delete tenants where this user is the sole member
+    const soleTenantIds = tenantIds.filter((tid) => {
+      const members = (db.memberships || []).filter((m) => m.tenantId === tid);
+      return members.length === 1 && members[0].userId === user.id;
+    });
+    const projectIds = (db.projects || []).filter((p) => soleTenantIds.includes(p.tenantId)).map((p) => p.id);
+
+    db.users = (db.users || []).filter((u) => u.id !== user.id);
+    db.memberships = (db.memberships || []).filter((m) => m.userId !== user.id);
+    db.tenants = (db.tenants || []).filter((t) => !soleTenantIds.includes(t.id));
+    db.projects = (db.projects || []).filter((p) => !projectIds.includes(p.id));
+    db.ga4Connections = (db.ga4Connections || []).filter((c) => !projectIds.includes(c.projectId));
+    db.metricDaily = (db.metricDaily || []).filter((r) => !projectIds.includes(r.projectId));
+    db.campaigns = (db.campaigns || []).filter((c) => !projectIds.includes(c.projectId));
+    db.actionLogs = (db.actionLogs || []).filter((a) => !projectIds.includes(a.projectId));
+    db.sessions = (db.sessions || []).filter((s) => s.userId !== user.id);
+    await writeDb(db);
+
+    // clear session cookie
+    res.setHeader("Set-Cookie", `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax`);
+    return json(res, 200, { ok: true });
+  }
+
+  if (req.method === "POST" && urlObj.pathname === "/api/contact") {
+    const body = await parseBody(req);
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim();
+    const category = String(body.category || "general").trim();
+    const msgBody = String(body.body || "").trim();
+    if (!name || !email || !msgBody) {
+      return json(res, 400, { error: "missing_fields", message: "名前・メール・本文は必須です" });
+    }
+    const CONTACT_TO = process.env.CONTACT_TO_EMAIL || RESEND_FROM_EMAIL;
+    if (!RESEND_API_KEY || !RESEND_FROM_EMAIL || !CONTACT_TO) {
+      // Dev fallback: just log
+      console.log("[contact form]", { name, email, category, body: msgBody });
+      return json(res, 200, { ok: true });
+    }
+    const emailRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+      body: JSON.stringify({
+        from: RESEND_FROM_EMAIL,
+        to: [CONTACT_TO],
+        reply_to: email,
+        subject: `[Veltio お問い合わせ] ${category} — ${name}`,
+        text: `名前: ${name}\nメール: ${email}\n種別: ${category}\n\n${msgBody}`
+      })
+    });
+    if (!emailRes.ok) {
+      return json(res, 500, { error: "email_delivery_failed", message: "送信に失敗しました。時間をおいて再度お試しください。" });
+    }
+    return json(res, 200, { ok: true });
+  }
+
   if (req.method === "GET" && urlObj.pathname === "/api/projects") {
     const user = requireAuth();
     if (!user) return;
@@ -2903,6 +2976,28 @@ async function handleApi(req, res, urlObj) {
     if (!user) return;
     const project = findProjectAccessible(db, projectIdMatch[1], user.id);
     if (!project) return json(res, 404, { error: "project_not_found" });
+    return json(res, 200, { project });
+  }
+
+  if (req.method === "PATCH" && projectIdMatch) {
+    const user = requireAuth();
+    if (!user) return;
+    const project = findProjectAccessible(db, projectIdMatch[1], user.id);
+    if (!project) return json(res, 404, { error: "project_not_found" });
+
+    const body = await parseBody(req);
+    if (body.name !== undefined) {
+      const name = String(body.name).trim();
+      if (!name) return json(res, 400, { error: "missing_name" });
+      project.name = name;
+    }
+    if (body.domain !== undefined) {
+      const domain = String(body.domain).trim();
+      if (!domain) return json(res, 400, { error: "missing_domain" });
+      project.domain = domain;
+    }
+    project.updatedAt = new Date().toISOString();
+    await writeDb(db);
     return json(res, 200, { project });
   }
 
@@ -2994,6 +3089,16 @@ async function handleApi(req, res, urlObj) {
     if (!accountEmail) {
       return json(res, 400, { error: "missing_account_email", message: "GA4アカウントメールは必須です" });
     }
+
+    // GA4 property uniqueness: one property can only be connected by one project (any user)
+    const existingConn = db.ga4Connections.find((g) => g.ga4PropertyId === propertyId && g.projectId !== projectId);
+    if (existingConn) {
+      return json(res, 409, {
+        error: "property_already_registered",
+        message: "このGA4プロパティはすでに別のプロジェクトで登録されています。"
+      });
+    }
+
     if (!requireGoogleOAuthConfig()) {
       return json(res, 400, {
         error: "ga4_oauth_not_configured",
@@ -3038,6 +3143,12 @@ async function handleApi(req, res, urlObj) {
     try {
       const tokens = await exchangeCodeForTokens(code);
       const email = (await fetchGoogleUserEmail(tokens.access_token)) || pending.accountEmailHint || "connected@example.com";
+      // Re-check uniqueness at callback time (race-condition guard)
+      const conflictConn = db.ga4Connections.find((g) => g.ga4PropertyId === pending.propertyId && g.projectId !== pending.projectId);
+      if (conflictConn) {
+        res.writeHead(302, { Location: "/dashboard?ga4=error&reason=property_already_registered" });
+        return res.end();
+      }
       db.ga4Connections = db.ga4Connections.filter((g) => g.projectId !== pending.projectId);
       db.ga4Connections.push({
         id: uid(),
