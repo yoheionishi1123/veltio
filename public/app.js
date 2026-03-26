@@ -854,6 +854,7 @@ function renderProjectHeader() {
   const multi = state.projects.length > 1;
   const current = currentProject();
   q("project-empty-state").classList.toggle("hidden", !empty && !multi);
+  q("project-onboard-hint").classList.toggle("hidden", !empty);
   q("project-current-card").classList.toggle("hidden", empty);
   q("project-actions").classList.toggle("hidden", empty);
   q("project-form").classList.toggle("hidden", !empty && !state.addingProject);
@@ -980,31 +981,44 @@ function renderTimeline(hostId, items, formatter) {
     });
 }
 
+const ACTION_STATUS_META = {
+  todo:  { label: "未着手",  cls: "status-todo"  },
+  doing: { label: "進行中",  cls: "status-doing" },
+  done:  { label: "完了",    cls: "status-done"  }
+};
+
 function renderActionLogTimeline(items) {
-  renderTimeline("action-log-timeline", items || [], (item) => ({
-    className: `timeline-item ${item.id === state.selectedValidationActionId ? "selected" : ""}`,
-    html: `
-      <div class="timeline-date">${new Date(item.createdAt).toLocaleString()}</div>
-      <div class="timeline-body">${escapeHtml(item.content)}</div>
-      <div class="timeline-badge-row">
-        ${item.owner ? `<span class="timeline-badge">担当 ${escapeHtml(item.owner)}</span>` : ""}
-        ${item.status ? `<span class="timeline-badge">状態 ${escapeHtml(statusLabel(item.status))}</span>` : ""}
-        ${item.priority ? `<span class="timeline-badge">優先 ${escapeHtml(priorityLabel(item.priority))}</span>` : ""}
-        ${item.effectiveness ? `<span class="timeline-badge">効果 ${escapeHtml(item.effectiveness.label)}</span>` : ""}
-        ${item.effectiveness?.effectivePriority ? `<span class="timeline-badge">再優先 ${escapeHtml(priorityLabel(item.effectiveness.effectivePriority))}</span>` : ""}
-      </div>
-      ${item.completedAtDate ? `<div class="timeline-meta">完了日: ${escapeHtml(item.completedAtDate)}</div>` : ""}
-      ${item.linkedDiagnosisTitle ? `<div class="timeline-meta">紐づけ診断: ${escapeHtml(item.linkedDiagnosisTitle)}</div>` : ""}
-      ${item.autoComment ? `<div class="timeline-meta">改善コメント: ${escapeHtml(item.autoComment)}</div>` : ""}
-      ${item.effectiveness?.comment ? `<div class="timeline-meta">効果判定: ${escapeHtml(item.effectiveness.comment)}</div>` : ""}
-      ${(item.evaluations || []).map((evaluation) => `<div class="timeline-meta">${evaluation.days}日後: ${escapeHtml(evaluation.comment)}</div>`).join("")}
-      <div class="timeline-actions">
-        <button type="button" class="ghost view-action-log" data-id="${escapeHtml(item.id)}">比較を見る</button>
-        <button type="button" class="ghost edit-action-log" data-id="${escapeHtml(item.id)}">編集</button>
-        <button type="button" class="ghost delete-action-log" data-id="${escapeHtml(item.id)}">削除</button>
-      </div>
-    `
-  }));
+  renderTimeline("action-log-timeline", items || [], (item) => {
+    const sm = ACTION_STATUS_META[item.status] || ACTION_STATUS_META.todo;
+    const hasEvals = (item.evaluations || []).some((e) => e.available && e.metrics);
+    return {
+      className: `timeline-item action-log-item ${item.id === state.selectedValidationActionId ? "selected" : ""}`,
+      html: `
+        <div class="action-log-status-bar">
+          <span class="action-status-badge ${sm.cls}">${sm.label}</span>
+          ${item.completedAtDate
+            ? `<span class="action-completed-on">完了 ${escapeHtml(item.completedAtDate)}${hasEvals ? " — 指標比較データあり" : " — データ集計待ち"}</span>`
+            : ""}
+        </div>
+        <div class="timeline-body">${escapeHtml(item.content)}</div>
+        <div class="timeline-meta-row">
+          ${item.owner ? `<span class="timeline-badge">担当 ${escapeHtml(item.owner)}</span>` : ""}
+          ${item.priority ? `<span class="timeline-badge">優先 ${escapeHtml(priorityLabel(item.priority))}</span>` : ""}
+          ${item.effectiveness ? `<span class="timeline-badge">効果 ${escapeHtml(item.effectiveness.label)}</span>` : ""}
+          ${item.fromDate ? `<span class="timeline-badge muted">${escapeHtml(item.fromDate)}〜${escapeHtml(item.toDate || "")}</span>` : ""}
+        </div>
+        ${item.linkedDiagnosisTitle ? `<div class="timeline-meta">紐づけ: ${escapeHtml(item.linkedDiagnosisTitle)}</div>` : ""}
+        ${item.autoComment ? `<div class="timeline-meta">コメント: ${escapeHtml(item.autoComment)}</div>` : ""}
+        ${item.effectiveness?.comment ? `<div class="timeline-meta">効果判定: ${escapeHtml(item.effectiveness.comment)}</div>` : ""}
+        ${(item.evaluations || []).filter((e) => e.available).map((e) => `<div class="timeline-meta">${e.days}日後 (${escapeHtml(e.from)}〜${escapeHtml(e.to)}): ${escapeHtml(e.comment)}</div>`).join("")}
+        <div class="timeline-actions">
+          <button type="button" class="ghost view-action-log" data-id="${escapeHtml(item.id)}">比較を見る</button>
+          <button type="button" class="ghost edit-action-log" data-id="${escapeHtml(item.id)}">編集</button>
+          <button type="button" class="ghost delete-action-log" data-id="${escapeHtml(item.id)}">削除</button>
+        </div>
+      `
+    };
+  });
 }
 
 function validationMetricItems(entry) {
@@ -1789,6 +1803,16 @@ async function loadLatestDiagnosis() {
   renderDiagnosis(data.result);
 }
 
+const METRIC_GROUP_LABELS = {
+  bounce_rate: "直帰率改善",
+  pdp_reach_rate: "商品ページ到達改善",
+  add_to_cart_rate: "カート追加率改善",
+  cart_abandon_rate: "カゴ落ち削減",
+  checkout_reach_rate: "チェックアウト到達改善",
+  purchase_rate: "チェックアウト完了率引き上げ",
+  cvr: "CVR改善"
+};
+
 function renderDiagnosis(result) {
   const el = q("diagnosis-result");
   const rec = q("recommendation-list");
@@ -1825,51 +1849,132 @@ function renderDiagnosis(result) {
     el.appendChild(card);
   });
 
-  result.recommendations.forEach((r) => {
-    const card = document.createElement("div");
-    card.className = "rec-card";
-    const allSteps = (r.actionSteps || [])
-      .map((step) => `<li>${escapeHtml(step)}</li>`)
-      .join("");
-    card.innerHTML = `
-      <img alt="${escapeHtml(r.title)}" src="${recommendationImage(r.imageLabel, r.imageColor)}" />
-      <div class="rec-body">
-        <div class="rec-title">${escapeHtml(r.title)}</div>
-        <div class="rec-scores">
-          <span class="rec-score-tag">Impact <strong>${r.impactScore}</strong></span>
-          <span class="rec-score-tag">Ease <strong>${r.easeScore}</strong></span>
-          <span class="rec-score-tag muted">検証指標: ${escapeHtml(r.validationMetric)}</span>
+  // Group recommendations by metricKey
+  const groups = new Map();
+  (result.recommendations || []).forEach((r) => {
+    const key = r.metricKey || "cvr";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  });
+
+  // Collect registered task titles from current context
+  const registeredContents = new Set(
+    (state.projectContext?.actionLogHistory || []).map((item) => item.content)
+  );
+
+  groups.forEach((recs, metricKey) => {
+    const groupEl = document.createElement("div");
+    groupEl.className = "rec-group";
+
+    const groupLabel = METRIC_GROUP_LABELS[metricKey] || metricKey;
+    const headerEl = document.createElement("div");
+    headerEl.className = "rec-group-header";
+    headerEl.innerHTML = `<span class="rec-group-label">${escapeHtml(groupLabel)}</span>`;
+    groupEl.appendChild(headerEl);
+
+    recs.forEach((r) => {
+      const card = document.createElement("div");
+      card.className = "rec-card";
+
+      // Worst candidate hint for this metric (e.g. "Direct")
+      const worstCandidate = (result.findings || []).find((f) => f.metricKey === r.metricKey)
+        ?.worstCandidates?.[0] || null;
+      const dimHintSuffix = worstCandidate
+        ? ` [${dimLabel[worstCandidate.dimension] || worstCandidate.dimension}: ${worstCandidate.dimensionValue}]`
+        : "";
+
+      const stepsHtml = (r.actionSteps || []).map((step) => {
+        const taskContent = `${r.title}: ${step}${dimHintSuffix}`;
+        const isDone = registeredContents.has(taskContent);
+        return `
+          <label class="rec-task-row${isDone ? " is-done" : ""}">
+            <input type="checkbox" class="rec-task-cb"
+              data-step="${escapeHtml(step)}"
+              data-title="${escapeHtml(r.title)}"
+              data-dim-hint="${escapeHtml(dimHintSuffix)}"
+              ${isDone ? "checked disabled" : ""} />
+            <span class="rec-task-label">${escapeHtml(step)}</span>
+            ${isDone ? `<span class="rec-task-done-badge">完了登録済</span>` : ""}
+          </label>`;
+      }).join("");
+
+      card.innerHTML = `
+        <img alt="${escapeHtml(r.title)}" src="${recommendationImage(r.imageLabel, r.imageColor)}" />
+        <div class="rec-body">
+          <div class="rec-title">${escapeHtml(r.title)}</div>
+          <div class="rec-scores">
+            <span class="rec-score-tag">Impact <strong>${r.impactScore}</strong></span>
+            <span class="rec-score-tag">Ease <strong>${r.easeScore}</strong></span>
+            <span class="rec-score-tag muted">検証指標: ${escapeHtml(r.validationMetric)}</span>
+          </div>
+          <div class="rec-summary">${escapeHtml(r.summary || "")}</div>
+          ${stepsHtml ? `<div class="rec-tasks">${stepsHtml}</div>` : ""}
+          <button type="button" class="rec-register-btn ghost" data-title="${escapeHtml(r.title)}">全体を施策検証に登録</button>
         </div>
-        <div class="rec-summary">${escapeHtml(r.summary || "")}</div>
-        ${allSteps ? `<ul class="rec-steps">${allSteps}</ul>` : ""}
-        <button type="button" class="rec-register-btn ghost" data-title="${escapeHtml(r.title)}">施策検証に登録</button>
-      </div>
-    `;
-    card.querySelector(".rec-register-btn").addEventListener("click", async (e) => {
-      const btn = e.currentTarget;
-      if (!state.projectId) return;
-      try {
-        await api(`/api/projects/${state.projectId}/context`, {
-          method: "POST",
-          body: {
-            actionLog: r.title,
-            actionOwner: "",
-            actionStatus: "todo",
-            actionPriority: "high",
-            actionCompletedAtDate: "",
-            from: state.from,
-            to: state.to
+      `;
+
+      // Step checkbox → register as done action log
+      card.querySelectorAll(".rec-task-cb").forEach((cb) => {
+        cb.addEventListener("change", async (e) => {
+          if (!e.target.checked || !state.projectId) return;
+          const taskContent = `${cb.dataset.title}: ${cb.dataset.step}${cb.dataset.dimHint}`;
+          const row = cb.closest(".rec-task-row");
+          cb.disabled = true;
+          try {
+            await api(`/api/projects/${state.projectId}/context`, {
+              method: "POST",
+              body: {
+                actionLog: taskContent,
+                actionOwner: "",
+                actionStatus: "done",
+                actionPriority: "high",
+                actionCompletedAtDate: todayISO(),
+                from: state.from,
+                to: state.to
+              }
+            });
+            row.classList.add("is-done");
+            if (!row.querySelector(".rec-task-done-badge")) {
+              row.insertAdjacentHTML("beforeend", `<span class="rec-task-done-badge">完了登録済</span>`);
+            }
+            await loadProjectContext();
+          } catch (err) {
+            cb.disabled = false;
+            cb.checked = false;
           }
         });
-        btn.textContent = "✓ 登録済み";
-        btn.disabled = true;
-        btn.classList.add("rec-register-done");
-        await loadProjectContext();
-      } catch (err) {
-        btn.textContent = "登録失敗";
-      }
+      });
+
+      // Whole-card register button
+      card.querySelector(".rec-register-btn").addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        if (!state.projectId) return;
+        try {
+          await api(`/api/projects/${state.projectId}/context`, {
+            method: "POST",
+            body: {
+              actionLog: r.title,
+              actionOwner: "",
+              actionStatus: "todo",
+              actionPriority: "high",
+              actionCompletedAtDate: "",
+              from: state.from,
+              to: state.to
+            }
+          });
+          btn.textContent = "✓ 登録済み";
+          btn.disabled = true;
+          btn.classList.add("rec-register-done");
+          await loadProjectContext();
+        } catch (err) {
+          btn.textContent = "登録失敗";
+        }
+      });
+
+      groupEl.appendChild(card);
     });
-    rec.appendChild(card);
+
+    rec.appendChild(groupEl);
   });
 }
 
