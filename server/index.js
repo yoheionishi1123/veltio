@@ -3540,6 +3540,7 @@ async function handleApi(req, res, urlObj) {
         projectId,
         companyNote: String(body.companyNote || "").trim(),
         actionLog: String(body.actionLog || "").trim(),
+        actionTargetPage: String(body.actionTargetPage || "").trim(),
         actionOwner: String(body.actionOwner || existing.actionOwner || "").trim(),
         actionStatus: ["todo", "doing", "done"].includes(String(body.actionStatus || "")) ? String(body.actionStatus) : (existing.actionStatus || "todo"),
         actionPriority: ["low", "medium", "high"].includes(String(body.actionPriority || "")) ? String(body.actionPriority) : (existing.actionPriority || "medium"),
@@ -3572,6 +3573,7 @@ async function handleApi(req, res, urlObj) {
               ? {
                   ...item,
                   content: next.actionLog,
+                  targetPage: next.actionTargetPage || item.targetPage || "",
                   owner: next.actionOwner,
                   status: next.actionStatus,
                   priority: next.actionPriority,
@@ -3590,6 +3592,7 @@ async function handleApi(req, res, urlObj) {
           const entry = {
             id: uid(),
             content: next.actionLog,
+            targetPage: next.actionTargetPage || "",
             owner: next.actionOwner,
             status: next.actionStatus,
             priority: next.actionPriority,

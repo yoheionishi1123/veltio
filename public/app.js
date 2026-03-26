@@ -425,10 +425,15 @@ function compactDimensionLabel(value, max = 56) {
 function syncActionStatusUI() {
   const isDone = q("action-status").value === "done";
   q("action-completed-date").required = isDone;
-  if (isDone) {
-    q("action-completed-date").removeAttribute("disabled");
-  } else {
-    q("action-completed-date").removeAttribute("required");
+  const wrap = q("completed-date-wrap");
+  if (wrap) {
+    if (isDone) {
+      wrap.classList.remove("hidden");
+      q("action-completed-date").removeAttribute("disabled");
+    } else {
+      wrap.classList.add("hidden");
+      q("action-completed-date").removeAttribute("required");
+    }
   }
 }
 
@@ -987,38 +992,52 @@ const ACTION_STATUS_META = {
   done:  { label: "完了",    cls: "status-done"  }
 };
 
+// タスクボードのアクティブタブ
+let activeTaskTab = "all";
+
 function renderActionLogTimeline(items) {
-  renderTimeline("action-log-timeline", items || [], (item) => {
+  const allItems = (items || []).slice().reverse(); // newest first
+  const tab = activeTaskTab;
+  const filtered = tab === "all" ? allItems : allItems.filter((i) => (i.status || "todo") === tab);
+
+  const host = document.getElementById("action-log-timeline");
+  if (!host) return;
+
+  if (!filtered.length) {
+    host.innerHTML = `<div class="task-empty">タスクがありません。</div>`;
+    return;
+  }
+
+  host.innerHTML = filtered.map((item) => {
     const sm = ACTION_STATUS_META[item.status] || ACTION_STATUS_META.todo;
     const hasEvals = (item.evaluations || []).some((e) => e.available && e.metrics);
-    return {
-      className: `timeline-item action-log-item ${item.id === state.selectedValidationActionId ? "selected" : ""}`,
-      html: `
-        <div class="action-log-status-bar">
-          <span class="action-status-badge ${sm.cls}">${sm.label}</span>
-          ${item.completedAtDate
-            ? `<span class="action-completed-on">完了 ${escapeHtml(item.completedAtDate)}${hasEvals ? " — 指標比較データあり" : " — データ集計待ち"}</span>`
-            : ""}
+    const isSelected = item.id === state.selectedValidationActionId;
+    const priorityColors = { high: "task-priority-high", medium: "task-priority-medium", low: "task-priority-low" };
+    const priCls = priorityColors[item.priority] || "task-priority-medium";
+    return `
+      <div class="task-card ${isSelected ? "task-card-selected" : ""}" data-id="${escapeHtml(item.id)}">
+        <div class="task-card-header">
+          <div class="task-card-left">
+            <span class="action-status-badge ${sm.cls}">${sm.label}</span>
+            <span class="task-priority-dot ${priCls}" title="優先度: ${escapeHtml(priorityLabel(item.priority || 'medium'))}"></span>
+          </div>
+          <div class="task-card-actions">
+            ${item.status === "done" ? `<button type="button" class="btn-ghost btn-sm view-action-log" data-id="${escapeHtml(item.id)}">📊 前後比較</button>` : ""}
+            <button type="button" class="btn-ghost btn-sm edit-action-log" data-id="${escapeHtml(item.id)}">編集</button>
+            <button type="button" class="btn-ghost btn-sm delete-action-log" data-id="${escapeHtml(item.id)}">削除</button>
+          </div>
         </div>
-        <div class="timeline-body">${escapeHtml(item.content)}</div>
-        <div class="timeline-meta-row">
-          ${item.owner ? `<span class="timeline-badge">担当 ${escapeHtml(item.owner)}</span>` : ""}
-          ${item.priority ? `<span class="timeline-badge">優先 ${escapeHtml(priorityLabel(item.priority))}</span>` : ""}
-          ${item.effectiveness ? `<span class="timeline-badge">効果 ${escapeHtml(item.effectiveness.label)}</span>` : ""}
-          ${item.fromDate ? `<span class="timeline-badge muted">${escapeHtml(item.fromDate)}〜${escapeHtml(item.toDate || "")}</span>` : ""}
+        <div class="task-card-title">${escapeHtml(item.content)}</div>
+        <div class="task-card-meta">
+          ${item.targetPage ? `<span class="task-page-chip">📄 ${escapeHtml(item.targetPage)}</span>` : ""}
+          ${item.owner ? `<span class="task-meta-chip">👤 ${escapeHtml(item.owner)}</span>` : ""}
+          ${item.completedAtDate ? `<span class="task-meta-chip ${hasEvals ? "task-chip-data" : "task-chip-waiting"}">✅ 完了 ${escapeHtml(item.completedAtDate)}${hasEvals ? " · データあり" : " · データ集計中"}</span>` : ""}
+          ${item.effectiveness?.label ? `<span class="task-meta-chip">📈 ${escapeHtml(item.effectiveness.label)}</span>` : ""}
         </div>
-        ${item.linkedDiagnosisTitle ? `<div class="timeline-meta">紐づけ: ${escapeHtml(item.linkedDiagnosisTitle)}</div>` : ""}
-        ${item.autoComment ? `<div class="timeline-meta">コメント: ${escapeHtml(item.autoComment)}</div>` : ""}
-        ${item.effectiveness?.comment ? `<div class="timeline-meta">効果判定: ${escapeHtml(item.effectiveness.comment)}</div>` : ""}
-        ${(item.evaluations || []).filter((e) => e.available).map((e) => `<div class="timeline-meta">${e.days}日後 (${escapeHtml(e.from)}〜${escapeHtml(e.to)}): ${escapeHtml(e.comment)}</div>`).join("")}
-        <div class="timeline-actions">
-          <button type="button" class="ghost view-action-log" data-id="${escapeHtml(item.id)}">比較を見る</button>
-          <button type="button" class="ghost edit-action-log" data-id="${escapeHtml(item.id)}">編集</button>
-          <button type="button" class="ghost delete-action-log" data-id="${escapeHtml(item.id)}">削除</button>
-        </div>
-      `
-    };
-  });
+        ${item.autoComment ? `<div class="task-card-comment">${escapeHtml(item.autoComment)}</div>` : ""}
+      </div>
+    `;
+  }).join("");
 }
 
 function validationMetricItems(entry) {
@@ -1048,18 +1067,45 @@ function validationMetricItems(entry) {
 }
 
 function renderValidationDetail(context) {
+  const panel = q("task-compare-panel");
   const summary = q("validation-detail-summary");
   const cards = q("validation-detail-cards");
   const chart = q("validation-detail-chart");
   const rows = context?.actionLogHistory || [];
-  if (!rows.length) {
-    summary.textContent = "施策ログを保存すると、ここに前後比較を表示します。";
-    cards.innerHTML = "";
-    chart.textContent = "";
+
+  if (!rows.length || !state.selectedValidationActionId) {
+    if (panel) panel.classList.add("hidden");
+    if (summary) summary.textContent = "";
+    if (cards) cards.innerHTML = "";
+    if (chart) chart.textContent = "";
     return;
   }
 
-  const selected = rows.find((item) => item.id === state.selectedValidationActionId) || rows[rows.length - 1];
+  const selected = rows.find((item) => item.id === state.selectedValidationActionId);
+  if (!selected) {
+    if (panel) panel.classList.add("hidden");
+    return;
+  }
+
+  // Show the compare panel
+  if (panel) panel.classList.remove("hidden");
+
+  // Task title in compare panel header
+  const titleEl = q("task-compare-title");
+  if (titleEl) titleEl.textContent = selected.content || "";
+
+  // Target page badge
+  const pageFilter = q("task-compare-page-filter");
+  const pageLabel = q("task-compare-page-label");
+  if (pageFilter && pageLabel) {
+    if (selected.targetPage) {
+      pageFilter.classList.remove("hidden");
+      pageLabel.textContent = selected.targetPage;
+    } else {
+      pageFilter.classList.add("hidden");
+    }
+  }
+
   state.selectedValidationActionId = selected.id;
   const activeEvaluation = (selected.evaluations || []).find((item) => item.days === state.selectedValidationWindowDays && item.available && item.metrics)
     || [...(selected.evaluations || [])].reverse().find((item) => item.available && item.metrics);
@@ -1069,8 +1115,8 @@ function renderValidationDetail(context) {
   });
 
   summary.textContent = activeEvaluation
-    ? `対象施策: ${selected.content} / 保存時点 ${selected.fromDate || "-"} 〜 ${selected.toDate || "-"} と、${activeEvaluation.days}日後 (${activeEvaluation.from} 〜 ${activeEvaluation.to}) を比較しています。`
-    : `対象施策: ${selected.content} / まだ比較できる観測データがありません。`;
+    ? `完了日 ${selected.completedAtDate} 起点、${activeEvaluation.days}日後 (${activeEvaluation.from}〜${activeEvaluation.to}) との比較`
+    : `完了日 ${selected.completedAtDate || "-"} 起点 — まだ観測データがありません。`;
 
   if (!metrics.length) {
     cards.innerHTML = "";
@@ -2089,14 +2135,17 @@ async function loadProjectContext() {
   if (!state.projectId) return;
   const out = await api(`/api/projects/${state.projectId}/context`);
   state.projectContext = out.context;
-  q("company-note").value = out.context.companyNote || "";
-  q("action-log").value = out.context.actionLog || "";
-  q("action-owner").value = out.context.actionOwner || "";
-  q("action-status").value = out.context.actionStatus || "todo";
-  q("action-priority").value = out.context.actionPriority || "medium";
-  q("action-completed-date").value = out.context.actionCompletedAtDate || "";
+  q("company-note").value = "";
+  q("action-log").value = "";
+  q("action-target-page").value = "";
+  q("action-owner").value = "";
+  q("action-status").value = "todo";
+  q("action-priority").value = "medium";
+  q("action-completed-date").value = "";
   q("editing-action-log-id").value = "";
   q("cancel-edit-action-log").classList.add("hidden");
+  q("task-form-title").textContent = "施策タスクを追加";
+  q("task-submit-btn").textContent = "タスクを登録";
   q("assistant-context-status").textContent = "";
   const ids = new Set((out.context.actionLogHistory || []).map((item) => item.id));
   if (!ids.has(state.selectedValidationActionId)) {
@@ -2689,6 +2738,11 @@ q("delete-account-form").addEventListener("submit", async (e) => {
 q("assistant-context-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!state.projectId) return;
+  const title = q("action-log").value.trim();
+  if (!title) {
+    q("assistant-context-status").textContent = "施策タイトルを入力してください。";
+    return;
+  }
   try {
     if (q("action-status").value === "done" && !q("action-completed-date").value) {
       q("assistant-context-status").textContent = "状態が完了の場合、完了日は必須です。";
@@ -2697,8 +2751,9 @@ q("assistant-context-form").addEventListener("submit", async (e) => {
     await api(`/api/projects/${state.projectId}/context`, {
       method: "POST",
       body: {
-        companyNote: q("company-note").value,
-        actionLog: q("action-log").value,
+        companyNote: "",
+        actionLog: title,
+        actionTargetPage: q("action-target-page").value.trim(),
         actionLogId: q("editing-action-log-id").value,
         actionOwner: q("action-owner").value,
         actionStatus: q("action-status").value,
@@ -2708,7 +2763,9 @@ q("assistant-context-form").addEventListener("submit", async (e) => {
         to: state.to
       }
     });
-    q("assistant-context-status").textContent = "保存しました。";
+    q("assistant-context-status").textContent = "登録しました。";
+    q("task-form-title").textContent = "施策タスクを追加";
+    q("task-submit-btn").textContent = "タスクを登録";
     await loadProjectContext();
   } catch (err) {
     q("assistant-context-status").textContent = err.message;
@@ -2718,11 +2775,14 @@ q("assistant-context-form").addEventListener("submit", async (e) => {
 q("cancel-edit-action-log").addEventListener("click", () => {
   q("editing-action-log-id").value = "";
   q("action-log").value = "";
-  q("action-owner").value = state.projectContext?.actionOwner || "";
-  q("action-status").value = state.projectContext?.actionStatus || "todo";
-  q("action-priority").value = state.projectContext?.actionPriority || "medium";
+  q("action-target-page").value = "";
+  q("action-owner").value = "";
+  q("action-status").value = "todo";
+  q("action-priority").value = "medium";
   q("action-completed-date").value = "";
   q("cancel-edit-action-log").classList.add("hidden");
+  q("task-form-title").textContent = "施策タスクを追加";
+  q("task-submit-btn").textContent = "タスクを登録";
   q("assistant-context-status").textContent = "";
   syncActionStatusUI();
 });
@@ -2742,13 +2802,18 @@ q("action-log-timeline").addEventListener("click", async (e) => {
     if (!row) return;
     q("editing-action-log-id").value = row.id;
     q("action-log").value = row.content || "";
+    q("action-target-page").value = row.targetPage || "";
     q("action-owner").value = row.owner || "";
     q("action-status").value = row.status || "todo";
     q("action-priority").value = row.priority || "medium";
     q("action-completed-date").value = row.completedAtDate || "";
     q("cancel-edit-action-log").classList.remove("hidden");
-    q("assistant-context-status").textContent = "施策ログを編集中です。保存で更新します。";
+    q("task-form-title").textContent = "施策タスクを編集";
+    q("task-submit-btn").textContent = "更新する";
+    q("assistant-context-status").textContent = "";
     syncActionStatusUI();
+    q("action-log").focus();
+    q("page-validation").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   if (target.classList.contains("delete-action-log")) {
@@ -2763,6 +2828,45 @@ q("action-log-timeline").addEventListener("click", async (e) => {
     }
   }
 });
+
+// タスクボードタブ
+document.addEventListener("click", (e) => {
+  const tab = e.target.closest(".task-tab");
+  if (!tab) return;
+  activeTaskTab = tab.dataset.tab || "all";
+  document.querySelectorAll(".task-tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === activeTaskTab));
+  renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
+});
+
+// タスクカードクリック — task-card 自体をクリックで "前後比較" を選択
+document.addEventListener("click", (e) => {
+  const card = e.target.closest(".task-card");
+  if (!card) return;
+  // ignore if clicking a button inside
+  if (e.target.closest("button")) return;
+  const id = card.dataset.id;
+  if (!id) return;
+  const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === id);
+  if (!row || row.status !== "done") return;
+  state.selectedValidationActionId = id;
+  renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
+  renderValidationDetail(state.projectContext);
+  q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// 対象ページでフィルターボタン
+const pageApplyBtn = q("task-compare-page-apply");
+if (pageApplyBtn) {
+  pageApplyBtn.addEventListener("click", () => {
+    const selected = (state.projectContext?.actionLogHistory || []).find((i) => i.id === state.selectedValidationActionId);
+    if (!selected?.targetPage) return;
+    // Apply landing page filter to main dashboard state
+    state.landingPageFilter = selected.targetPage;
+    // Navigate to dashboard and refresh
+    showPage("page-dashboard");
+    refreshAll();
+  });
+}
 
 [7, 14, 30].forEach((days) => {
   q(`validation-window-${days}`).addEventListener("click", () => {

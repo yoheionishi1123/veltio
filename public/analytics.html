@@ -576,20 +576,29 @@
         </div>
 
         <div id="page-validation" class="app-page hidden">
-          <section class="panel">
-            <h2>施策検証</h2>
-            <p class="muted tiny">施策ログの保存、履歴確認、効果検証はこの画面で行います。</p>
-            <form id="assistant-context-form" class="stack">
+
+          <!-- 施策タスク入力フォーム -->
+          <section class="panel task-form-panel">
+            <div class="task-form-head">
+              <h2 id="task-form-title">施策タスクを追加</h2>
+              <button id="cancel-edit-action-log" type="button" class="btn-ghost hidden">キャンセル</button>
+            </div>
+            <form id="assistant-context-form" class="task-form-body">
               <input id="editing-action-log-id" type="hidden" />
-              <label>企業メモ
-                <textarea id="company-note" rows="3" placeholder="例: 高単価アパレル。店舗受取が主導線。今月は新生活特集を強化。"></textarea>
-              </label>
-              <label>施策ログ
-                <textarea id="action-log" rows="4" placeholder="例: 3/1 LPファーストビュー差し替え、3/2 送料無料訴求をカートに追加"></textarea>
-              </label>
-              <div class="grid3">
+              <input id="company-note" type="hidden" value="" />
+              <div class="task-form-main-row">
+                <label class="task-title-label">
+                  <span>施策タイトル <span class="required-mark">*</span></span>
+                  <input id="action-log" type="text" placeholder="例: LPファーストビューの差し替え" required />
+                </label>
+                <label class="task-page-label">
+                  <span>対象ページ <span class="field-hint">（URLパス、省略可）</span></span>
+                  <input id="action-target-page" type="text" placeholder="例: /cart  /checkout  /collections/sale" />
+                </label>
+              </div>
+              <div class="task-form-meta-row">
                 <label>担当者
-                  <input id="action-owner" placeholder="例: 田中" required />
+                  <input id="action-owner" placeholder="田中" />
                 </label>
                 <label>ステータス
                   <select id="action-status">
@@ -605,42 +614,58 @@
                     <option value="low">低</option>
                   </select>
                 </label>
-                <label>完了日
+                <label id="completed-date-wrap" class="hidden">完了日 <span class="required-mark">*</span>
                   <input id="action-completed-date" type="date" />
                 </label>
               </div>
-              <div class="inline">
-                <button type="submit">メモ保存</button>
-                <button id="cancel-edit-action-log" type="button" class="ghost hidden">編集をやめる</button>
+              <div class="task-form-actions">
+                <button type="submit" class="btn-primary" id="task-submit-btn">タスクを登録</button>
                 <span id="assistant-context-status" class="tiny"></span>
               </div>
             </form>
-            <div class="timeline-grid">
-              <section class="timeline-card">
-                <h3>企業メモ履歴</h3>
-                <div id="company-note-timeline" class="timeline-list"></div>
-              </section>
-              <section class="timeline-card">
-                <h3>施策ログ履歴</h3>
-                <div id="action-log-timeline" class="timeline-list"></div>
-              </section>
-            </div>
-            <section class="timeline-card">
-              <h3>施策前後の比較</h3>
-              <div id="validation-detail-summary" class="tiny muted"></div>
-              <div class="suggestion-row">
-                <button id="validation-window-7" class="ghost" type="button">7日後</button>
-                <button id="validation-window-14" class="ghost" type="button">14日後</button>
-                <button id="validation-window-30" class="ghost" type="button">30日後</button>
-              </div>
-              <div id="validation-detail-cards" class="cards"></div>
-              <div id="validation-detail-chart" class="chart"></div>
-            </section>
-            <div id="validation-suggestions" class="suggestion-row">
-              <button class="suggestion-chip" type="button" data-message="今やる施策の優先順を教えて">今やる施策の優先順を教えて</button>
-              <button class="suggestion-chip" type="button" data-message="直近の施策ログの効果を教えて">直近の施策ログの効果を教えて</button>
-            </div>
           </section>
+
+          <!-- タスクボード -->
+          <section class="panel task-board-panel">
+            <div class="task-board-header">
+              <h3>施策タスク一覧</h3>
+              <div class="task-board-tabs">
+                <button class="task-tab active" data-tab="all">すべて</button>
+                <button class="task-tab" data-tab="todo">未着手</button>
+                <button class="task-tab" data-tab="doing">進行中</button>
+                <button class="task-tab" data-tab="done">完了済み</button>
+              </div>
+            </div>
+            <div id="action-log-timeline" class="task-list"></div>
+            <!-- hidden compat elements -->
+            <div id="company-note-timeline" class="hidden"></div>
+          </section>
+
+          <!-- 施策前後の比較（完了タスク選択時に展開） -->
+          <section class="panel task-compare-panel hidden" id="task-compare-panel">
+            <div class="task-compare-head">
+              <h3>実施前後の比較分析</h3>
+              <div id="task-compare-title" class="task-compare-task-name"></div>
+            </div>
+            <div id="task-compare-page-filter" class="task-compare-page-badge hidden">
+              <span class="task-compare-page-icon">📄</span>
+              <span id="task-compare-page-label"></span>
+              <button id="task-compare-page-apply" type="button" class="btn-ghost btn-sm">このページでフィルター</button>
+            </div>
+            <div id="validation-detail-summary" class="tiny muted" style="margin-top:8px;"></div>
+            <div class="suggestion-row" style="margin-top:10px;">
+              <button id="validation-window-7" class="ghost" type="button">7日後</button>
+              <button id="validation-window-14" class="ghost" type="button">14日後</button>
+              <button id="validation-window-30" class="ghost" type="button">30日後</button>
+            </div>
+            <div id="validation-detail-cards" class="cards"></div>
+            <div id="validation-detail-chart" class="chart"></div>
+          </section>
+
+          <div id="validation-suggestions" class="suggestion-row" style="margin-top:8px;">
+            <button class="suggestion-chip" type="button" data-message="今やる施策の優先順を教えて">今やる施策の優先順を教えて</button>
+            <button class="suggestion-chip" type="button" data-message="直近の施策ログの効果を教えて">直近の施策ログの効果を教えて</button>
+          </div>
         </div>
 
         <div id="page-assistant" class="app-page hidden">
@@ -731,6 +756,8 @@
     <footer class="site-footer">
       <a href="/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
       <a href="/terms" target="_blank" rel="noopener">利用規約</a>
+      <a href="/tokusho" target="_blank" rel="noopener">特定商取引法</a>
+      <a href="/contact" target="_blank" rel="noopener">お問い合わせ</a>
     </footer>
 
     <script src="/app.js"></script>
