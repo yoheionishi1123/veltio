@@ -2,25 +2,25 @@
    Design tokens
 ────────────────────────────────────────────── */
 :root {
-  --bg:           #0e1420;
-  --bg-2:         #131b2e;
-  --panel:        #18223a;
-  --panel-2:      #1e2b44;
-  --panel-3:      #243250;
-  --ink:          #e8edf8;
-  --ink-2:        #b8c4dc;
-  --muted:        #6e7fa0;
-  --line:         #253048;
-  --line-2:       #1e2a40;
+  --bg:           #f4f6f9;
+  --bg-2:         #edf0f5;
+  --panel:        #ffffff;
+  --panel-2:      #f7f8fb;
+  --panel-3:      #eef0f5;
+  --ink:          #0f172a;
+  --ink-2:        #334155;
+  --muted:        #64748b;
+  --line:         #e2e8f0;
+  --line-2:       #e8edf4;
   --accent:       #f97316;
-  --accent-dim:   rgba(249, 115, 22, 0.14);
+  --accent-dim:   rgba(249, 115, 22, 0.10);
   --accent-hover: #ea6c0b;
-  --success:      #22c55e;
-  --success-dim:  rgba(34, 197, 94, 0.12);
-  --danger:       #f43f5e;
-  --danger-dim:   rgba(244, 63, 94, 0.12);
-  --blue:         #3b82f6;
-  --blue-dim:     rgba(59, 130, 246, 0.12);
+  --success:      #16a34a;
+  --success-dim:  rgba(22, 163, 74, 0.10);
+  --danger:       #dc2626;
+  --danger-dim:   rgba(220, 38, 38, 0.10);
+  --blue:         #2563eb;
+  --blue-dim:     rgba(37, 99, 235, 0.10);
   --sidebar-w:    220px;
   --radius:       12px;
   --radius-sm:    8px;
@@ -223,6 +223,7 @@ h3 { margin: 12px 0 6px; font-size: 15px; font-weight: 600; }
   border-radius: var(--radius-lg);
   padding: 20px;
   margin-bottom: 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
 }
 
 /* ──────────────────────────────────────────────
