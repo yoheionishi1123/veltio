@@ -468,6 +468,12 @@ label {
   background: linear-gradient(135deg, var(--panel) 60%, rgba(249,115,22,0.04));
 }
 
+.metric-card-critical {
+  border-color: rgba(220,38,38,0.5);
+  box-shadow: 0 0 0 2px rgba(220,38,38,0.12);
+  background: linear-gradient(135deg, var(--panel) 60%, rgba(220,38,38,0.04));
+}
+
 .metric-card-head {
   display: flex;
   justify-content: space-between;
@@ -517,10 +523,35 @@ label {
   color: var(--ink-2);
 }
 
+/* Progress bar toward benchmark */
+.metric-progress-wrap {
+  height: 4px;
+  background: var(--bg-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.metric-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.metric-progress-fill.is-good { background: var(--success); }
+.metric-progress-fill.is-warn { background: #f59e0b; }
+.metric-progress-fill.is-bad  { background: var(--danger); }
+
+.metric-target-text {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
 .metric-card-trend {
   font-size: 12px;
   font-weight: 600;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .metric-card-trend.is-up   { color: var(--success); }

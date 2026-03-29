@@ -1695,37 +1695,61 @@ async function loadMetrics() {
   const cards = q("metric-cards");
   cards.innerHTML = "";
 
+  // Sort: CVR first, then worst gap first
+  const lowerIsBetter = new Set(["bounce_rate", "cart_abandon_rate"]);
   const orderedComparisons = (data.comparisons || []).slice().sort((a, b) => {
     if (a.metricKey === "cvr") return -1;
     if (b.metricKey === "cvr") return 1;
-    return 0;
+    const gapA = a.status === "ok" ? 0 : Math.abs(a.gap * 100);
+    const gapB = b.status === "ok" ? 0 : Math.abs(b.gap * 100);
+    return gapB - gapA;
   });
+
+  // Identify the single biggest bottleneck (for red highlight)
+  const worstAlert = orderedComparisons
+    .filter((i) => i.metricKey !== "cvr" && i.status !== "ok")
+    .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
 
   orderedComparisons.forEach((item) => {
     const card = document.createElement("div");
-    card.className = item.metricKey === "cvr" ? "metric-card metric-card-primary" : "metric-card";
-    const status = item.status === "ok" ? "基準内" : `要改善 ${Math.abs(item.gap * 100).toFixed(2)}pt`;
-    const delta = data.compare?.delta?.[item.metricKey];
+    const isCvr = item.metricKey === "cvr";
+    const isCritical = worstAlert && item.metricKey === worstAlert.metricKey;
+    const gapAbs = Math.abs(item.gap * 100);
     const currentText = metricActualText(data, item.metricKey);
-    const compareText = data.compare ? metricActualText(data.compare, item.metricKey) : "前回値なし";
     const compareRateMeta = data.compare ? metricCompareRatioMeta(data, data.compare, item.metricKey, "") : null;
-    const cvrProgress = item.metricKey === "cvr" && item.target > 0 ? (item.value / item.target) : null;
-    const cvrRemaining = item.metricKey === "cvr" ? Math.max(0, item.target - item.value) : null;
-    const badgeClass = item.status === "ok" ? "metric-card-badge" : "metric-card-badge is-alert";
-    const trendTone = !compareRateMeta ? "is-flat" : compareRateMeta.tone === "good" ? "is-up" : compareRateMeta.tone === "bad" ? "is-down" : "is-flat";
-    const trendIcon = !compareRateMeta ? "-" : compareRateMeta.tone === "good" ? "↑" : compareRateMeta.tone === "bad" ? "↓" : "→";
+    const trendTone = !compareRateMeta ? "" : compareRateMeta.tone === "good" ? "is-up" : compareRateMeta.tone === "bad" ? "is-down" : "is-flat";
+    const trendIcon = !compareRateMeta ? "" : compareRateMeta.tone === "good" ? "↑" : compareRateMeta.tone === "bad" ? "↓" : "→";
+
+    // Progress bar toward benchmark
+    let progressPct = 0;
+    if (item.status === "ok") {
+      progressPct = 100;
+    } else if (item.target > 0) {
+      progressPct = lowerIsBetter.has(item.metricKey)
+        ? Math.min(100, Math.round((item.target / Math.max(item.value, 0.0001)) * 100))
+        : Math.min(100, Math.round((item.value / item.target) * 100));
+    }
+    const progressClass = item.status === "ok" ? "is-good" : progressPct >= 70 ? "is-warn" : "is-bad";
+
+    card.className = [
+      "metric-card",
+      isCvr ? "metric-card-primary" : "",
+      isCritical ? "metric-card-critical" : "",
+    ].filter(Boolean).join(" ");
+
     card.innerHTML = `
       <div class="metric-card-head">
         <span class="metric-card-label">${escapeHtml(item.label)}</span>
-        <span class="${badgeClass}">${escapeHtml(status)}</span>
+        ${item.status === "ok"
+          ? `<span class="metric-card-badge">✓ 基準内</span>`
+          : `<span class="metric-card-badge is-alert">▲ ${gapAbs.toFixed(2)}pt</span>`}
       </div>
       <div class="metric-card-main">${escapeHtml(currentText)}</div>
-      <div class="metric-card-sub">現在期間 ${data.from} 〜 ${data.to}</div>
-      <div class="metric-card-caption">基準値 ${fmtPct(item.target)}</div>
-      ${data.compare ? `<div class="metric-card-caption">比較値 ${escapeHtml(compareText)}</div>` : ""}
-      ${compareRateMeta ? `<div class="metric-card-trend ${trendTone}">${trendIcon} ${escapeHtml(compareRateMeta.text)}</div>` : `<div class="metric-card-trend is-flat">- 比較なし</div>`}
-      ${typeof delta === "number" ? `<div class="metric-card-meta">比較差 ${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt</div>` : ""}
-      ${cvrProgress !== null ? `<div class="metric-card-meta">目標進捗 ${Math.max(0, cvrProgress * 100).toFixed(2)}% / 残り ${fmtPct(cvrRemaining)}</div>` : ""}
+      <div class="metric-progress-wrap" title="基準値達成率 ${progressPct}%">
+        <div class="metric-progress-fill ${progressClass}" style="width:${progressPct}%"></div>
+      </div>
+      <div class="metric-target-text">基準 ${fmtPct(item.target)}</div>
+      ${compareRateMeta ? `<div class="metric-card-trend ${trendTone}">${trendIcon} ${escapeHtml(compareRateMeta.text)}</div>` : ""}
     `;
     cards.appendChild(card);
   });
