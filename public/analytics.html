@@ -34,7 +34,7 @@
         </button>
         <button id="tab-validation" class="sidebar-item" type="button">
           <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-          施策検証
+          施策管理
         </button>
         <button id="tab-account" class="sidebar-item" type="button">
           <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
@@ -247,8 +247,8 @@
               </div>
               <button id="run-diagnosis" type="button">診断実行</button>
             </div>
-            <div id="diagnosis-result" class="diagnosis-grid"></div>
-            <div id="recommendation-list" class="recommendations"></div>
+            <p class="diagnosis-intro muted tiny">各指標の問題を診断し、改善施策を提示します。「タスク化する」で施策管理に追加できます。</p>
+            <div id="diagnosis-unified" class="diagnosis-unified"></div>
           </section>
 
           <section class="panel dashboard-panel">
@@ -618,6 +618,18 @@
                     <option value="low">低</option>
                   </select>
                 </label>
+                <label>改善指標
+                  <select id="action-target-metric">
+                    <option value="">指定なし</option>
+                    <option value="bounce_rate">直帰率</option>
+                    <option value="pdp_reach_rate">商品ページ到達率</option>
+                    <option value="add_to_cart_rate">カート追加率</option>
+                    <option value="cart_abandon_rate">カゴ落ち率</option>
+                    <option value="checkout_reach_rate">チェックアウト到達率</option>
+                    <option value="purchase_rate">購入完了率</option>
+                    <option value="cvr">CVR</option>
+                  </select>
+                </label>
                 <label id="completed-date-wrap" class="hidden">完了日 <span class="required-mark">*</span>
                   <input id="action-completed-date" type="date" />
                 </label>
@@ -645,17 +657,24 @@
             <div id="company-note-timeline" class="hidden"></div>
           </section>
 
-          <!-- 施策前後の比較（完了タスク選択時に展開） -->
+          <!-- 効果測定パネル（完了タスク選択時に展開） -->
           <section class="panel task-compare-panel hidden" id="task-compare-panel">
             <div class="task-compare-head">
-              <h3>実施前後の比較分析</h3>
-              <div id="task-compare-title" class="task-compare-task-name"></div>
+              <div class="task-compare-head-left">
+                <h3>効果測定</h3>
+                <div id="task-compare-title" class="task-compare-task-name"></div>
+              </div>
+              <button id="close-compare-panel" type="button" class="btn-ghost btn-sm">閉じる ✕</button>
             </div>
             <div id="task-compare-page-filter" class="task-compare-page-badge hidden">
               <span class="task-compare-page-icon">📄</span>
               <span id="task-compare-page-label"></span>
               <button id="task-compare-page-apply" type="button" class="btn-ghost btn-sm">このページでフィルター</button>
             </div>
+            <!-- 主要指標トレンド -->
+            <div id="validation-primary-metric" class="validation-primary-metric hidden"></div>
+            <!-- トレンドチャート（実施前→7日後→14日後→30日後） -->
+            <div id="validation-trend-chart" class="validation-trend-chart"></div>
             <div id="validation-detail-summary" class="tiny muted" style="margin-top:8px;"></div>
             <div class="suggestion-row" style="margin-top:10px;">
               <button id="validation-window-7" class="ghost" type="button">7日後</button>

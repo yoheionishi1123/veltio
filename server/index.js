@@ -3682,6 +3682,7 @@ async function handleApi(req, res, urlObj) {
     if (req.method === "POST") {
       const body = await parseBody(req);
       const existing = projectContextFor(db, projectId);
+      const VALID_METRIC_KEYS = ["bounce_rate","pdp_reach_rate","add_to_cart_rate","cart_abandon_rate","checkout_reach_rate","purchase_rate","cvr"];
       const next = {
         ...existing,
         projectId,
@@ -3692,6 +3693,7 @@ async function handleApi(req, res, urlObj) {
         actionStatus: ["todo", "doing", "done"].includes(String(body.actionStatus || "")) ? String(body.actionStatus) : (existing.actionStatus || "todo"),
         actionPriority: ["low", "medium", "high"].includes(String(body.actionPriority || "")) ? String(body.actionPriority) : (existing.actionPriority || "medium"),
         actionCompletedAtDate: validateDate(String(body.actionCompletedAtDate || "")) ? String(body.actionCompletedAtDate) : null,
+        actionTargetMetricKey: VALID_METRIC_KEYS.includes(String(body.targetMetricKey || "")) ? String(body.targetMetricKey) : (existing.actionTargetMetricKey || null),
         updatedAt: new Date().toISOString()
       };
       if (next.actionStatus === "done" && !next.actionCompletedAtDate) {
@@ -3729,6 +3731,7 @@ async function handleApi(req, res, urlObj) {
                   fromDate: snapshotFrom,
                   toDate: snapshotTo,
                   metrics,
+                  targetMetricKey: next.actionTargetMetricKey || item.targetMetricKey || null,
                   linkedDiagnosisId: latestDiagnosis?.id || null,
                   linkedDiagnosisTitle: latestDiagnosis?.findings?.[0]?.title || null,
                   linkedMetricKey: latestDiagnosis?.findings?.[0]?.metricKey || null
@@ -3748,6 +3751,7 @@ async function handleApi(req, res, urlObj) {
             fromDate: snapshotFrom,
             toDate: snapshotTo,
             metrics,
+            targetMetricKey: next.actionTargetMetricKey || null,
             linkedDiagnosisId: latestDiagnosis?.id || null,
             linkedDiagnosisTitle: latestDiagnosis?.findings?.[0]?.title || null,
             linkedMetricKey: latestDiagnosis?.findings?.[0]?.metricKey || null,

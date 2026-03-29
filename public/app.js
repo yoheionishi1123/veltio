@@ -1048,6 +1048,7 @@ function renderActionLogTimeline(items) {
         </div>
         <div class="task-card-title">${escapeHtml(item.content)}</div>
         <div class="task-card-meta">
+          ${item.targetMetricKey ? `<span class="task-metric-badge">🎯 ${escapeHtml(metricLabel(item.targetMetricKey))}</span>` : ""}
           ${item.targetPage ? `<span class="task-page-chip">📄 ${escapeHtml(item.targetPage)}</span>` : ""}
           ${item.owner ? `<span class="task-meta-chip">👤 ${escapeHtml(item.owner)}</span>` : ""}
           ${item.completedAtDate ? `<span class="task-meta-chip ${hasEvals ? "task-chip-data" : "task-chip-waiting"}">✅ 完了 ${escapeHtml(item.completedAtDate)}${hasEvals ? " · データあり" : " · データ集計中"}</span>` : ""}
@@ -1063,26 +1064,94 @@ function validationMetricItems(entry) {
   const active = (entry?.evaluations || []).find((item) => item.days === state.selectedValidationWindowDays && item.available && item.metrics)
     || [...(entry?.evaluations || [])].reverse().find((item) => item.available && item.metrics);
   if (!entry?.metrics || !active?.metrics) return [];
-  return [
-    {
-      key: "bounce_rate",
-      label: "直帰率",
-      before: entry.metrics.bounce_rate || 0,
-      after: active.metrics.bounce_rate || 0
-    },
-    {
-      key: "add_to_cart_rate",
-      label: "カート追加率",
-      before: entry.metrics.add_to_cart_rate || 0,
-      after: active.metrics.add_to_cart_rate || 0
-    },
-    {
-      key: "purchase_rate",
-      label: "購入完了率",
-      before: entry.metrics.purchase_rate || 0,
-      after: active.metrics.purchase_rate || 0
-    }
+
+  const ALL_METRICS = [
+    { key: "bounce_rate", label: "直帰率" },
+    { key: "add_to_cart_rate", label: "カート追加率" },
+    { key: "purchase_rate", label: "購入完了率" }
   ];
+
+  // Put targetMetricKey first if specified
+  const primary = entry.targetMetricKey;
+  const ordered = primary
+    ? [
+        ...ALL_METRICS.filter((m) => m.key === primary),
+        ...ALL_METRICS.filter((m) => m.key !== primary)
+      ]
+    : ALL_METRICS;
+
+  return ordered.map((m) => ({
+    key: m.key,
+    label: m.label,
+    isPrimary: m.key === primary,
+    before: entry.metrics[m.key] || 0,
+    after: active.metrics[m.key] || 0
+  }));
+}
+
+// Build SVG timeline chart for 7/14/30 day metric trend
+function buildValidationTimeline(entry) {
+  const targetKey = entry?.targetMetricKey;
+  if (!targetKey || !entry?.metrics) return "";
+
+  const baseline = entry.metrics[targetKey] || 0;
+  const windows = [7, 14, 30];
+  const evalPoints = windows.map((days) => {
+    const ev = (entry.evaluations || []).find((e) => e.days === days && e.available && e.metrics);
+    return { days, value: ev?.metrics?.[targetKey] ?? null };
+  });
+
+  const allPoints = [
+    { label: "実施前", value: baseline },
+    ...evalPoints.filter((p) => p.value !== null).map((p) => ({ label: `${p.days}日後`, value: p.value }))
+  ];
+
+  if (allPoints.length < 2) {
+    return `<div class="tiny muted" style="padding:12px 0">完了後のデータが蓄積されると推移グラフが表示されます</div>`;
+  }
+
+  const lowerIsBetter = ["bounce_rate", "cart_abandon_rate"].includes(targetKey);
+  const W = 340, H = 90, PL = 44, PR = 12, PT = 12, PB = 24;
+  const innerW = W - PL - PR;
+  const innerH = H - PT - PB;
+  const allValues = allPoints.map((p) => p.value);
+  const minV = Math.min(...allValues);
+  const maxV = Math.max(...allValues);
+  const range = maxV - minV || 0.01;
+
+  const xPos = (i) => PL + (i / (allPoints.length - 1)) * innerW;
+  const yPos = (v) => PT + (1 - (v - minV) / range) * innerH;
+
+  const pathD = allPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${xPos(i).toFixed(1)} ${yPos(p.value).toFixed(1)}`).join(" ");
+  const lastVal = allPoints[allPoints.length - 1].value;
+  const improved = lowerIsBetter ? lastVal < baseline : lastVal > baseline;
+  const lineColor = improved ? "var(--success, #22c55e)" : allPoints.length > 1 && lastVal === baseline ? "#888" : "#ef4444";
+
+  const circles = allPoints.map((p, i) => {
+    const cx = xPos(i).toFixed(1);
+    const cy = yPos(p.value).toFixed(1);
+    const pctText = (p.value * 100).toFixed(1) + "%";
+    return `
+      <circle cx="${cx}" cy="${cy}" r="4" fill="${i === 0 ? "#888" : lineColor}" />
+      <text x="${cx}" y="${parseFloat(cy) - 7}" text-anchor="middle" fill="${i === 0 ? "#888" : lineColor}" font-size="10">${escapeHtml(pctText)}</text>
+    `;
+  }).join("");
+
+  const xLabels = allPoints.map((p, i) => `
+    <text x="${xPos(i).toFixed(1)}" y="${H - 4}" text-anchor="middle" fill="#888" font-size="10">${escapeHtml(p.label)}</text>
+  `).join("");
+
+  return `
+    <div class="validation-trend-wrap">
+      <div class="validation-trend-label">${escapeHtml(metricLabel(targetKey))} の推移</div>
+      <svg viewBox="0 0 ${W} ${H}" class="validation-trend-svg" style="width:100%;max-width:${W}px;height:${H}px">
+        <line x1="${xPos(0).toFixed(1)}" y1="${PT}" x2="${xPos(0).toFixed(1)}" y2="${PT + innerH}" stroke="#ddd" stroke-width="1" stroke-dasharray="3 3"/>
+        <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        ${circles}
+        ${xLabels}
+      </svg>
+    </div>
+  `;
 }
 
 function renderValidationDetail(context) {
@@ -1137,6 +1206,38 @@ function renderValidationDetail(context) {
     ? `完了日 ${selected.completedAtDate} 起点、${activeEvaluation.days}日後 (${activeEvaluation.from}〜${activeEvaluation.to}) との比較`
     : `完了日 ${selected.completedAtDate || "-"} 起点 — まだ観測データがありません。`;
 
+  // Primary metric highlight
+  const primaryEl = q("validation-primary-metric");
+  if (primaryEl) {
+    const primary = metrics.find((m) => m.isPrimary) || metrics[0];
+    if (primary && activeEvaluation) {
+      const delta = primary.after - primary.before;
+      const tone = metricImprovementDirection(primary.key, primary.before ? (primary.after / primary.before) - 1 : null);
+      primaryEl.classList.remove("hidden");
+      primaryEl.innerHTML = `
+        <div class="vpm-label">改善目標指標: <strong>${escapeHtml(primary.label)}</strong></div>
+        <div class="vpm-values">
+          <div class="vpm-cell">
+            <div class="vpm-cell-label">実施前</div>
+            <div class="vpm-cell-val muted">${escapeHtml(fmtPct(primary.before))}</div>
+          </div>
+          <div class="vpm-arrow compare-${tone}">→</div>
+          <div class="vpm-cell">
+            <div class="vpm-cell-label">${activeEvaluation.days}日後</div>
+            <div class="vpm-cell-val compare-${tone}">${escapeHtml(fmtPct(primary.after))}</div>
+          </div>
+          <div class="vpm-delta compare-${tone}">${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt</div>
+        </div>
+      `;
+    } else {
+      primaryEl.classList.add("hidden");
+    }
+  }
+
+  // Timeline chart
+  const trendEl = q("validation-trend-chart");
+  if (trendEl) trendEl.innerHTML = buildValidationTimeline(selected);
+
   if (!metrics.length) {
     cards.innerHTML = "";
     chart.textContent = "完了後の観測データがたまると、前後比較を表示します。";
@@ -1153,9 +1254,9 @@ function renderValidationDetail(context) {
         const beforeWidth = Math.max(4, (item.before / max) * 100);
         const afterWidth = Math.max(4, (item.after / max) * 100);
         return `
-          <section class="validation-metric-card">
+          <section class="validation-metric-card${item.isPrimary ? " validation-metric-primary" : ""}">
             <div class="validation-metric-head">
-              <div class="validation-metric-name">${escapeHtml(item.label)}</div>
+              <div class="validation-metric-name">${escapeHtml(item.label)}${item.isPrimary ? ' <span class="vmc-primary-badge">改善目標</span>' : ""}</div>
               <div class="k compare-${tone}">変化 ${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt</div>
             </div>
             <div class="validation-metric-grid">
@@ -1165,30 +1266,20 @@ function renderValidationDetail(context) {
               </div>
               <div class="card">
                 <div class="k">施策後</div>
-                <div class="v">${escapeHtml(fmtPct(item.after))}</div>
+                <div class="v compare-${tone}">${escapeHtml(fmtPct(item.after))}</div>
               </div>
               <div class="card">
-                <div class="k">評価</div>
-                <div class="v compare-${tone}">${escapeHtml(delta >= 0 ? "+" : "")}${(delta * 100).toFixed(2)}pt</div>
+                <div class="k">変化</div>
+                <div class="v compare-${tone}">${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt</div>
               </div>
             </div>
             <div class="validation-bar">
-              <div class="validation-bar-label">
-                <span>施策前</span>
-                <span>${escapeHtml(fmtPct(item.before))}</span>
-              </div>
-              <div class="validation-bar-track">
-                <div class="validation-bar-fill-before" style="width:${beforeWidth}%;"></div>
-              </div>
+              <div class="validation-bar-label"><span>施策前</span><span>${escapeHtml(fmtPct(item.before))}</span></div>
+              <div class="validation-bar-track"><div class="validation-bar-fill-before" style="width:${beforeWidth}%;"></div></div>
             </div>
             <div class="validation-bar">
-              <div class="validation-bar-label">
-                <span>施策後</span>
-                <span>${escapeHtml(fmtPct(item.after))}</span>
-              </div>
-              <div class="validation-bar-track">
-                <div class="validation-bar-fill-after" style="width:${afterWidth}%;"></div>
-              </div>
+              <div class="validation-bar-label"><span>施策後</span><span>${escapeHtml(fmtPct(item.after))}</span></div>
+              <div class="validation-bar-track"><div class="validation-bar-fill-after compare-fill-${tone}" style="width:${afterWidth}%;"></div></div>
             </div>
           </section>
         `;
@@ -1936,167 +2027,173 @@ const METRIC_GROUP_LABELS = {
 };
 
 function renderDiagnosis(result) {
-  const el = q("diagnosis-result");
-  const rec = q("recommendation-list");
-  el.innerHTML = "";
-  rec.innerHTML = "";
+  const host = q("diagnosis-unified");
+  if (!host) return;
+  host.innerHTML = "";
 
   if (!result) {
-    el.textContent = "診断未実行";
+    host.innerHTML = `<div class="muted tiny" style="padding:16px">診断未実行 — 「診断実行」ボタンを押してください。</div>`;
     return;
   }
 
   const dimLabel = { channel: "チャネル", device: "デバイス", landing_page: "LP", item_name: "アイテム", item_category: "カテゴリ" };
+  const severityLabel = { critical: "重大", warning: "要改善", ok: "良好" };
 
-  result.findings.forEach((f) => {
-    const card = document.createElement("article");
-    card.className = `diagnosis-finding ${f.severity}`;
-    const pct = (f.value * 100).toFixed(1);
-    const bm = (f.benchmark * 100).toFixed(1);
-    const candidates = (f.worstCandidates || (f.worstHint ? [f.worstHint] : []));
-    const worstHtml = candidates.length
-      ? candidates.map((w) =>
-          `<span class="diagnosis-worst-tag">${escapeHtml(dimLabel[w.dimension] || w.dimension)}: ${escapeHtml(w.dimensionValue)} (${(w.metricValue * 100).toFixed(1)}%)</span>`
-        ).join("")
-      : "<span class='muted'>データなし</span>";
-    card.innerHTML = `
-      <div class="diagnosis-title">
-        <span>${escapeHtml(f.title)}</span>
-        <span class="diagnosis-severity">${escapeHtml(f.severity)}</span>
-      </div>
-      <div class="diagnosis-values">${pct}% <span class="muted">（基準 ${bm}%）</span></div>
-      <div class="tiny muted">${escapeHtml(f.reason)}</div>
-      <div class="diagnosis-worst-row">悪化箇所: ${worstHtml}</div>
-    `;
-    el.appendChild(card);
-  });
+  // Build map: metricKey → finding
+  const findingByKey = new Map();
+  (result.findings || []).forEach((f) => findingByKey.set(f.metricKey, f));
 
-  // Group recommendations by metricKey
-  const groups = new Map();
+  // Build map: metricKey → recommendations[]
+  const recsByKey = new Map();
   (result.recommendations || []).forEach((r) => {
     const key = r.metricKey || "cvr";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r);
+    if (!recsByKey.has(key)) recsByKey.set(key, []);
+    recsByKey.get(key).push(r);
   });
 
-  // Collect registered task titles from current context
+  // Collect already-registered task contents
   const registeredContents = new Set(
     (state.projectContext?.actionLogHistory || []).map((item) => item.content)
   );
 
-  groups.forEach((recs, metricKey) => {
-    const groupEl = document.createElement("div");
-    groupEl.className = "rec-group";
+  // Gather all metric keys (from both findings and recs)
+  const allKeys = new Set([...findingByKey.keys(), ...recsByKey.keys()]);
 
-    const groupLabel = METRIC_GROUP_LABELS[metricKey] || metricKey;
-    const headerEl = document.createElement("div");
-    headerEl.className = "rec-group-header";
-    headerEl.innerHTML = `<span class="rec-group-label">${escapeHtml(groupLabel)}</span>`;
-    groupEl.appendChild(headerEl);
+  // Sort: critical first, then warning, then ok
+  const severityOrder = { critical: 0, warning: 1, ok: 2 };
+  const sortedKeys = [...allKeys].sort((a, b) => {
+    const sa = severityOrder[findingByKey.get(a)?.severity] ?? 3;
+    const sb = severityOrder[findingByKey.get(b)?.severity] ?? 3;
+    return sa - sb;
+  });
 
-    recs.forEach((r) => {
-      const card = document.createElement("div");
-      card.className = "rec-card";
+  sortedKeys.forEach((metricKey) => {
+    const finding = findingByKey.get(metricKey);
+    const recs = recsByKey.get(metricKey) || [];
+    if (!finding && !recs.length) return;
 
-      // Worst candidate hint for this metric (e.g. "Direct")
-      const worstCandidate = (result.findings || []).find((f) => f.metricKey === r.metricKey)
-        ?.worstCandidates?.[0] || null;
-      const dimHintSuffix = worstCandidate
-        ? ` [${dimLabel[worstCandidate.dimension] || worstCandidate.dimension}: ${worstCandidate.dimensionValue}]`
+    const section = document.createElement("div");
+    section.className = `dac-section dac-severity-${finding?.severity || "ok"}`;
+
+    // --- Finding header ---
+    let findingHtml = "";
+    if (finding) {
+      const pct = (finding.value * 100).toFixed(1);
+      const bm = (finding.benchmark * 100).toFixed(1);
+      const candidates = finding.worstCandidates || (finding.worstHint ? [finding.worstHint] : []);
+      const worstHtml = candidates.length
+        ? candidates.map((w) =>
+            `<span class="dac-worst-tag">${escapeHtml(dimLabel[w.dimension] || w.dimension)}: ${escapeHtml(w.dimensionValue)} (${(w.metricValue * 100).toFixed(1)}%)</span>`
+          ).join("")
         : "";
 
-      const stepsHtml = (r.actionSteps || []).map((step) => {
-        const taskContent = `${r.title}: ${step}${dimHintSuffix}`;
-        const isDone = registeredContents.has(taskContent);
-        return `
-          <label class="rec-task-row${isDone ? " is-done" : ""}">
-            <input type="checkbox" class="rec-task-cb"
-              data-step="${escapeHtml(step)}"
-              data-title="${escapeHtml(r.title)}"
-              data-dim-hint="${escapeHtml(dimHintSuffix)}"
-              ${isDone ? "checked disabled" : ""} />
-            <span class="rec-task-label">${escapeHtml(step)}</span>
-            ${isDone ? `<span class="rec-task-done-badge">完了登録済</span>` : ""}
-          </label>`;
-      }).join("");
-
-      card.innerHTML = `
-        <img alt="${escapeHtml(r.title)}" src="${recommendationImage(r.imageLabel, r.imageColor)}" />
-        <div class="rec-body">
-          <div class="rec-title">${escapeHtml(r.title)}</div>
-          <div class="rec-scores">
-            <span class="rec-score-tag">Impact <strong>${r.impactScore}</strong></span>
-            <span class="rec-score-tag">Ease <strong>${r.easeScore}</strong></span>
-            <span class="rec-score-tag muted">検証指標: ${escapeHtml(r.validationMetric)}</span>
+      findingHtml = `
+        <div class="dac-finding-row">
+          <div class="dac-finding-left">
+            <span class="dac-severity-badge dac-sev-${finding.severity}">${severityLabel[finding.severity] || finding.severity}</span>
+            <span class="dac-metric-title">${escapeHtml(finding.title)}</span>
           </div>
-          <div class="rec-summary">${escapeHtml(r.summary || "")}</div>
-          ${stepsHtml ? `<div class="rec-tasks">${stepsHtml}</div>` : ""}
-          <button type="button" class="rec-register-btn ghost" data-title="${escapeHtml(r.title)}">全体を施策検証に登録</button>
+          <div class="dac-finding-right">
+            <span class="dac-val">${pct}%</span>
+            <span class="dac-bm muted">基準 ${bm}%</span>
+          </div>
         </div>
+        <div class="dac-reason tiny muted">${escapeHtml(finding.reason)}</div>
+        ${worstHtml ? `<div class="dac-worst-row">${worstHtml}</div>` : ""}
       `;
+    }
 
-      // Step checkbox → register as done action log
-      card.querySelectorAll(".rec-task-cb").forEach((cb) => {
-        cb.addEventListener("change", async (e) => {
-          if (!e.target.checked || !state.projectId) return;
-          const taskContent = `${cb.dataset.title}: ${cb.dataset.step}${cb.dataset.dimHint}`;
-          const row = cb.closest(".rec-task-row");
-          cb.disabled = true;
-          try {
-            await api(`/api/projects/${state.projectId}/context`, {
-              method: "POST",
-              body: {
-                actionLog: taskContent,
-                actionOwner: "",
-                actionStatus: "done",
-                actionPriority: "high",
-                actionCompletedAtDate: todayISO(),
-                from: state.from,
-                to: state.to
+    section.innerHTML = findingHtml;
+
+    // --- Recommendations for this metric ---
+    if (recs.length) {
+      const recsWrap = document.createElement("div");
+      recsWrap.className = "dac-recs";
+
+      recs.forEach((r) => {
+        const worstCandidate = finding?.worstCandidates?.[0] || null;
+        const dimHintSuffix = worstCandidate
+          ? ` [${dimLabel[worstCandidate.dimension] || worstCandidate.dimension}: ${worstCandidate.dimensionValue}]`
+          : "";
+
+        const recEl = document.createElement("div");
+        recEl.className = "dac-rec";
+
+        // Action steps with タスク化 button
+        const stepsHtml = (r.actionSteps || []).map((step, i) => {
+          const taskContent = `${r.title}: ${step}${dimHintSuffix}`;
+          const isRegistered = registeredContents.has(taskContent);
+          return `
+            <div class="dac-step-row${isRegistered ? " dac-step-registered" : ""}">
+              <span class="dac-step-num">${i + 1}</span>
+              <span class="dac-step-text">${escapeHtml(step)}</span>
+              ${isRegistered
+                ? `<span class="dac-step-badge">✓ 追加済</span>`
+                : `<button type="button" class="dac-task-btn"
+                     data-content="${escapeHtml(taskContent)}"
+                     data-metric="${escapeHtml(r.metricKey || metricKey)}"
+                     data-priority="${r.impactScore >= 4 ? "high" : "medium"}">タスク化する</button>`
               }
-            });
-            row.classList.add("is-done");
-            if (!row.querySelector(".rec-task-done-badge")) {
-              row.insertAdjacentHTML("beforeend", `<span class="rec-task-done-badge">完了登録済</span>`);
-            }
-            await loadProjectContext();
-          } catch (err) {
-            cb.disabled = false;
-            cb.checked = false;
-          }
-        });
-      });
+            </div>`;
+        }).join("");
 
-      // Whole-card register button
-      card.querySelector(".rec-register-btn").addEventListener("click", async (e) => {
-        const btn = e.currentTarget;
-        if (!state.projectId) return;
-        try {
-          await api(`/api/projects/${state.projectId}/context`, {
-            method: "POST",
-            body: {
-              actionLog: r.title,
-              actionOwner: "",
-              actionStatus: "todo",
-              actionPriority: "high",
-              actionCompletedAtDate: "",
-              from: state.from,
-              to: state.to
+        recEl.innerHTML = `
+          <div class="dac-rec-header">
+            <div class="dac-rec-title">${escapeHtml(r.title)}</div>
+            <div class="dac-rec-scores">
+              <span class="dac-score-tag" title="改善インパクト">Impact <strong>${r.impactScore}</strong>/5</span>
+              <span class="dac-score-tag" title="実施難易度">Ease <strong>${r.easeScore}</strong>/5</span>
+            </div>
+          </div>
+          ${r.summary ? `<div class="dac-rec-summary tiny muted">${escapeHtml(r.summary)}</div>` : ""}
+          ${stepsHtml ? `<div class="dac-steps">${stepsHtml}</div>` : ""}
+        `;
+
+        // タスク化ボタンのイベント
+        recEl.querySelectorAll(".dac-task-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            if (!state.projectId) return;
+            const content = btn.dataset.content;
+            const targetMetricKey = btn.dataset.metric;
+            const priority = btn.dataset.priority;
+            btn.disabled = true;
+            btn.textContent = "追加中…";
+            try {
+              await api(`/api/projects/${state.projectId}/context`, {
+                method: "POST",
+                body: {
+                  actionLog: content,
+                  actionOwner: "",
+                  actionStatus: "todo",
+                  actionPriority: priority,
+                  actionCompletedAtDate: "",
+                  targetMetricKey,
+                  from: state.from,
+                  to: state.to
+                }
+              });
+              btn.textContent = "✓ 追加済";
+              btn.classList.add("dac-step-badge");
+              btn.classList.remove("dac-task-btn");
+              registeredContents.add(content);
+              await loadProjectContext();
+              // 施策管理タブへの案内
+              const stepRow = btn.closest(".dac-step-row");
+              if (stepRow) stepRow.classList.add("dac-step-registered");
+            } catch (err) {
+              btn.disabled = false;
+              btn.textContent = "タスク化する";
             }
           });
-          btn.textContent = "✓ 登録済み";
-          btn.disabled = true;
-          btn.classList.add("rec-register-done");
-          await loadProjectContext();
-        } catch (err) {
-          btn.textContent = "登録失敗";
-        }
+        });
+
+        recsWrap.appendChild(recEl);
       });
 
-      groupEl.appendChild(card);
-    });
+      section.appendChild(recsWrap);
+    }
 
-    rec.appendChild(groupEl);
+    host.appendChild(section);
   });
 }
 
@@ -2210,6 +2307,7 @@ async function loadProjectContext() {
   q("action-status").value = "todo";
   q("action-priority").value = "medium";
   q("action-completed-date").value = "";
+  if (q("action-target-metric")) q("action-target-metric").value = "";
   q("editing-action-log-id").value = "";
   q("cancel-edit-action-log").classList.add("hidden");
   q("task-form-title").textContent = "施策タスクを追加";
@@ -2839,6 +2937,7 @@ q("assistant-context-form").addEventListener("submit", async (e) => {
         actionStatus: q("action-status").value,
         actionPriority: q("action-priority").value,
         actionCompletedAtDate: q("action-completed-date").value,
+        targetMetricKey: q("action-target-metric")?.value || "",
         from: state.from,
         to: state.to
       }
@@ -2887,6 +2986,7 @@ q("action-log-timeline").addEventListener("click", async (e) => {
     q("action-status").value = row.status || "todo";
     q("action-priority").value = row.priority || "medium";
     q("action-completed-date").value = row.completedAtDate || "";
+    if (q("action-target-metric")) q("action-target-metric").value = row.targetMetricKey || "";
     q("cancel-edit-action-log").classList.remove("hidden");
     q("task-form-title").textContent = "施策タスクを編集";
     q("task-submit-btn").textContent = "更新する";
@@ -2933,6 +3033,16 @@ document.addEventListener("click", (e) => {
   renderValidationDetail(state.projectContext);
   q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
+
+// 効果測定パネル閉じるボタン
+const closePanelBtn = q("close-compare-panel");
+if (closePanelBtn) {
+  closePanelBtn.addEventListener("click", () => {
+    state.selectedValidationActionId = null;
+    q("task-compare-panel")?.classList.add("hidden");
+    renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
+  });
+}
 
 // 対象ページでフィルターボタン
 const pageApplyBtn = q("task-compare-page-apply");
