@@ -2325,12 +2325,12 @@ async function handleApi(req, res, urlObj) {
     db.sessions.push({
       id: sid,
       userId: user.id,
-      expiresAt: new Date(Date.now() + 7 * ONE_DAY_MS).toISOString()
+      expiresAt: new Date(Date.now() + 30 * ONE_DAY_MS).toISOString()
     });
     await writeDb(db);
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
-      "Set-Cookie": `${SESSION_COOKIE_NAME}=${sid}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`
+      "Set-Cookie": `${SESSION_COOKIE_NAME}=${sid}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`
     });
     return res.end(JSON.stringify({ user: { id: user.id, email: user.email, displayName: user.displayName } }));
   }
@@ -2442,7 +2442,7 @@ async function handleApi(req, res, urlObj) {
     db.sessions.push({
       id: sid,
       userId: user.id,
-      expiresAt: new Date(Date.now() + 7 * ONE_DAY_MS).toISOString()
+      expiresAt: new Date(Date.now() + 30 * ONE_DAY_MS).toISOString()
     });
     const tenant = primaryTenantForUser(db, user.id);
     trackAppEvent(db, { eventType: "user_login", userId: user.id, tenantId: tenant?.id || null });
@@ -2450,7 +2450,7 @@ async function handleApi(req, res, urlObj) {
 
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
-      "Set-Cookie": `${SESSION_COOKIE_NAME}=${sid}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`
+      "Set-Cookie": `${SESSION_COOKIE_NAME}=${sid}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`
     });
     return res.end(JSON.stringify({ user: { id: user.id, email: user.email, displayName: user.displayName } }));
   }
@@ -3432,7 +3432,20 @@ async function handleApi(req, res, urlObj) {
       }
     }
 
-    const rows = selectRowsForPeriod(db, projectId, range.from, range.to);
+    // Auto-sync if no data exists for this period and GA4 is connected
+    let rows = selectRowsForPeriod(db, projectId, range.from, range.to);
+    if (rows.length === 0) {
+      const conn = db.ga4Connections.find((g) => g.projectId === projectId);
+      if (conn && requireGoogleOAuthConfig()) {
+        try {
+          await syncProjectMetrics(db, project);
+          await writeDb(db);
+          rows = selectRowsForPeriod(db, projectId, range.from, range.to);
+        } catch (err) {
+          console.error("auto-sync on empty metrics:", err.message);
+        }
+      }
+    }
     const agg = aggregateMetricRows(rows);
     const rates = computeRates(agg);
     const comparisons = buildMetricComparisons(db, rates, project);
@@ -4023,9 +4036,23 @@ async function bootstrap() {
     console.log(`server started on http://localhost:${PORT}`);
   });
 
-  setInterval(() => {
-    runDailyBatch().catch((err) => console.error("batch error", err));
-  }, ONE_DAY_MS);
+  // Run batch on startup (catches up stale data from server sleep/restart)
+  setTimeout(() => {
+    runDailyBatch().catch((err) => console.error("startup batch error", err));
+  }, 5000);
+
+  // Then check every hour; only sync if ≥23h since last run
+  setInterval(async () => {
+    try {
+      const db = await readDb();
+      const lastRun = db.lastBatchRunAt ? new Date(db.lastBatchRunAt).getTime() : 0;
+      if (Date.now() - lastRun >= 23 * 60 * 60 * 1000) {
+        await runDailyBatch();
+      }
+    } catch (err) {
+      console.error("batch interval error", err);
+    }
+  }, 60 * 60 * 1000);
 }
 
 bootstrap().catch((err) => {

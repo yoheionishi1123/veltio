@@ -1330,8 +1330,28 @@ async function bootstrap() {
                 : "auth_or_dashboard",
   });
 
+  // Retry /api/me to handle Render cold starts (server waking up)
+  let me = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      me = await api("/api/me");
+      break;
+    } catch (err) {
+      if (attempt < 2 && (err.status === 0 || err.status >= 500)) {
+        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
+      }
+      showAuth(initialAuthMode, { syncPath: false });
+      applyRouteState();
+      return;
+    }
+  }
+  if (!me) {
+    showAuth(initialAuthMode, { syncPath: false });
+    applyRouteState();
+    return;
+  }
   try {
-    const me = await api("/api/me");
     state.user = me.user;
     state.tenants = me.tenants;
     state.isAdmin = Boolean(me.isAdmin);
