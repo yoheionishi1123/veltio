@@ -164,109 +164,43 @@
               <div>
                 <p class="dashboard-kicker">Veltio Dashboard</p>
                 <h2>分析ダッシュボード</h2>
-                <p class="muted dashboard-lead">KPI、推移、ボトルネック、推奨施策、キャンペーン影響を1画面で追えるように整理しました。</p>
               </div>
               <div class="dashboard-hero-actions">
+                <form id="project-goal-form" class="dashboard-inline-control dashboard-goal-form">
+                  <label class="dashboard-goal-label">目標CVR（%）
+                    <input id="project-target-cvr" type="number" min="0.01" max="99.99" step="0.01" placeholder="0.00" style="width:72px" />
+                  </label>
+                  <button type="submit" class="ghost">保存</button>
+                  <span id="project-goal-status" class="tiny"></span>
+                </form>
                 <button id="refresh-project" type="button" class="ghost dashboard-ghost">更新</button>
               </div>
             </div>
-            <div class="dashboard-control-grid">
-              <article class="dashboard-control-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <p class="dashboard-card-kicker">Site / Project</p>
-                    <h3>分析対象サイト</h3>
-                  </div>
-                  <span id="project-status" class="tiny"></span>
-                </div>
-                <div id="project-empty-state" class="inline dashboard-inline-control">
-                  <select id="project-select"></select>
-                </div>
-                <div id="project-onboard-hint" class="project-onboard-hint hidden">
-                  <span class="project-onboard-icon">👋</span>
-                  <div>
-                    <div class="project-onboard-title">プロジェクトが見つかりません</div>
-                    <div class="project-onboard-sub">以前データがあった場合、サーバー再起動でリセットされた可能性があります。<br>別のアカウントでログインしている可能性もあります。</div>
-                    <div class="project-onboard-actions">
-                      <button id="onboard-logout" type="button" class="project-onboard-logout-btn">ログアウトして確認</button>
-                      <span class="project-onboard-or">または 下のフォームで新規作成</span>
-                    </div>
-                  </div>
-                </div>
-                <div id="project-current-card" class="card dashboard-current-card hidden"></div>
-                <div id="project-actions" class="inline hidden dashboard-inline-control">
-                  <button id="show-add-project" type="button" class="ghost dashboard-ghost">別サイトを追加</button>
-                </div>
-                <form id="project-form" class="hidden dashboard-form-grid">
-                  <p class="tiny muted" style="margin:0 0 8px;grid-column:1/-1;">新しい分析対象サイトを登録します（GA4連携は次のステップで行います）</p>
-                  <input type="text" id="project-name" placeholder="サイト名（例: Melety Store）" required />
-                  <input type="text" id="project-domain" placeholder="ドメイン（例: melety.store）" required />
-                  <button type="submit">作成</button>
-                </form>
-              </article>
-
-              <article class="dashboard-control-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <p class="dashboard-card-kicker">GA4 Connection</p>
-                    <h3>GA4連携</h3>
-                  </div>
-                </div>
-                <div id="ga4-connect-form-wrap">
-                  <form id="ga4-quick-form" class="dashboard-stack-form">
-                    <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
-                    <div class="dashboard-inline-control">
-                      <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
-                      <button type="submit">かんたん接続</button>
-                    </div>
-                  </form>
-                  <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
-                </div>
-                <div id="ga4-status" class="ga4-status-card"></div>
-                <div class="dashboard-inline-control">
-                  <button id="ga4-reconnect" class="ghost hidden dashboard-ghost" type="button">連携し直す</button>
-                  <span id="ga4-quick-status" class="tiny"></span>
-                </div>
-              </article>
-
-              <article class="dashboard-control-card">
-                <div class="dashboard-card-head">
-                  <div>
-                    <p class="dashboard-card-kicker">Range & Goal</p>
-                    <h3>期間と目標</h3>
-                  </div>
-                </div>
-                <form id="project-goal-form" class="dashboard-inline-control dashboard-goal-form">
-                  <input id="project-target-cvr" type="number" min="0.01" max="99.99" step="0.01" placeholder="目標CVR（%）" />
-                  <button type="submit">保存</button>
-                  <span id="project-goal-status" class="tiny"></span>
-                </form>
-                <div class="dashboard-range-grid">
-                  <input type="date" id="from-date" />
-                  <input type="date" id="to-date" />
-                  <div class="compare-select-wrap">
-                    <select id="compare-preset">
-                      <option value="none">比較なし</option>
-                      <option value="prev_year">前年</option>
-                      <option value="prev_year_same_week">前年同週</option>
-                      <option value="prev_month">前月</option>
-                      <option value="prev_month_same_week">前月同週</option>
-                      <option value="custom">カスタム期間</option>
-                    </select>
-                    <span id="compare-lock-badge" class="pro-lock-badge hidden">Pro</span>
-                  </div>
-                  <select id="granularity-select">
-                    <option value="day">日別</option>
-                    <option value="week">週別</option>
-                    <option value="month">月別</option>
-                  </select>
-                  <input type="date" id="compare-from-date" class="hidden" />
-                  <input type="date" id="compare-to-date" class="hidden" />
-                  <button id="apply-range" type="button">適用</button>
-                </div>
-                <div id="compare-status" class="tiny"></div>
-              </article>
+            <div class="dashboard-range-row">
+              <input type="date" id="from-date" />
+              <span class="range-sep">→</span>
+              <input type="date" id="to-date" />
+              <div class="compare-select-wrap">
+                <select id="compare-preset">
+                  <option value="none">比較なし</option>
+                  <option value="prev_year">前年</option>
+                  <option value="prev_year_same_week">前年同週</option>
+                  <option value="prev_month">前月</option>
+                  <option value="prev_month_same_week">前月同週</option>
+                  <option value="custom">カスタム期間</option>
+                </select>
+                <span id="compare-lock-badge" class="pro-lock-badge hidden">Pro</span>
+              </div>
+              <select id="granularity-select">
+                <option value="day">日別</option>
+                <option value="week">週別</option>
+                <option value="month">月別</option>
+              </select>
+              <input type="date" id="compare-from-date" class="hidden" />
+              <input type="date" id="compare-to-date" class="hidden" />
+              <button id="apply-range" type="button">適用</button>
             </div>
+            <div id="compare-status" class="tiny"></div>
           </section>
 
           <section class="panel dashboard-panel">
@@ -289,7 +223,20 @@
               </details>
             </div>
             <div id="metric-cards" class="dashboard-kpi-grid"></div>
-            <div id="top-action-card" class="card action-focus-card hidden"></div>
+          </section>
+
+          <div id="top-action-card" class="action-notify-bar hidden"></div>
+
+          <section class="panel dashboard-panel">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="dashboard-card-kicker">Diagnosis</p>
+                <h2>診断と推奨施策</h2>
+              </div>
+              <button id="run-diagnosis" type="button">診断実行</button>
+            </div>
+            <div id="diagnosis-result" class="diagnosis-grid"></div>
+            <div id="recommendation-list" class="recommendations"></div>
           </section>
 
           <section class="panel dashboard-panel">
@@ -372,18 +319,6 @@
               </table>
             </div>
             <div id="breakdown-cards" class="breakdown-cards"></div>
-          </section>
-
-          <section class="panel dashboard-panel">
-            <div class="dashboard-section-head">
-              <div>
-                <p class="dashboard-card-kicker">Diagnosis</p>
-                <h2>診断と推奨施策</h2>
-              </div>
-              <button id="run-diagnosis" type="button">診断実行</button>
-            </div>
-            <div id="diagnosis-result" class="diagnosis-grid"></div>
-            <div id="recommendation-list" class="recommendations"></div>
           </section>
 
           <section class="panel dashboard-panel">
@@ -499,6 +434,66 @@
                   <button id="send-test-email" type="button" class="btn-ghost">送信テスト</button>
                   <span id="test-email-status" class="account-status-text"></span>
                 </div>
+              </div>
+            </section>
+
+            <!-- 分析対象サイト -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Site / Project</p>
+                  <h2>分析対象サイト</h2>
+                </div>
+                <span id="project-status" class="tiny"></span>
+              </div>
+              <div id="project-empty-state" class="inline dashboard-inline-control">
+                <select id="project-select"></select>
+              </div>
+              <div id="project-onboard-hint" class="project-onboard-hint hidden">
+                <span class="project-onboard-icon">👋</span>
+                <div>
+                  <div class="project-onboard-title">プロジェクトが見つかりません</div>
+                  <div class="project-onboard-sub">以前データがあった場合、サーバー再起動でリセットされた可能性があります。<br>別のアカウントでログインしている可能性もあります。</div>
+                  <div class="project-onboard-actions">
+                    <button id="onboard-logout" type="button" class="project-onboard-logout-btn">ログアウトして確認</button>
+                    <span class="project-onboard-or">または 下のフォームで新規作成</span>
+                  </div>
+                </div>
+              </div>
+              <div id="project-current-card" class="card dashboard-current-card hidden"></div>
+              <div id="project-actions" class="inline hidden dashboard-inline-control" style="margin-top:10px;">
+                <button id="show-add-project" type="button" class="ghost">別サイトを追加</button>
+              </div>
+              <form id="project-form" class="hidden dashboard-form-grid" style="margin-top:12px;">
+                <p class="tiny muted" style="margin:0 0 8px;grid-column:1/-1;">新しい分析対象サイトを登録します（GA4連携は次のステップで行います）</p>
+                <input type="text" id="project-name" placeholder="サイト名（例: Melety Store）" required />
+                <input type="text" id="project-domain" placeholder="ドメイン（例: melety.store）" required />
+                <button type="submit">作成</button>
+              </form>
+            </section>
+
+            <!-- GA4連携 -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">GA4 Connection</p>
+                  <h2>GA4連携</h2>
+                </div>
+              </div>
+              <div id="ga4-connect-form-wrap">
+                <form id="ga4-quick-form" class="dashboard-stack-form">
+                  <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
+                  <div class="dashboard-inline-control">
+                    <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
+                    <button type="submit">かんたん接続</button>
+                  </div>
+                </form>
+                <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
+              </div>
+              <div id="ga4-status" class="ga4-status-card"></div>
+              <div class="dashboard-inline-control" style="margin-top:8px;">
+                <button id="ga4-reconnect" class="ghost hidden" type="button">連携し直す</button>
+                <span id="ga4-quick-status" class="tiny"></span>
               </div>
             </section>
 

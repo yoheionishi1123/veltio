@@ -410,7 +410,7 @@ label {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 20px 24px;
 }
 
 .chart-summary {
@@ -444,8 +444,9 @@ label {
 }
 
 .metric-card-primary {
-  border-color: var(--accent);
-  background: linear-gradient(135deg, var(--panel) 60%, rgba(249,115,22,0.06));
+  border-color: var(--line);
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.2);
+  background: linear-gradient(135deg, var(--panel) 60%, rgba(249,115,22,0.04));
 }
 
 .metric-card-head {
@@ -694,8 +695,8 @@ label {
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent);
-  font-weight: 700;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .dashboard-lead { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
@@ -733,8 +734,8 @@ label {
   font-size: 10.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
-  font-weight: 700;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .dashboard-card-head h3 { margin: 0; font-size: 14px; }
@@ -764,7 +765,39 @@ label {
   gap: 8px;
 }
 
+.dashboard-range-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.range-sep {
+  color: var(--muted);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.dashboard-goal-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .dashboard-goal-form { gap: 8px; }
+
+.action-notify-bar {
+  margin: 0 0 8px;
+  padding: 14px 18px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(249,115,22,0.25);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
 
 .dashboard-form-grid {
   grid-template-columns: 1fr 1fr auto;
@@ -1873,7 +1906,7 @@ tr:hover td { background: var(--panel-2); }
 ────────────────────────────────────────────── */
 .action-focus-card {
   margin-top: 14px;
-  border-color: var(--accent);
+  border-color: rgba(249,115,22,0.25);
   background: var(--accent-dim);
 }
 
