@@ -872,15 +872,28 @@ function renderProjectHeader() {
     return;
   }
 
+  // Project = 分析対象サイトの識別子（GA4プロパティとは別の概念）
+  const domainDisplay = (current?.domain || "").replace(/^https?:\/\//, "");
   q("project-current-card").innerHTML = `
-    <div class="k">現在のプロジェクト</div>
+    <div class="k">分析対象サイト</div>
     <div class="v">${escapeHtml(current?.name || "")}</div>
-    <div class="k">${escapeHtml(current?.domain || "")}</div>
-    <div class="k">目標CVR ${typeof current?.targetCvr === "number" ? fmtPct(current.targetCvr) : "未設定"}</div>
-    ${multi ? `<div class="k">登録済み ${state.projects.length}件</div>` : ""}
+    <div class="k proj-domain">${escapeHtml(domainDisplay)}</div>
+    ${typeof current?.targetCvr === "number"
+      ? `<div class="k">目標CVR <strong>${fmtPct(current.targetCvr)}</strong></div>`
+      : `<div class="k" style="color:var(--muted)">目標CVR 未設定</div>`}
+    ${multi ? `<div style="margin-top:6px;"><select id="project-switch" style="font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);color:var(--ink-1);">${state.projects.map((p) => `<option value="${escapeHtml(p.id)}" ${p.id === state.projectId ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}</select></div>` : ""}
   `;
+
+  if (multi) {
+    q("project-switch")?.addEventListener("change", (e) => {
+      state.projectId = e.target.value;
+      void refreshAll();
+    });
+  }
+
   q("project-target-cvr").value = typeof current?.targetCvr === "number" ? (current.targetCvr * 100).toFixed(2) : "";
-  q("show-add-project").textContent = "別プロパティを追加";
+  // ボタンテキストを状態に合わせて切り替え
+  q("show-add-project").textContent = state.addingProject ? "キャンセル" : "別サイトを追加";
   q("project-status").textContent = "";
 }
 
@@ -2432,6 +2445,11 @@ q("refresh-project").addEventListener("click", refreshAll);
 q("show-add-project").addEventListener("click", () => {
   state.addingProject = !state.addingProject;
   q("project-status").textContent = "";
+  // フォームを表示するときは必ずクリア（古い値が残らないように）
+  if (state.addingProject) {
+    q("project-name").value = "";
+    q("project-domain").value = "";
+  }
   renderProjectHeader();
 });
 
@@ -2522,13 +2540,10 @@ q("ga4-quick-form").addEventListener("submit", async (e) => {
 });
 
 q("ga4-reconnect").addEventListener("click", () => {
-  // 連携し直す = フォームを再表示して入力できるようにする
-  if (state.ga4Connection?.propertyId) {
-    q("ga4-quick-input").value = state.ga4Connection.propertyId;
-  }
-  if (state.ga4Connection?.accountEmail) {
-    q("ga4-quick-email").value = state.ga4Connection.accountEmail;
-  }
+  // 連携し直す = フォームをクリアして再表示（古い値を引き継がない）
+  q("ga4-quick-input").value = state.ga4Connection?.propertyId || "";
+  q("ga4-quick-email").value = ""; // メールは毎回入力させる
+  q("ga4-quick-status").textContent = "";
   q("ga4-connect-form-wrap").classList.remove("hidden");
   q("ga4-reconnect").classList.add("hidden");
   q("ga4-status").innerHTML = "";

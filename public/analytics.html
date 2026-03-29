@@ -174,8 +174,8 @@
               <article class="dashboard-control-card">
                 <div class="dashboard-card-head">
                   <div>
-                    <p class="dashboard-card-kicker">Project</p>
-                    <h3>分析対象</h3>
+                    <p class="dashboard-card-kicker">Site / Project</p>
+                    <h3>分析対象サイト</h3>
                   </div>
                   <span id="project-status" class="tiny"></span>
                 </div>
@@ -195,12 +195,13 @@
                 </div>
                 <div id="project-current-card" class="card dashboard-current-card hidden"></div>
                 <div id="project-actions" class="inline hidden dashboard-inline-control">
-                  <button id="show-add-project" type="button" class="ghost dashboard-ghost">別プロパティを追加</button>
+                  <button id="show-add-project" type="button" class="ghost dashboard-ghost">別サイトを追加</button>
                 </div>
-                <form id="project-form" class="grid3 hidden dashboard-form-grid">
-                  <input type="text" id="project-name" placeholder="プロジェクト名" required />
-                  <input type="text" id="project-domain" placeholder="example.com" required />
-                  <button type="submit">新規作成</button>
+                <form id="project-form" class="hidden dashboard-form-grid">
+                  <p class="tiny muted" style="margin:0 0 8px;grid-column:1/-1;">新しい分析対象サイトを登録します（GA4連携は次のステップで行います）</p>
+                  <input type="text" id="project-name" placeholder="サイト名（例: Melety Store）" required />
+                  <input type="text" id="project-domain" placeholder="ドメイン（例: melety.store）" required />
+                  <button type="submit">作成</button>
                 </form>
               </article>
 
