@@ -441,6 +441,10 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function validateDateStr(s) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s));
+}
+
 function daysAgoISO(days) {
   const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   return d.toISOString().slice(0, 10);
@@ -581,6 +585,62 @@ function bucketEndForGranularity(bucket, granularity) {
   return bucket;
 }
 
+// E-commerce industry average benchmarks
+const METRIC_BENCHMARKS = {
+  bounce_rate:        { value: 0.45, label: "業界平均 45%" },
+  pdp_reach_rate:     { value: 0.40, label: "業界平均 40%" },
+  add_to_cart_rate:   { value: 0.08, label: "業界平均 8%" },
+  cart_abandon_rate:  { value: 0.70, label: "業界平均 70%" },
+  checkout_reach_rate:{ value: 0.03, label: "業界平均 3%" },
+  purchase_rate:      { value: 0.55, label: "業界平均 55%" },
+  cvr:                { value: 0.02, label: "業界平均 2%" }
+};
+
+function generateMetricInsight(data, metricKey) {
+  if (metricKey === "sessions" || !data) return null;
+  const current = metricActualValue(data, metricKey);
+  if (!current && current !== 0) return null;
+  const bm = METRIC_BENCHMARKS[metricKey];
+  const lowerIsBetter = ["bounce_rate", "cart_abandon_rate"].includes(metricKey);
+  const parts = [];
+
+  if (bm) {
+    const diff = ((current - bm.value) * 100).toFixed(1);
+    const absDiff = Math.abs(diff);
+    const vsAvg = lowerIsBetter
+      ? (current < bm.value
+          ? `業界平均より ${absDiff}pt 良好`
+          : `業界平均より ${absDiff}pt 高く要改善`)
+      : (current > bm.value
+          ? `業界平均より ${absDiff}pt 高い好成績`
+          : `業界平均より ${absDiff}pt 低く要改善`);
+    parts.push(vsAvg + "。");
+  }
+
+  if (data.compare) {
+    const prev = metricActualValue(data.compare, metricKey);
+    if (prev > 0) {
+      const pct = (Math.abs((current - prev) / prev) * 100).toFixed(1);
+      const direction = lowerIsBetter
+        ? (current < prev ? "改善" : "悪化")
+        : (current > prev ? "改善" : "悪化");
+      const tone = (direction === "改善") ? "↑" : "↓";
+      parts.push(`前期比 ${tone} ${pct}% ${direction}。`);
+    }
+  }
+
+  const ACTIONS = {
+    bounce_rate:       current > 0.55 ? "ファーストビューの訴求力とページ速度を優先改善してください。" : current < 0.30 ? "直帰率が低く、ユーザーの回遊が活発です。" : null,
+    pdp_reach_rate:    current < 0.30 ? "カテゴリ・LPから商品詳細への導線を見直してください。" : null,
+    add_to_cart_rate:  current < 0.05 ? "商品ページの信頼性向上（レビュー・サイズガイド・在庫表示）が有効です。" : null,
+    cart_abandon_rate: current > 0.75 ? "カート〜チェックアウト間の離脱が深刻です。送料・支払い手段の明示を見直してください。" : null,
+    purchase_rate:     current < 0.40 ? "チェックアウト完了率が低めです。決済手段の追加・入力フォームの簡略化を検討してください。" : null,
+    cvr:               current < 0.01 ? "CVRが業界平均を大きく下回っています。直帰率とカート追加率の改善を最優先にしてください。" : null,
+  };
+  if (ACTIONS[metricKey]) parts.push(ACTIONS[metricKey]);
+  return parts.length ? parts.join(" ") : null;
+}
+
 function renderTrendChart(series, metricKey, compareSeries = []) {
   const host = q("trend-chart");
   host.innerHTML = "";
@@ -592,9 +652,11 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
   const width = 520;
   const height = 220;
   const pad = 28;
+  const bm = METRIC_BENCHMARKS[metricKey];
   const allValues = [
     ...series.map((item) => seriesMetricValue(item, metricKey)),
-    ...compareSeries.map((item) => seriesMetricValue(item, metricKey))
+    ...compareSeries.map((item) => seriesMetricValue(item, metricKey)),
+    ...(bm ? [bm.value] : [])
   ];
   const maxValue = Math.max(...allValues, 1);
   const pointsMain = series
@@ -639,17 +701,30 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
     `;
   }).join("");
 
+  // Benchmark line
+  let benchmarkSvg = "";
+  if (bm && metricKey !== "sessions") {
+    const benchY = height - pad - (bm.value / maxValue) * (height - pad * 2);
+    benchmarkSvg = `
+      <line x1="${pad}" y1="${benchY.toFixed(1)}" x2="${width - pad}" y2="${benchY.toFixed(1)}"
+            stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.75"/>
+      <text x="${width - pad - 2}" y="${(benchY - 5).toFixed(1)}" text-anchor="end" fill="#ef4444" font-size="10" font-weight="600">${escapeHtml(bm.label)}</text>
+    `;
+  }
+
   host.innerHTML = `
     <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}">
       <rect x="0" y="0" width="${width}" height="${height}" fill="#f8fafc" rx="10"></rect>
       <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" stroke="#cbd5e1"></line>
       <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" stroke="#cbd5e1"></line>
       ${campaignBands}
+      ${benchmarkSvg}
       <polyline fill="none" stroke="#0a58ca" stroke-width="3" points="${pointsMain}"></polyline>
       ${pointsCompare ? `<polyline fill="none" stroke="#94a3b8" stroke-dasharray="6 4" stroke-width="3" points="${pointsCompare}"></polyline>` : ""}
       <text x="${pad}" y="18" fill="#0a58ca" font-size="12">${escapeHtml(metricLabel(metricKey))}</text>
       ${pointsCompare ? `<text x="${pad + 110}" y="18" fill="#94a3b8" font-size="12">${escapeHtml(comparePresetLabel(state.comparePreset) || "比較期間")}</text>` : ""}
       ${activeCampaigns.length ? `<text x="${pad + 240}" y="18" fill="#b45309" font-size="12">セール / キャンペーン期間</text>` : ""}
+      ${bm && metricKey !== "sessions" ? `<text x="${pad + (pointsCompare ? 220 : 110)}" y="18" fill="#ef4444" font-size="10">— ${escapeHtml(bm.label)}</text>` : ""}
       <text x="${width - 90}" y="18" fill="#475467" font-size="12">${escapeHtml(state.granularity)}</text>
     </svg>
   `;
@@ -658,10 +733,18 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
 function renderChartSummary(data, metricKey) {
   const host = q("chart-summary");
   const currentText = metricActualText(data, metricKey);
+  const insight = generateMetricInsight(data, metricKey);
+  const insightHtml = insight
+    ? `<div class="metric-insight"><span class="metric-insight-icon">💡</span>${escapeHtml(insight)}</div>`
+    : "";
+
   if (!data.compare) {
     host.innerHTML = `
-      <div>対象指標: ${escapeHtml(metricLabel(metricKey))}</div>
-      <div>現在期間 (${data.from} 〜 ${data.to}): ${escapeHtml(currentText)}</div>
+      <div class="chart-summary-nums">
+        <div>対象指標: <strong>${escapeHtml(metricLabel(metricKey))}</strong></div>
+        <div>現在期間 (${data.from} 〜 ${data.to}): <strong>${escapeHtml(currentText)}</strong></div>
+      </div>
+      ${insightHtml}
     `;
     return;
   }
@@ -669,10 +752,13 @@ function renderChartSummary(data, metricKey) {
   const previousText = metricActualText(data.compare, metricKey);
   const ratioMeta = metricCompareRatioMeta(data, data.compare, metricKey, compareLabel);
   host.innerHTML = `
-    <div>対象指標: ${escapeHtml(metricLabel(metricKey))}</div>
-    <div>現在期間 (${data.from} 〜 ${data.to}): ${escapeHtml(currentText)}</div>
-    <div>${escapeHtml(compareLabel)} (${data.compare.from} 〜 ${data.compare.to}): ${escapeHtml(previousText)}</div>
-    ${ratioMeta ? `<div class="compare-${ratioMeta.tone}">${escapeHtml(ratioMeta.text)}</div>` : ""}
+    <div class="chart-summary-nums">
+      <div>対象指標: <strong>${escapeHtml(metricLabel(metricKey))}</strong></div>
+      <div>現在期間 (${data.from} 〜 ${data.to}): <strong>${escapeHtml(currentText)}</strong></div>
+      <div>${escapeHtml(compareLabel)} (${data.compare.from} 〜 ${data.compare.to}): ${escapeHtml(previousText)}</div>
+      ${ratioMeta ? `<div class="compare-${ratioMeta.tone}">${escapeHtml(ratioMeta.text)}</div>` : ""}
+    </div>
+    ${insightHtml}
   `;
 }
 
@@ -953,7 +1039,10 @@ function renderAssistantReferences(references = []) {
 }
 
 function renderTopActionCard(context) {
+  // Notification bar hidden per UX decision
   const host = q("top-action-card");
+  if (host) { host.classList.add("hidden"); host.innerHTML = ""; }
+  return;
   const rows = (context?.actionLogHistory || []).slice();
   if (!rows.length) {
     host.classList.add("hidden");
@@ -1041,9 +1130,9 @@ function renderActionLogTimeline(items) {
             <span class="task-priority-dot ${priCls}" title="優先度: ${escapeHtml(priorityLabel(item.priority || 'medium'))}"></span>
           </div>
           <div class="task-card-actions">
-            ${item.status === "done" ? `<button type="button" class="btn-ghost btn-sm view-action-log" data-id="${escapeHtml(item.id)}">📊 前後比較</button>` : ""}
-            <button type="button" class="btn-ghost btn-sm edit-action-log" data-id="${escapeHtml(item.id)}">編集</button>
-            <button type="button" class="btn-ghost btn-sm delete-action-log" data-id="${escapeHtml(item.id)}">削除</button>
+            ${item.status !== "done" ? `<button type="button" class="task-complete-btn" data-id="${escapeHtml(item.id)}">✓ 完了にする</button>` : `<button type="button" class="task-view-effect-btn" data-id="${escapeHtml(item.id)}">📊 効果を見る</button>`}
+            <button type="button" class="task-edit-btn" data-id="${escapeHtml(item.id)}">編集</button>
+            <button type="button" class="task-delete-btn" data-id="${escapeHtml(item.id)}">削除</button>
           </div>
         </div>
         <div class="task-card-title">${escapeHtml(item.content)}</div>
@@ -1178,9 +1267,20 @@ function renderValidationDetail(context) {
   // Show the compare panel
   if (panel) panel.classList.remove("hidden");
 
-  // Task title in compare panel header
+  // Task title + meta in compare panel header
   const titleEl = q("task-compare-title");
-  if (titleEl) titleEl.textContent = selected.content || "";
+  if (titleEl) {
+    const metricBadge = selected.targetMetricKey
+      ? `<span class="vcp-metric-badge">🎯 ${escapeHtml(metricLabel(selected.targetMetricKey))}</span>`
+      : "";
+    const completedBadge = selected.completedAtDate
+      ? `<span class="vcp-date-badge">✅ 完了日: ${escapeHtml(selected.completedAtDate)}</span>`
+      : "";
+    titleEl.innerHTML = `
+      <div class="vcp-task-name">${escapeHtml(selected.content || "")}</div>
+      <div class="vcp-task-badges">${metricBadge}${completedBadge}</div>
+    `;
+  }
 
   // Target page badge
   const pageFilter = q("task-compare-page-filter");
@@ -2967,16 +3067,54 @@ q("cancel-edit-action-log").addEventListener("click", () => {
 });
 
 q("action-log-timeline").addEventListener("click", async (e) => {
-  const target = e.target;
-  if (!(target instanceof HTMLElement)) return;
-  const editId = target.dataset.id;
-  if (target.classList.contains("view-action-log")) {
+  const btn = e.target.closest("button[data-id]");
+  if (!btn) return;
+  const editId = btn.dataset.id;
+
+  // 効果を見る（完了タスク）
+  if (btn.classList.contains("task-view-effect-btn")) {
     state.selectedValidationActionId = editId || null;
     renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
     renderValidationDetail(state.projectContext);
+    q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
-  if (target.classList.contains("edit-action-log")) {
+
+  // 完了にする（インライン）
+  if (btn.classList.contains("task-complete-btn")) {
+    const dateStr = prompt("完了日を入力してください（例: 2026-03-29）", todayISO());
+    if (!dateStr) return;
+    if (!validateDateStr(dateStr)) { alert("日付の形式が正しくありません（YYYY-MM-DD）"); return; }
+    const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === editId);
+    if (!row) return;
+    btn.disabled = true;
+    btn.textContent = "更新中…";
+    try {
+      await api(`/api/projects/${state.projectId}/context`, {
+        method: "POST",
+        body: {
+          actionLog: row.content,
+          actionLogId: editId,
+          actionOwner: row.owner || "",
+          actionStatus: "done",
+          actionPriority: row.priority || "medium",
+          actionCompletedAtDate: dateStr,
+          targetMetricKey: row.targetMetricKey || "",
+          from: state.from,
+          to: state.to
+        }
+      });
+      await loadProjectContext();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "✓ 完了にする";
+      alert("更新に失敗しました: " + err.message);
+    }
+    return;
+  }
+
+  // 編集
+  if (btn.classList.contains("task-edit-btn")) {
     const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === editId);
     if (!row) return;
     q("editing-action-log-id").value = row.id;
@@ -2992,11 +3130,13 @@ q("action-log-timeline").addEventListener("click", async (e) => {
     q("task-submit-btn").textContent = "更新する";
     q("assistant-context-status").textContent = "";
     syncActionStatusUI();
+    document.querySelector(".task-form-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     q("action-log").focus();
-    q("page-validation").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
-  if (target.classList.contains("delete-action-log")) {
+
+  // 削除
+  if (btn.classList.contains("task-delete-btn")) {
     if (!editId || !confirm("この施策ログを削除しますか？")) return;
     try {
       await api(`/api/projects/${state.projectId}/context/action-logs/${editId}`, {
