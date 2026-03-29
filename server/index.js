@@ -307,6 +307,41 @@ async function sendVerificationEmail(email, code) {
   return { delivered: true };
 }
 
+async function sendInviteEmail(inviteeEmail, inviterName, inviterCompany) {
+  if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
+    return { delivered: false };
+  }
+  const displayName = inviterCompany || inviterName || "Veltioユーザー";
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${RESEND_API_KEY}`
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM_EMAIL,
+      to: [inviteeEmail],
+      subject: `${displayName}さんからVeltioへの招待が届きました`,
+      text: [
+        `${displayName}さんがあなたをVeltio（CVR分析ツール）に招待しました。`,
+        ``,
+        `Veltioはサイトのコンバージョン改善を支援するSaaSツールです。`,
+        `以下のURLからアカウントを作成すると、${displayName}さんのワークスペースに参加できます。`,
+        ``,
+        `https://app.vel-tio.com/`,
+        ``,
+        `このメールに心当たりがない場合は無視してください。`
+      ].join("\n")
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("invite email failed:", text);
+    return { delivered: false };
+  }
+  return { delivered: true };
+}
+
 async function sendPasswordResetEmail(email, code) {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
     if (process.env.NODE_ENV === "production") {
@@ -2888,6 +2923,9 @@ async function handleApi(req, res, urlObj) {
     }
     tenant.invitedUsers.push(email);
     await writeDb(db);
+    // Send invite notification email (best-effort, non-blocking)
+    sendInviteEmail(email, user.accountName || user.email, tenant.companyName || user.companyName)
+      .catch((e) => console.error("invite email error:", e));
     return json(res, 201, { ok: true, invitedUsers: tenant.invitedUsers });
   }
 

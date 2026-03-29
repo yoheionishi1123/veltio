@@ -2077,6 +2077,8 @@ function syncPlanUI(plan) {
     badge.textContent = isPro ? "PRO" : "STARTER";
     badge.className = `plan-badge ${isPro ? "plan-pro" : "plan-starter"}`;
   }
+  q("plan-starter-view")?.classList.toggle("hidden", isPro);
+  q("plan-pro-view")?.classList.toggle("hidden", !isPro);
   q("upgrade-plan")?.classList.toggle("hidden", isPro);
   q("downgrade-plan")?.classList.toggle("hidden", !isPro);
   // Compare lock badge

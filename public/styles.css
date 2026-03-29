@@ -148,6 +148,24 @@ h3 { margin: 12px 0 6px; font-size: 15px; font-weight: 600; }
   color: var(--ink-2);
 }
 
+.sidebar-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar-legal-links a {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+
+.sidebar-legal-links a:hover { color: var(--ink-2); }
+
 /* Main area */
 .app-main {
   margin-left: var(--sidebar-w);
@@ -256,6 +274,7 @@ button {
   color: #fff;
   cursor: pointer;
   font-weight: 600;
+  border-radius: 20px;
   transition: background 0.15s, opacity 0.15s;
 }
 
@@ -1596,7 +1615,7 @@ tr:hover td { background: var(--panel-2); }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .account-card { display: flex; flex-direction: column; gap: 0; }
@@ -1674,11 +1693,36 @@ tr:hover td { background: var(--panel-2); }
   font-size: 12.5px;
   font-weight: 600;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: 20px;
   cursor: pointer;
   transition: background 0.15s;
 }
 .account-downgrade-btn:hover { background: var(--panel-3); }
+
+.account-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  background: transparent;
+  color: var(--danger, #dc2626);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--danger, #dc2626);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.account-cancel-btn:hover {
+  background: rgba(220,38,38,0.06);
+  border-color: var(--danger, #dc2626);
+}
+
+.plan-pro-message {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 
 /* ── Plan badge (in account-card-head) ── */
 .plan-badge {

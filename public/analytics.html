@@ -51,6 +51,12 @@
       </nav>
       <div class="sidebar-footer">
         <button id="logout" class="hidden" type="button">ログアウト</button>
+        <div class="sidebar-legal-links">
+          <a href="/privacy" target="_blank" rel="noopener">プライバシー</a>
+          <a href="/terms" target="_blank" rel="noopener">利用規約</a>
+          <a href="/tokusho" target="_blank" rel="noopener">特商法</a>
+          <a href="/contact" target="_blank" rel="noopener">お問い合わせ</a>
+        </div>
       </div>
     </aside>
 
@@ -408,33 +414,29 @@
                 <div id="account-plan-badge" class="plan-badge plan-starter">STARTER</div>
               </div>
               <div id="account-plan" class="account-plan-info"></div>
-              <table class="plan-feature-table">
-                <thead>
-                  <tr><th>機能</th><th>Starter</th><th>Pro</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>プロジェクト数</td><td>1件</td><td>複数</td></tr>
-                  <tr><td>期間比較（ブレークダウン）</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
-                  <tr><td>PPTレポート出力</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
-                  <tr><td>その他すべての機能</td><td>✅</td><td>✅</td></tr>
-                </tbody>
-              </table>
-              <div class="account-plan-actions">
-                <button id="upgrade-plan" type="button" class="account-upgrade-btn hidden">Proにアップグレード</button>
-                <button id="downgrade-plan" type="button" class="account-downgrade-btn hidden">Starterに戻す</button>
+              <!-- Starter: feature table + upgrade CTA -->
+              <div id="plan-starter-view" class="hidden">
+                <table class="plan-feature-table">
+                  <thead>
+                    <tr><th>機能</th><th>Starter</th><th>Pro</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>プロジェクト数</td><td>1件</td><td>複数</td></tr>
+                    <tr><td>期間比較（ブレークダウン）</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
+                    <tr><td>PPTレポート出力</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
+                    <tr><td>その他すべての機能</td><td>✅</td><td>✅</td></tr>
+                  </tbody>
+                </table>
+                <div class="account-plan-actions">
+                  <button id="upgrade-plan" type="button" class="account-upgrade-btn">Proにアップグレード</button>
+                </div>
+              </div>
+              <!-- Pro: minimal status message + cancel -->
+              <div id="plan-pro-view" class="hidden">
+                <p class="plan-pro-message">✅ すべての機能がご利用可能です。</p>
+                <button id="downgrade-plan" type="button" class="account-cancel-btn">解約する（無料プランに戻す）</button>
               </div>
               <div id="plan-switch-status" class="tiny"></div>
-              <div class="account-divider"></div>
-              <div class="account-email-test-row">
-                <div>
-                  <div class="account-field-label">メール配信テスト</div>
-                  <div class="account-hint">認証メールの送信動作を確認します</div>
-                </div>
-                <div class="account-email-test-action">
-                  <button id="send-test-email" type="button" class="btn-ghost">送信テスト</button>
-                  <span id="test-email-status" class="account-status-text"></span>
-                </div>
-              </div>
             </section>
 
             <!-- 分析対象サイト -->
