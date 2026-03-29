@@ -2118,6 +2118,25 @@ function campaignImpactSummary(db, projectId, campaign) {
     }
   }
 
+  // Daily sparkline series
+  const dailySeries = currentRows
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((row) => {
+      const dayAgg = {
+        sessions: row.sessions || 0,
+        engagedSessions: row.engagedSessions || 0,
+        pdpSessions: row.pdpSessions || 0,
+        addToCartSessions: row.addToCartSessions || 0,
+        cartReachSessions: row.cartReachSessions || 0,
+        checkoutSessions: row.checkoutSessions || 0,
+        purchaseSessions: row.purchaseSessions || 0,
+        revenue: row.revenue || 0
+      };
+      const dayRates = computeRates(dayAgg);
+      return { date: row.date, sessions: dayAgg.sessions, cvr: dayRates.cvr || 0, revenue: dayAgg.revenue };
+    });
+
   return {
     current: {
       from: campaign.startDate,
@@ -2132,6 +2151,7 @@ function campaignImpactSummary(db, projectId, campaign) {
       metrics: baselineMetrics
     },
     yearly,
+    dailySeries,
     linkedPreviousCampaignId,
     linkedPreviousCampaignName,
     delta: {
@@ -3185,6 +3205,9 @@ async function handleApi(req, res, urlObj) {
         startDate,
         endDate,
         recurringAnnual: Boolean(recurringAnnual),
+        goalRevenue: Number(body.goalRevenue) > 0 ? Number(body.goalRevenue) : 0,
+        goalCvr: Number(body.goalCvr) > 0 ? Number(body.goalCvr) : 0,
+        memo: String(body.memo || "").slice(0, 500),
         updatedAt: new Date().toISOString()
       };
       project.campaigns = (project.campaigns || []).filter((item) => item.id !== nextItem.id);
@@ -3204,6 +3227,23 @@ async function handleApi(req, res, urlObj) {
     project.campaigns = (project.campaigns || []).filter((item) => item.id !== projectCampaignDeleteMatch[2]);
     await writeDb(db);
     return json(res, 200, { ok: true });
+  }
+
+  // PATCH /api/projects/:id/campaigns/:cid — update memo/goals
+  const projectCampaignPatchMatch = urlObj.pathname.match(/^\/api\/projects\/([^/]+)\/campaigns\/([^/]+)$/);
+  if (req.method === "PATCH" && projectCampaignPatchMatch) {
+    const user = requireAuth();
+    if (!user) return;
+    const project = findProjectAccessible(db, projectCampaignPatchMatch[1], user.id);
+    if (!project) return json(res, 404, { error: "project_not_found" });
+    const camp = (project.campaigns || []).find((c) => c.id === projectCampaignPatchMatch[2]);
+    if (!camp) return json(res, 404, { error: "campaign_not_found" });
+    const body = await parseBody(req);
+    if (typeof body.memo === "string") camp.memo = body.memo.slice(0, 500);
+    if (typeof body.goalRevenue === "number") camp.goalRevenue = body.goalRevenue;
+    if (typeof body.goalCvr === "number") camp.goalCvr = body.goalCvr;
+    await writeDb(db);
+    return json(res, 200, { campaign: camp });
   }
 
   const ga4QuickConnectMatch = urlObj.pathname.match(/^\/api\/projects\/([^/]+)\/ga4\/quick-connect$/);

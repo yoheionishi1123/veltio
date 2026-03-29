@@ -341,14 +341,26 @@
               </div>
             </div>
             <form id="campaign-form" class="dashboard-campaign-form">
-              <input id="campaign-name" placeholder="例: GWセール" required />
-              <select id="campaign-type">
-                <option value="sale">セール</option>
-                <option value="campaign">キャンペーン</option>
-              </select>
-              <label class="dashboard-checkbox"><input id="campaign-recurring" type="checkbox" /> 毎年同時期に実施</label>
-              <input id="campaign-start-date" type="date" required />
-              <input id="campaign-end-date" type="date" required />
+              <div class="ci-form-row">
+                <input id="campaign-name" placeholder="例: GWセール" required />
+                <select id="campaign-type">
+                  <option value="sale">セール</option>
+                  <option value="campaign">キャンペーン</option>
+                </select>
+              </div>
+              <div class="ci-form-row">
+                <input id="campaign-start-date" type="date" required />
+                <input id="campaign-end-date" type="date" required />
+                <label class="dashboard-checkbox"><input id="campaign-recurring" type="checkbox" /> 毎年同時期に実施</label>
+              </div>
+              <div class="ci-form-row ci-form-goals">
+                <label class="ci-goal-input-label">目標売上（円・省略可）
+                  <input id="campaign-goal-revenue" type="number" min="0" placeholder="例: 1000000" />
+                </label>
+                <label class="ci-goal-input-label">目標CVR（%・省略可）
+                  <input id="campaign-goal-cvr" type="number" min="0" step="0.01" placeholder="例: 2.5" />
+                </label>
+              </div>
               <button type="submit">保存</button>
             </form>
             <div id="campaign-status" class="tiny"></div>

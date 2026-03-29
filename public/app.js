@@ -1388,6 +1388,147 @@ function renderValidationDetail(context) {
   `;
 }
 
+function buildCampaignSparkline(dailySeries) {
+  if (!dailySeries || dailySeries.length < 2) return "";
+  const values = dailySeries.map((p) => p.cvr || 0);
+  const W = 300, H = 50, pad = 4;
+  const maxV = Math.max(...values, 0.001);
+  const points = values.map((v, i) => {
+    const x = pad + (i / Math.max(values.length - 1, 1)) * (W - pad * 2);
+    const y = H - pad - (v / maxV) * (H - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const lastV = values[values.length - 1];
+  const lastY = (H - pad - (lastV / maxV) * (H - pad * 2)).toFixed(1);
+  const lastX = (W - pad).toFixed(1);
+  const lastLabel = fmtPct(lastV);
+  return `
+    <div class="ci-sparkline-wrap">
+      <div class="ci-sparkline-label">CVR 日別推移（期間中）</div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" class="ci-sparkline-svg" style="overflow:visible">
+        <polyline fill="none" stroke="#0a58ca" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${points}"/>
+        <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="#0a58ca"/>
+        <text x="${parseFloat(lastX) - 2}" y="${parseFloat(lastY) - 7}" text-anchor="end" font-size="10" fill="#0a58ca">${escapeHtml(lastLabel)}</text>
+      </svg>
+    </div>
+  `;
+}
+
+function buildCampaignVerdict(item, impact) {
+  if (!impact.current?.totals?.sessions) {
+    return `<div class="ci-verdict ci-verdict-neutral">— データ未取得（GA4連携後に自動計算）</div>`;
+  }
+  const cvrDelta = impact.delta?.cvr ?? 0;
+  let cls, icon, text;
+  if (cvrDelta > 0.002) {
+    cls = "ci-verdict-good"; icon = "↑";
+    text = `CVR +${(cvrDelta * 100).toFixed(2)}pt（直前比）— 好成績`;
+  } else if (cvrDelta < -0.002) {
+    cls = "ci-verdict-bad"; icon = "↓";
+    text = `CVR ${(cvrDelta * 100).toFixed(2)}pt（直前比）— 要改善`;
+  } else {
+    cls = "ci-verdict-neutral"; icon = "→";
+    text = `CVR ±${(cvrDelta * 100).toFixed(2)}pt（直前比）— ほぼ横ばい`;
+  }
+  let yoyHtml = "";
+  if (impact.yearly?.metrics?.cvr != null && impact.current?.metrics?.cvr != null) {
+    const yoyDelta = (impact.current.metrics.cvr || 0) - (impact.yearly.metrics.cvr || 0);
+    const yoyCls = yoyDelta >= 0 ? "ci-badge-good" : "ci-badge-bad";
+    yoyHtml = `<span class="ci-verdict-yoy ${yoyCls}">前年同期比 ${yoyDelta >= 0 ? "+" : ""}${(yoyDelta * 100).toFixed(2)}pt</span>`;
+  }
+  return `<div class="ci-verdict ${cls}">${icon} ${escapeHtml(text)} ${yoyHtml}</div>`;
+}
+
+function buildCampaignFunnel(impact) {
+  if (!impact.current) return "";
+  const cur = impact.current;
+  const base = impact.baseline;
+  const steps = [
+    {
+      phase: "集客", label: "Sessions",
+      val: String(cur.totals?.sessions ?? 0),
+      delta: base ? `${(cur.totals.sessions - base.totals.sessions) >= 0 ? "+" : ""}${cur.totals.sessions - base.totals.sessions}` : null,
+      good: base ? (cur.totals.sessions - base.totals.sessions) >= 0 : null
+    },
+    {
+      phase: "検討", label: "カート追加率",
+      val: fmtPct(cur.metrics?.add_to_cart_rate || 0),
+      delta: base && typeof impact.delta?.add_to_cart_rate === "number"
+        ? `${impact.delta.add_to_cart_rate >= 0 ? "+" : ""}${(impact.delta.add_to_cart_rate * 100).toFixed(2)}pt`
+        : null,
+      good: base ? (impact.delta?.add_to_cart_rate || 0) >= 0 : null
+    },
+    {
+      phase: "購買", label: "CVR",
+      val: fmtPct(cur.metrics?.cvr || 0),
+      delta: base && typeof impact.delta?.cvr === "number"
+        ? `${impact.delta.cvr >= 0 ? "+" : ""}${(impact.delta.cvr * 100).toFixed(2)}pt`
+        : null,
+      good: base ? (impact.delta?.cvr || 0) >= 0 : null
+    },
+    {
+      phase: "売上", label: "Revenue",
+      val: `¥${Math.round(cur.totals?.revenue || 0).toLocaleString()}`,
+      delta: base
+        ? `${(cur.totals.revenue - base.totals.revenue) >= 0 ? "+" : ""}¥${Math.round(cur.totals.revenue - base.totals.revenue).toLocaleString()}`
+        : null,
+      good: base ? (cur.totals.revenue - base.totals.revenue) >= 0 : null
+    }
+  ];
+  return `
+    <div class="ci-funnel">
+      ${steps.map((s, i) => `
+        <div class="ci-funnel-step">
+          <div class="ci-funnel-phase">${escapeHtml(s.phase)}</div>
+          <div class="ci-funnel-metric">${escapeHtml(s.label)}</div>
+          <div class="ci-funnel-val">${escapeHtml(s.val)}</div>
+          ${s.delta != null
+            ? `<div class="ci-funnel-delta ${s.good ? "ci-delta-good" : "ci-delta-bad"}">${s.good ? "↑" : "↓"} ${escapeHtml(s.delta)}</div>`
+            : `<div class="ci-funnel-delta ci-delta-none">—</div>`}
+        </div>
+        ${i < steps.length - 1 ? `<div class="ci-funnel-arrow">▶</div>` : ""}
+      `).join("")}
+    </div>
+  `;
+}
+
+function buildCampaignGoalProgress(item, impact) {
+  const goalRevenue = item.goalRevenue || 0;
+  const goalCvr = item.goalCvr || 0;
+  if (!goalRevenue && !goalCvr) return "";
+  const actualRevenue = impact.current?.totals?.revenue || 0;
+  const actualCvr = impact.current?.metrics?.cvr || 0;
+  let html = "";
+  if (goalRevenue > 0) {
+    const pct = Math.min(100, (actualRevenue / goalRevenue) * 100);
+    const ok = actualRevenue >= goalRevenue;
+    html += `
+      <div class="ci-goal-row">
+        <div class="ci-goal-label">🎯 目標売上: ¥${goalRevenue.toLocaleString()}</div>
+        <div class="ci-goal-progress">
+          <div class="ci-goal-bar-wrap"><div class="ci-goal-bar-fill ${ok ? "ci-goal-ok" : "ci-goal-ng"}" style="width:${pct.toFixed(1)}%"></div></div>
+          <span class="ci-goal-pct ${ok ? "compare-good" : "compare-bad"}">${pct.toFixed(0)}% ${ok ? "達成 ✓" : "未達"}</span>
+        </div>
+        <div class="ci-goal-actual">実績: ¥${Math.round(actualRevenue).toLocaleString()}</div>
+      </div>`;
+  }
+  if (goalCvr > 0) {
+    const goalCvrDec = goalCvr / 100;
+    const pct = Math.min(100, goalCvrDec > 0 ? (actualCvr / goalCvrDec) * 100 : 0);
+    const ok = actualCvr >= goalCvrDec;
+    html += `
+      <div class="ci-goal-row">
+        <div class="ci-goal-label">🎯 目標CVR: ${goalCvr}%</div>
+        <div class="ci-goal-progress">
+          <div class="ci-goal-bar-wrap"><div class="ci-goal-bar-fill ${ok ? "ci-goal-ok" : "ci-goal-ng"}" style="width:${pct.toFixed(1)}%"></div></div>
+          <span class="ci-goal-pct ${ok ? "compare-good" : "compare-bad"}">${pct.toFixed(0)}% ${ok ? "達成 ✓" : "未達"}</span>
+        </div>
+        <div class="ci-goal-actual">実績: ${fmtPct(actualCvr)}</div>
+      </div>`;
+  }
+  return `<div class="ci-goals">${html}</div>`;
+}
+
 function renderCampaignList(campaigns) {
   const host = q("campaign-list");
   host.innerHTML = "";
@@ -1397,63 +1538,57 @@ function renderCampaignList(campaigns) {
   }
   campaigns.forEach((item) => {
     const impact = item.impact || {};
-    const currentCvr = impact.current ? fmtPct(impact.current.metrics?.cvr || 0) : "-";
-    const baselineCvr = impact.baseline ? fmtPct(impact.baseline.metrics?.cvr || 0) : "-";
-    const baselineDelta = typeof impact.delta?.cvr === "number" ? `${impact.delta.cvr >= 0 ? "+" : ""}${(impact.delta.cvr * 100).toFixed(2)}pt` : "-";
-    const currentSessions = impact.current?.totals?.sessions ?? 0;
-    const baselineSessions = impact.baseline?.totals?.sessions ?? 0;
-    const sessionDelta = `${currentSessions - baselineSessions >= 0 ? "+" : ""}${currentSessions - baselineSessions}`;
-    const currentRevenue = impact.current?.totals?.revenue ?? 0;
-    const baselineRevenue = impact.baseline?.totals?.revenue ?? 0;
-    const revenueDelta = `${currentRevenue - baselineRevenue >= 0 ? "+" : ""}${(currentRevenue - baselineRevenue).toFixed(0)}`;
-    const currentAdd = impact.current ? fmtPct(impact.current.metrics?.add_to_cart_rate || 0) : "-";
-    const baselineAdd = impact.baseline ? fmtPct(impact.baseline.metrics?.add_to_cart_rate || 0) : "-";
-    const addDelta = typeof impact.delta?.add_to_cart_rate === "number" ? `${impact.delta.add_to_cart_rate >= 0 ? "+" : ""}${(impact.delta.add_to_cart_rate * 100).toFixed(2)}pt` : "-";
-    const yearlyCvr = item.recurringAnnual && impact.yearly ? fmtPct(impact.yearly.metrics?.cvr || 0) : "未比較";
-    const yearlyDelta = item.recurringAnnual && impact.yearly
-      ? `${((impact.current.metrics?.cvr || 0) - (impact.yearly.metrics?.cvr || 0)) >= 0 ? "+" : ""}${(((impact.current.metrics?.cvr || 0) - (impact.yearly.metrics?.cvr || 0)) * 100).toFixed(2)}pt`
-      : "未比較";
     const card = document.createElement("div");
-    card.className = "breakdown-row-card dashboard-campaign-card";
+    card.className = "ci-card";
     card.innerHTML = `
-      <div class="breakdown-row-title">${escapeHtml(item.name)} <span class="tiny muted">(${item.type === "sale" ? "セール" : "キャンペーン"})</span></div>
-      <div class="tiny muted">${item.startDate} 〜 ${item.endDate}${item.recurringAnnual ? ` / 毎年比較あり${impact.linkedPreviousCampaignId ? `（前回登録: ${impact.linkedPreviousCampaignName}）` : ""}` : ""}</div>
-      <div class="campaign-impact-grid">
-        <div class="card">
-          <div class="k">期間CVR</div>
-          <div class="v">${escapeHtml(currentCvr)}</div>
+      <div class="ci-card-header">
+        <div class="ci-card-header-left">
+          <span class="ci-type-badge">${escapeHtml(item.type === "sale" ? "セール" : "キャンペーン")}</span>
+          <span class="ci-card-name">${escapeHtml(item.name)}</span>
         </div>
-        <div class="card">
-          <div class="k">直前同日数CVR</div>
-          <div class="v">${escapeHtml(baselineCvr)}</div>
-          <div class="k">${escapeHtml(baselineDelta)}</div>
-        </div>
-        <div class="card">
-          <div class="k">前年同施策CVR</div>
-          <div class="v">${escapeHtml(yearlyCvr)}</div>
-          <div class="k">${escapeHtml(yearlyDelta)}</div>
-        </div>
-        <div class="card">
-          <div class="k">期間Sessions</div>
-          <div class="v">${escapeHtml(String(currentSessions))}</div>
-          <div class="k">直前比 ${escapeHtml(sessionDelta)}</div>
-        </div>
-        <div class="card">
-          <div class="k">期間AddCart</div>
-          <div class="v">${escapeHtml(currentAdd)}</div>
-          <div class="k">直前比 ${escapeHtml(addDelta)}</div>
-        </div>
-        <div class="card">
-          <div class="k">期間売上</div>
-          <div class="v">${escapeHtml(String(Math.round(currentRevenue)))}</div>
-          <div class="k">直前比 ${escapeHtml(revenueDelta)}</div>
+        <div class="ci-card-dates">${escapeHtml(item.startDate)} 〜 ${escapeHtml(item.endDate)}${item.recurringAnnual ? " ／ 毎年比較あり" : ""}</div>
+      </div>
+      ${buildCampaignVerdict(item, impact)}
+      ${buildCampaignSparkline(impact.dailySeries)}
+      ${buildCampaignFunnel(impact)}
+      ${buildCampaignGoalProgress(item, impact)}
+      <div class="ci-memo-section">
+        <div class="ci-memo-label">📝 振り返りメモ</div>
+        <textarea class="ci-memo-textarea" data-id="${escapeHtml(item.id)}" placeholder="外部要因・気づき・次回への改善点などを記録（例：初日が雨天で出足が遅かったが後半に挽回）" rows="3">${escapeHtml(item.memo || "")}</textarea>
+        <div class="ci-memo-actions">
+          <button type="button" class="ci-memo-save" data-id="${escapeHtml(item.id)}">メモを保存</button>
+          <span class="ci-memo-status tiny muted"></span>
         </div>
       </div>
-      <div class="timeline-actions">
+      <div class="ci-card-footer">
         <button type="button" class="ghost delete-campaign" data-id="${escapeHtml(item.id)}">削除</button>
       </div>
     `;
     host.appendChild(card);
+  });
+
+  // Memo save handlers
+  host.querySelectorAll(".ci-memo-save").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!state.projectId) return;
+      const id = btn.dataset.id;
+      const textarea = host.querySelector(`.ci-memo-textarea[data-id="${id}"]`);
+      const status = btn.closest(".ci-memo-actions")?.querySelector(".ci-memo-status");
+      if (!textarea) return;
+      btn.disabled = true;
+      if (status) status.textContent = "保存中…";
+      try {
+        await api(`/api/projects/${state.projectId}/campaigns/${id}`, {
+          method: "PATCH",
+          body: { memo: textarea.value.trim() }
+        });
+        if (status) { status.textContent = "保存しました ✓"; setTimeout(() => { status.textContent = ""; }, 2500); }
+      } catch (err) {
+        if (status) status.textContent = "保存失敗";
+      } finally {
+        btn.disabled = false;
+      }
+    });
   });
 }
 
@@ -2745,7 +2880,9 @@ q("campaign-form").addEventListener("submit", async (e) => {
         type: q("campaign-type").value,
         startDate: q("campaign-start-date").value,
         endDate: q("campaign-end-date").value,
-        recurringAnnual: q("campaign-recurring").checked
+        recurringAnnual: q("campaign-recurring").checked,
+        goalRevenue: parseFloat(q("campaign-goal-revenue")?.value || "") || 0,
+        goalCvr: parseFloat(q("campaign-goal-cvr")?.value || "") || 0
       }
     });
     q("campaign-name").value = "";

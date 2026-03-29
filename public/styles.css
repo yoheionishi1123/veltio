@@ -2423,3 +2423,131 @@ tr:hover td { background: var(--panel-2); }
 
   .cards { grid-template-columns: 1fr; }
 }
+
+/* ──────────────────────────────────────────────
+   Campaign Impact: redesigned card
+────────────────────────────────────────────── */
+.ci-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.ci-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  flex-wrap: wrap;
+}
+.ci-card-header-left { display: flex; align-items: center; gap: 10px; }
+.ci-type-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--accent-dim); color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.ci-card-name { font-size: 17px; font-weight: 800; }
+.ci-card-dates { font-size: 12px; color: var(--muted); }
+
+/* Verdict */
+.ci-verdict {
+  margin: 0 16px 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.ci-verdict-good    { background: #d1fae5; color: #065f46; }
+.ci-verdict-bad     { background: #fee2e2; color: #991b1b; }
+.ci-verdict-neutral { background: var(--panel-3); color: var(--ink-2); }
+.ci-verdict-yoy {
+  font-size: 11px; font-weight: 700;
+  padding: 2px 9px; border-radius: 999px;
+}
+.ci-badge-good { background: #d1fae5; color: #065f46; }
+.ci-badge-bad  { background: #fee2e2; color: #991b1b; }
+
+/* Sparkline */
+.ci-sparkline-wrap { padding: 6px 16px 8px; }
+.ci-sparkline-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+.ci-sparkline-svg { display: block; }
+
+/* Funnel pipeline */
+.ci-funnel {
+  display: flex; align-items: center; gap: 4px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  background: var(--panel-2);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.ci-funnel-step {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-width: 80px; text-align: center;
+}
+.ci-funnel-phase {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.ci-funnel-metric { font-size: 11px; color: var(--ink-2); }
+.ci-funnel-val { font-size: 18px; font-weight: 800; color: var(--ink); }
+.ci-funnel-delta { font-size: 12px; font-weight: 700; }
+.ci-delta-good { color: #059669; }
+.ci-delta-bad  { color: #e03137; }
+.ci-delta-none { color: var(--muted); }
+.ci-funnel-arrow { color: var(--muted); font-size: 14px; flex-shrink: 0; padding: 0 2px; }
+
+/* Goal progress */
+.ci-goals { padding: 12px 16px; display: grid; gap: 10px; }
+.ci-goal-row { display: grid; gap: 4px; }
+.ci-goal-label { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.ci-goal-progress { display: flex; align-items: center; gap: 10px; }
+.ci-goal-bar-wrap {
+  flex: 1; height: 8px;
+  border-radius: 999px; background: var(--panel-3); overflow: hidden;
+}
+.ci-goal-bar-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+.ci-goal-ok { background: #10b981; }
+.ci-goal-ng { background: #f59e0b; }
+.ci-goal-pct { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ci-goal-actual { font-size: 11px; color: var(--muted); }
+
+/* Memo */
+.ci-memo-section { padding: 12px 16px; border-top: 1px solid var(--line); }
+.ci-memo-label { font-size: 12px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+.ci-memo-textarea {
+  width: 100%; font-size: 13px; line-height: 1.6;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2); color: var(--ink);
+  resize: vertical; font-family: inherit; box-sizing: border-box;
+}
+.ci-memo-textarea:focus { border-color: var(--accent); outline: none; }
+.ci-memo-actions { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.ci-memo-save {
+  font-size: 12px; padding: 5px 14px; border-radius: 999px;
+  background: var(--panel-3); color: var(--ink-2);
+  border: 1px solid var(--line); cursor: pointer; font-weight: 600;
+}
+.ci-memo-save:hover { background: var(--panel-2); }
+
+/* Footer */
+.ci-card-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+/* Form improvements */
+.ci-form-row {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px;
+}
+.ci-form-goals { padding-top: 2px; }
+.ci-goal-input-label {
+  display: flex; flex-direction: column; gap: 3px;
+  font-size: 12px; color: var(--muted); flex: 1; min-width: 150px;
+}
