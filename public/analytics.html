@@ -172,11 +172,15 @@
                 <h2>分析ダッシュボード</h2>
               </div>
               <div class="dashboard-hero-actions">
-                <form id="project-goal-form" class="dashboard-inline-control dashboard-goal-form">
-                  <label class="dashboard-goal-label">目標CVR（%）
-                    <input id="project-target-cvr" type="number" min="0.01" max="99.99" step="0.01" placeholder="0.00" style="width:72px" />
-                  </label>
-                  <button type="submit" class="ghost">保存</button>
+                <div class="dashboard-cvr-goal-display">
+                  <span class="dashboard-cvr-goal-label">目標CVR</span>
+                  <span id="cvr-goal-badge" class="dashboard-cvr-goal-value">—</span>
+                  <button id="toggle-cvr-edit" type="button" class="ghost dashboard-cvr-edit-btn">編集</button>
+                </div>
+                <form id="project-goal-form" class="dashboard-inline-control dashboard-goal-form hidden">
+                  <input id="project-target-cvr" type="number" min="0.01" max="99.99" step="0.01" placeholder="0.00" style="width:72px" />
+                  <button type="submit">保存</button>
+                  <button type="button" id="cancel-cvr-edit" class="ghost">キャンセル</button>
                   <span id="project-goal-status" class="tiny"></span>
                 </form>
                 <button id="refresh-project" type="button" class="ghost dashboard-ghost">更新</button>
@@ -197,11 +201,13 @@
                 </select>
                 <span id="compare-lock-badge" class="pro-lock-badge hidden">Pro</span>
               </div>
-              <select id="granularity-select">
-                <option value="day">日別</option>
-                <option value="week">週別</option>
-                <option value="month">月別</option>
-              </select>
+              <label class="granularity-label">集計単位
+                <select id="granularity-select">
+                  <option value="day">日別</option>
+                  <option value="week">週別</option>
+                  <option value="month">月別</option>
+                </select>
+              </label>
               <input type="date" id="compare-from-date" class="hidden" />
               <input type="date" id="compare-to-date" class="hidden" />
               <button id="apply-range" type="button">適用</button>

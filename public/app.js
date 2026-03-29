@@ -892,6 +892,12 @@ function renderProjectHeader() {
   }
 
   q("project-target-cvr").value = typeof current?.targetCvr === "number" ? (current.targetCvr * 100).toFixed(2) : "";
+  // 目標CVRバッジを更新
+  const goalBadge = q("cvr-goal-badge");
+  if (goalBadge) {
+    goalBadge.textContent = typeof current?.targetCvr === "number" ? fmtPct(current.targetCvr) : "未設定";
+    goalBadge.classList.toggle("dashboard-cvr-goal-unset", typeof current?.targetCvr !== "number");
+  }
   // ボタンテキストを状態に合わせて切り替え
   q("show-add-project").textContent = state.addingProject ? "キャンセル" : "別サイトを追加";
   q("project-status").textContent = "";
@@ -2455,6 +2461,16 @@ q("show-add-project").addEventListener("click", () => {
   renderProjectHeader();
 });
 
+function showCvrEditForm(show) {
+  q("project-goal-form")?.classList.toggle("hidden", !show);
+  q("dashboard-cvr-goal-display") // handled via class
+  const display = document.querySelector(".dashboard-cvr-goal-display");
+  if (display) display.classList.toggle("hidden", show);
+}
+
+q("toggle-cvr-edit")?.addEventListener("click", () => showCvrEditForm(true));
+q("cancel-cvr-edit")?.addEventListener("click", () => showCvrEditForm(false));
+
 q("project-goal-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!state.projectId) return;
@@ -2468,7 +2484,7 @@ q("project-goal-form").addEventListener("submit", async (e) => {
     });
     state.projects = state.projects.map((item) => item.id === out.project.id ? out.project : item);
     renderProjectHeader();
-    q("project-goal-status").textContent = "保存しました。";
+    showCvrEditForm(false);
     await loadMetrics();
   } catch (err) {
     q("project-goal-status").textContent = uiErrorText(err);
