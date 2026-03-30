@@ -2664,3 +2664,54 @@ tr:hover td { background: var(--panel-2); }
   flex-shrink: 0;
   align-self: stretch;
 }
+
+/* ── Funnel settings list layout (.sr-*) ───────────────────────────── */
+.sr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sr-header h2 { margin: 0; }
+.sr-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sr-fetch-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-3);
+  color: var(--ink-2);
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sr-fetch-btn:hover { background: var(--panel-2); color: var(--ink); }
+
+/* One row per funnel step */
+.sr-list { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
+.sr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sr-row:first-child { border-top: 1px solid var(--line); }
+.sr-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+  flex-shrink: 0;
+}
+.sr-step-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.sr-step-hint { font-size: 11px; color: var(--muted); }
+.sr-row .sr-event-wrap { flex: 1; min-width: 0; }
+.sr-row .sr-event-select { width: 100%; }
