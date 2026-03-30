@@ -1857,6 +1857,51 @@ function priorityFromRank(rank) {
   return rank <= 0 ? "low" : rank >= 2 ? "high" : "medium";
 }
 
+// Build group-level effect measurement when all tasks sharing a targetMetricKey are done
+function buildGroupMeasurements(db, projectId, actionLogHistory) {
+  const groups = {};
+  for (const item of actionLogHistory) {
+    if (!item.targetMetricKey) continue;
+    if (!groups[item.targetMetricKey]) groups[item.targetMetricKey] = [];
+    groups[item.targetMetricKey].push(item);
+  }
+  const results = [];
+  for (const [metricKey, tasks] of Object.entries(groups)) {
+    if (!tasks.length) continue;
+    const allDone = tasks.every((t) => (t.status || "todo") === "done");
+    if (!allDone) continue;
+    // Baseline: oldest-created task's pre-task metrics snapshot
+    const sorted = tasks.slice().sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+    const baselineMetrics = sorted[0].metrics;
+    // Measurement window starts from the date the LAST task was completed
+    const completedDates = tasks.map((t) => t.completedAtDate).filter(Boolean).sort();
+    const lastCompletedDate = completedDates[completedDates.length - 1] || null;
+    const firstCompletedDate = completedDates[0] || null;
+    if (!lastCompletedDate || !baselineMetrics) continue;
+    const evaluations = [7, 14, 30].map((days) => {
+      const win = metricsForWindow(db, projectId, lastCompletedDate, days);
+      if (!win) return { days, available: false, comment: "十分なデータがまだありません。" };
+      const deltas = [metricKey, "bounce_rate", "add_to_cart_rate", "purchase_rate"]
+        .filter((k, i, arr) => arr.indexOf(k) === i) // dedupe
+        .map((k) => metricDeltaText(win.metrics, baselineMetrics, k))
+        .filter(Boolean);
+      return { days, available: true, from: win.from, to: win.to, metrics: win.metrics,
+        comment: deltas.join(" / ") || "差分を算出できませんでした。" };
+    });
+    results.push({
+      metricKey,
+      taskCount: tasks.length,
+      taskIds: tasks.map((t) => t.id),
+      lastCompletedDate,
+      firstCompletedDate,
+      baselineMetrics,
+      evaluations,
+      tasks: tasks.map((t) => ({ id: t.id, content: t.content, completedAtDate: t.completedAtDate }))
+    });
+  }
+  return results;
+}
+
 function buildEvaluationWindows(db, projectId, entry) {
   const start = entry.completedAtDate || entry.monitorStartDate || (entry.createdAt ? entry.createdAt.slice(0, 10) : null);
   if (!start) return [];
@@ -3749,7 +3794,8 @@ async function handleApi(req, res, urlObj) {
         ...item,
         effectiveness: evaluateActionEffectiveness(item)
       }));
-      return json(res, 200, { context });
+      const groupMeasurements = buildGroupMeasurements(db, projectId, context.actionLogHistory);
+      return json(res, 200, { context: { ...context, groupMeasurements } });
     }
 
     if (req.method === "POST") {

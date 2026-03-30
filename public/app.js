@@ -1103,6 +1103,58 @@ const ACTION_STATUS_META = {
 // タスクボードのアクティブタブ
 let activeTaskTab = "all";
 
+// ── Group measurement panel ──────────────────────────────────────────────────
+function buildGroupMeasurementPanel(group) {
+  const label = metricLabel(group.metricKey);
+  const baseVal = group.baselineMetrics?.[group.metricKey];
+
+  // Best available evaluation window (prefer 30 > 14 > 7)
+  const bestEval = [...(group.evaluations || [])].reverse().find((e) => e.available && e.metrics)
+    || null;
+  const currentVal = bestEval?.metrics?.[group.metricKey];
+
+  const fmtPct = (v) => (v == null ? "–" : (v * 100).toFixed(2) + "%");
+
+  let diffHtml = "";
+  if (baseVal != null && currentVal != null) {
+    const lowerBetter = ["bounce_rate", "cart_abandon_rate"].includes(group.metricKey);
+    const delta = currentVal - baseVal;
+    const improved = lowerBetter ? delta < 0 : delta > 0;
+    const sign = delta >= 0 ? "+" : "";
+    const cls = improved ? "gm-delta-good" : "gm-delta-bad";
+    diffHtml = `
+      <div class="gm-metric-row">
+        <div class="gm-metric-before"><span class="gm-metric-label">施策前</span><span class="gm-metric-val">${escapeHtml(fmtPct(baseVal))}</span></div>
+        <div class="gm-arrow">→</div>
+        <div class="gm-metric-after"><span class="gm-metric-label">${escapeHtml(bestEval.days)}日後</span><span class="gm-metric-val">${escapeHtml(fmtPct(currentVal))}</span></div>
+        <div class="${cls}">${escapeHtml(sign + (delta * 100).toFixed(2))}pt</div>
+      </div>`;
+  }
+
+  const windowBadges = (group.evaluations || []).map((e) => {
+    const cls = e.available ? "gm-win-badge gm-win-ok" : "gm-win-badge gm-win-wait";
+    const icon = e.available ? "✓" : "…";
+    return `<span class="${cls}" title="${e.available ? e.comment : "データ蓄積中"}">${icon} ${escapeHtml(String(e.days))}日</span>`;
+  }).join("");
+
+  const taskChips = (group.tasks || []).map((t) =>
+    `<span class="gm-task-chip">✅ ${escapeHtml(t.content.length > 24 ? t.content.slice(0, 24) + "…" : t.content)}</span>`
+  ).join("");
+
+  return `
+    <div class="gm-panel" data-metric="${escapeHtml(group.metricKey)}">
+      <div class="gm-panel-head">
+        <div class="gm-panel-badge">🏁 全施策完了</div>
+        <div class="gm-panel-title">🎯 ${escapeHtml(label)} グループ効果測定</div>
+        <div class="gm-panel-meta">最終完了: ${escapeHtml(group.lastCompletedDate)} · ${escapeHtml(String(group.taskCount))}施策</div>
+      </div>
+      <div class="gm-tasks-row">${taskChips}</div>
+      ${diffHtml}
+      <div class="gm-windows-row">${windowBadges}</div>
+      ${bestEval?.comment ? `<div class="gm-comment">${escapeHtml(bestEval.comment)}</div>` : ""}
+    </div>`;
+}
+
 function renderActionLogTimeline(items) {
   const allItems = (items || []).slice().reverse(); // newest first
   const tab = activeTaskTab;
@@ -1111,12 +1163,21 @@ function renderActionLogTimeline(items) {
   const host = document.getElementById("action-log-timeline");
   if (!host) return;
 
-  if (!filtered.length) {
+  // Render group measurement panels at top (only when tab is "all" or "done")
+  const groupMeasurements = state.projectContext?.groupMeasurements || [];
+  const groupPanelsHtml = (tab === "all" || tab === "done") && groupMeasurements.length
+    ? `<div class="gm-section">
+        <div class="gm-section-title">📊 グループ効果測定 — 関連施策がすべて完了した指標</div>
+        ${groupMeasurements.map(buildGroupMeasurementPanel).join("")}
+       </div>`
+    : "";
+
+  if (!filtered.length && !groupPanelsHtml) {
     host.innerHTML = `<div class="task-empty">タスクがありません。</div>`;
     return;
   }
 
-  host.innerHTML = filtered.map((item) => {
+  const taskCardsHtml = filtered.map((item) => {
     const sm = ACTION_STATUS_META[item.status] || ACTION_STATUS_META.todo;
     const hasEvals = (item.evaluations || []).some((e) => e.available && e.metrics);
     const isSelected = item.id === state.selectedValidationActionId;
@@ -1147,6 +1208,8 @@ function renderActionLogTimeline(items) {
       </div>
     `;
   }).join("");
+
+  host.innerHTML = groupPanelsHtml + taskCardsHtml;
 }
 
 function validationMetricItems(entry) {
