@@ -389,40 +389,119 @@
         <div id="page-account" class="app-page hidden">
           <div class="account-layout">
 
-            <!-- プロフィール -->
-            <section class="panel account-card">
+            <!-- ① アカウント設定（プロフィール + 分析対象サイト + GA4連携 を一枚に統合） -->
+            <section class="panel account-card account-main-card">
               <div class="account-card-head">
                 <div>
-                  <p class="dashboard-card-kicker">Profile</p>
-                  <h2>プロフィール</h2>
+                  <p class="dashboard-card-kicker">Account Settings</p>
+                  <h2>アカウント設定</h2>
+                </div>
+                <span id="project-status" class="tiny"></span>
+              </div>
+
+              <!-- プロフィール -->
+              <div class="acct-sub">
+                <div class="acct-sub-label">プロフィール</div>
+                <form id="account-form" class="account-profile-form">
+                  <div class="account-form-grid">
+                    <label class="account-field">
+                      <span class="account-field-label">アカウント名</span>
+                      <input id="account-name" required />
+                    </label>
+                    <label class="account-field">
+                      <span class="account-field-label">会社名</span>
+                      <input id="company-name" required />
+                    </label>
+                    <label class="account-field">
+                      <span class="account-field-label">氏名</span>
+                      <input id="contact-name" required />
+                    </label>
+                    <label class="account-field">
+                      <span class="account-field-label">役職</span>
+                      <input id="job-title" />
+                    </label>
+                  </div>
+                  <div class="account-form-footer">
+                    <button type="submit" class="btn-primary account-save-btn">保存</button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="account-divider"></div>
+
+              <!-- 分析対象サイト -->
+              <div class="acct-sub">
+                <div class="acct-sub-label">分析対象サイト</div>
+                <div id="project-empty-state" class="inline dashboard-inline-control">
+                  <select id="project-select"></select>
+                </div>
+                <div id="project-onboard-hint" class="project-onboard-hint hidden">
+                  <span class="project-onboard-icon">👋</span>
+                  <div>
+                    <div class="project-onboard-title">プロジェクトが見つかりません</div>
+                    <div class="project-onboard-sub">以前データがあった場合、サーバー再起動でリセットされた可能性があります。<br>別のアカウントでログインしている可能性もあります。</div>
+                    <div class="project-onboard-actions">
+                      <button id="onboard-logout" type="button" class="project-onboard-logout-btn">ログアウトして確認</button>
+                      <span class="project-onboard-or">または 下のフォームで新規作成</span>
+                    </div>
+                  </div>
+                </div>
+                <div id="project-current-card" class="card dashboard-current-card hidden"></div>
+                <div id="project-actions" class="inline hidden dashboard-inline-control" style="margin-top:10px;">
+                  <button id="show-add-project" type="button" class="ghost">別サイトを追加</button>
+                </div>
+                <form id="project-form" class="hidden dashboard-form-grid" style="margin-top:12px;">
+                  <p class="tiny muted" style="margin:0 0 8px;grid-column:1/-1;">新しい分析対象サイトを登録します（GA4連携は次のステップで行います）</p>
+                  <input type="text" id="project-name" placeholder="サイト名（例: Melety Store）" required />
+                  <input type="text" id="project-domain" placeholder="ドメイン（例: melety.store）" required />
+                  <button type="submit">作成</button>
+                </form>
+                <!-- 登録済みサイト一覧 & 編集フォーム（登録サイト欄を統合） -->
+                <ul id="account-sites" class="account-sites-list" style="margin-top:12px;"></ul>
+                <div id="project-edit-wrap" class="hidden" style="margin-top:8px;">
+                  <div class="account-divider"></div>
+                  <p class="account-field-label">プロジェクト編集</p>
+                  <form id="project-edit-form" class="account-project-edit-form">
+                    <input type="hidden" id="edit-project-id" />
+                    <label>プロジェクト名
+                      <input id="edit-project-name" type="text" placeholder="例: melety store" />
+                    </label>
+                    <label>ドメイン
+                      <input id="edit-project-domain" type="text" placeholder="例: melety.store" />
+                    </label>
+                    <div class="account-form-footer">
+                      <button type="submit" class="btn-primary">保存</button>
+                      <button type="button" id="project-edit-cancel" class="btn-ghost">キャンセル</button>
+                    </div>
+                    <div id="project-edit-status" class="account-status-text"></div>
+                  </form>
                 </div>
               </div>
-              <form id="account-form" class="account-profile-form">
-                <div class="account-form-grid">
-                  <label class="account-field">
-                    <span class="account-field-label">アカウント名</span>
-                    <input id="account-name" required />
-                  </label>
-                  <label class="account-field">
-                    <span class="account-field-label">会社名</span>
-                    <input id="company-name" required />
-                  </label>
-                  <label class="account-field">
-                    <span class="account-field-label">氏名</span>
-                    <input id="contact-name" required />
-                  </label>
-                  <label class="account-field">
-                    <span class="account-field-label">役職</span>
-                    <input id="job-title" />
-                  </label>
+
+              <div class="account-divider"></div>
+
+              <!-- GA4連携 -->
+              <div class="acct-sub">
+                <div class="acct-sub-label">GA4連携</div>
+                <div id="ga4-connect-form-wrap">
+                  <form id="ga4-quick-form" class="dashboard-stack-form">
+                    <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
+                    <div class="dashboard-inline-control">
+                      <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
+                      <button type="submit">かんたん接続</button>
+                    </div>
+                  </form>
+                  <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
                 </div>
-                <div class="account-form-footer">
-                  <button type="submit" class="btn-primary account-save-btn">プロフィール保存</button>
+                <div id="ga4-status" class="ga4-status-card"></div>
+                <div class="dashboard-inline-control" style="margin-top:8px;">
+                  <button id="ga4-reconnect" class="ghost hidden" type="button">連携し直す</button>
+                  <span id="ga4-quick-status" class="tiny"></span>
                 </div>
-              </form>
+              </div>
             </section>
 
-            <!-- プラン -->
+            <!-- ② プラン管理 -->
             <section class="panel account-card">
               <div class="account-card-head">
                 <div>
@@ -432,7 +511,6 @@
                 <div id="account-plan-badge" class="plan-badge plan-starter">STARTER</div>
               </div>
               <div id="account-plan" class="account-plan-info"></div>
-              <!-- Starter: feature table + upgrade CTA -->
               <div id="plan-starter-view" class="hidden">
                 <table class="plan-feature-table">
                   <thead>
@@ -449,7 +527,6 @@
                   <button id="upgrade-plan" type="button" class="account-upgrade-btn">Proにアップグレード</button>
                 </div>
               </div>
-              <!-- Pro: minimal status message + cancel -->
               <div id="plan-pro-view" class="hidden">
                 <p class="plan-pro-message">✅ すべての機能がご利用可能です。</p>
                 <button id="downgrade-plan" type="button" class="account-cancel-btn">解約する（無料プランに戻す）</button>
@@ -457,238 +534,159 @@
               <div id="plan-switch-status" class="tiny"></div>
             </section>
 
-            <!-- 分析対象サイト -->
-            <section class="panel account-card">
-              <div class="account-card-head">
-                <div>
-                  <p class="dashboard-card-kicker">Site / Project</p>
-                  <h2>分析対象サイト</h2>
-                </div>
-                <span id="project-status" class="tiny"></span>
-              </div>
-              <div id="project-empty-state" class="inline dashboard-inline-control">
-                <select id="project-select"></select>
-              </div>
-              <div id="project-onboard-hint" class="project-onboard-hint hidden">
-                <span class="project-onboard-icon">👋</span>
-                <div>
-                  <div class="project-onboard-title">プロジェクトが見つかりません</div>
-                  <div class="project-onboard-sub">以前データがあった場合、サーバー再起動でリセットされた可能性があります。<br>別のアカウントでログインしている可能性もあります。</div>
-                  <div class="project-onboard-actions">
-                    <button id="onboard-logout" type="button" class="project-onboard-logout-btn">ログアウトして確認</button>
-                    <span class="project-onboard-or">または 下のフォームで新規作成</span>
-                  </div>
-                </div>
-              </div>
-              <div id="project-current-card" class="card dashboard-current-card hidden"></div>
-              <div id="project-actions" class="inline hidden dashboard-inline-control" style="margin-top:10px;">
-                <button id="show-add-project" type="button" class="ghost">別サイトを追加</button>
-              </div>
-              <form id="project-form" class="hidden dashboard-form-grid" style="margin-top:12px;">
-                <p class="tiny muted" style="margin:0 0 8px;grid-column:1/-1;">新しい分析対象サイトを登録します（GA4連携は次のステップで行います）</p>
-                <input type="text" id="project-name" placeholder="サイト名（例: Melety Store）" required />
-                <input type="text" id="project-domain" placeholder="ドメイン（例: melety.store）" required />
-                <button type="submit">作成</button>
-              </form>
-            </section>
+            <!-- ③ ファネル設定 + データエクスポート（横並び1枚） -->
+            <section class="panel account-card account-wide-card">
+              <div class="account-wide-cols">
 
-            <!-- GA4連携 -->
-            <section class="panel account-card">
-              <div class="account-card-head">
-                <div>
-                  <p class="dashboard-card-kicker">GA4 Connection</p>
-                  <h2>GA4連携</h2>
-                </div>
-              </div>
-              <div id="ga4-connect-form-wrap">
-                <form id="ga4-quick-form" class="dashboard-stack-form">
-                  <input id="ga4-quick-input" placeholder="GA4 URL または Property ID" required />
-                  <div class="dashboard-inline-control">
-                    <input id="ga4-quick-email" type="email" placeholder="GA4アカウントメール" required />
-                    <button type="submit">かんたん接続</button>
+                <!-- ファネル計測設定 -->
+                <div class="account-wide-col">
+                  <div class="account-card-head" style="margin-bottom:12px;">
+                    <div>
+                      <p class="dashboard-card-kicker">Funnel Settings</p>
+                      <h2>ファネル計測設定</h2>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <button type="button" id="fetch-ga4-events-btn" class="btn-ghost btn-sm">🔄 GA4から取得</button>
+                      <span id="stage-rules-status" class="tiny muted"></span>
+                    </div>
                   </div>
-                </form>
-                <p class="muted tiny">例: https://analytics.google.com/.../p123456789/... または 123456789</p>
-              </div>
-              <div id="ga4-status" class="ga4-status-card"></div>
-              <div class="dashboard-inline-control" style="margin-top:8px;">
-                <button id="ga4-reconnect" class="ghost hidden" type="button">連携し直す</button>
-                <span id="ga4-quick-status" class="tiny"></span>
-              </div>
-            </section>
+                  <p class="tiny muted" style="margin:0 0 12px">「GA4から取得」でプロパティで実際に使われているイベント名をドロップダウンに自動反映します。</p>
+                  <form id="stage-rules-form" class="stage-rules-form">
+                    <table class="stage-rules-table">
+                      <thead>
+                        <tr>
+                          <th>ファネルステップ</th>
+                          <th>GA4イベント名</th>
+                          <th>URLパターン（参考）</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>
+                            <span class="stage-step-label">商品詳細ページ（PDP）</span>
+                            <span class="stage-step-hint tiny muted">推奨: view_item</span>
+                          </td>
+                          <td>
+                            <div class="sr-event-wrap">
+                              <select id="sr-pdp-event-select" class="sr-event-select" data-field="pdpEventName">
+                                <option value="">— GA4から取得してください —</option>
+                              </select>
+                              <input id="sr-pdp-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                            </div>
+                          </td>
+                          <td><input id="sr-pdp-url" type="text" placeholder="/products/" /></td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <span class="stage-step-label">カート追加</span>
+                            <span class="stage-step-hint tiny muted">推奨: add_to_cart</span>
+                          </td>
+                          <td>
+                            <div class="sr-event-wrap">
+                              <select id="sr-add-to-cart-event-select" class="sr-event-select" data-field="addToCartEventName">
+                                <option value="">— GA4から取得してください —</option>
+                              </select>
+                              <input id="sr-add-to-cart-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                            </div>
+                          </td>
+                          <td><span class="tiny muted">—</span></td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <span class="stage-step-label">カート到達（セッション計測）</span>
+                            <span class="stage-step-hint tiny muted">カート到達率の分子</span>
+                          </td>
+                          <td>
+                            <select id="sr-cart-mode">
+                              <option value="view_cart_or_begin_checkout">view_cart または begin_checkout</option>
+                              <option value="view_cart_only">view_cart のみ</option>
+                              <option value="begin_checkout_only">begin_checkout のみ</option>
+                            </select>
+                          </td>
+                          <td><input id="sr-cart-url" type="text" placeholder="/cart" /></td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <span class="stage-step-label">チェックアウト開始</span>
+                            <span class="stage-step-hint tiny muted">推奨: begin_checkout</span>
+                          </td>
+                          <td>
+                            <div class="sr-event-wrap">
+                              <select id="sr-checkout-event-select" class="sr-event-select" data-field="checkoutEventName">
+                                <option value="">— GA4から取得してください —</option>
+                              </select>
+                              <input id="sr-checkout-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                            </div>
+                          </td>
+                          <td><input id="sr-checkout-url" type="text" placeholder="/checkout" /></td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <span class="stage-step-label">購入完了</span>
+                            <span class="stage-step-hint tiny muted">推奨: purchase</span>
+                          </td>
+                          <td>
+                            <div class="sr-event-wrap">
+                              <select id="sr-purchase-event-select" class="sr-event-select" data-field="purchaseEventName">
+                                <option value="">— GA4から取得してください —</option>
+                              </select>
+                              <input id="sr-purchase-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                            </div>
+                          </td>
+                          <td><input id="sr-purchase-url" type="text" placeholder="/thank-you または /orders/" /></td>
+                        </tr>
+                        <tr>
+                          <td><span class="stage-step-label">カテゴリページ</span><span class="stage-step-hint tiny muted">任意・URLのみ</span></td>
+                          <td><span class="tiny muted">page_view（自動）</span></td>
+                          <td><input id="sr-category-url" type="text" placeholder="/collections/" /></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="stage-rules-footer">
+                      <button type="submit" class="btn-primary">保存して再同期</button>
+                      <span class="tiny muted">※保存後、最新30日分を再取得します</span>
+                    </div>
+                  </form>
+                </div>
 
-            <!-- 登録サイト -->
-            <section class="panel account-card">
-              <div class="account-card-head">
-                <div>
-                  <p class="dashboard-card-kicker">Sites</p>
-                  <h2>登録サイト</h2>
-                </div>
-              </div>
-              <ul id="account-sites" class="account-sites-list"></ul>
-              <div id="project-edit-wrap" class="hidden">
-                <div class="account-divider"></div>
-                <p class="account-field-label">プロジェクト編集</p>
-                <form id="project-edit-form" class="account-project-edit-form">
-                  <input type="hidden" id="edit-project-id" />
-                  <label>プロジェクト名
-                    <input id="edit-project-name" type="text" placeholder="例: melety store" />
-                  </label>
-                  <label>ドメイン
-                    <input id="edit-project-domain" type="text" placeholder="例: melety.store" />
-                  </label>
-                  <div class="account-form-footer">
-                    <button type="submit" class="btn-primary">保存</button>
-                    <button type="button" id="project-edit-cancel" class="btn-ghost">キャンセル</button>
-                  </div>
-                  <div id="project-edit-status" class="account-status-text"></div>
-                </form>
-              </div>
-            </section>
+                <!-- 縦区切り線 -->
+                <div class="account-wide-divider"></div>
 
-            <!-- ファネル計測設定 -->
-            <section class="panel account-card">
-              <div class="account-card-head">
-                <div>
-                  <p class="dashboard-card-kicker">Funnel Settings</p>
-                  <h2>ファネル計測設定</h2>
-                </div>
-                <div style="display:flex;align-items:center;gap:10px">
-                  <button type="button" id="fetch-ga4-events-btn" class="btn-ghost btn-sm">🔄 GA4から取得</button>
-                  <span id="stage-rules-status" class="tiny muted"></span>
-                </div>
-              </div>
-              <p class="tiny muted" style="margin:0 0 12px">「GA4から取得」でプロパティで実際に使われているイベント名を自動入力。ドロップダウンから選択するか、カスタムイベント名を直接入力できます。</p>
-              <form id="stage-rules-form" class="stage-rules-form">
-                <table class="stage-rules-table">
-                  <thead>
-                    <tr>
-                      <th>ファネルステップ</th>
-                      <th>GA4イベント名</th>
-                      <th>URLパターン（参考）</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>
-                        <span class="stage-step-label">商品詳細ページ（PDP）</span>
-                        <span class="stage-step-hint tiny muted">推奨: view_item</span>
-                      </td>
-                      <td>
-                        <div class="sr-event-wrap">
-                          <select id="sr-pdp-event-select" class="sr-event-select" data-field="pdpEventName">
-                            <option value="">— GA4から取得してください —</option>
-                          </select>
-                          <input id="sr-pdp-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </td>
-                      <td><input id="sr-pdp-url" type="text" placeholder="/products/" /></td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <span class="stage-step-label">カート追加</span>
-                        <span class="stage-step-hint tiny muted">推奨: add_to_cart</span>
-                      </td>
-                      <td>
-                        <div class="sr-event-wrap">
-                          <select id="sr-add-to-cart-event-select" class="sr-event-select" data-field="addToCartEventName">
-                            <option value="">— GA4から取得してください —</option>
-                          </select>
-                          <input id="sr-add-to-cart-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </td>
-                      <td><span class="tiny muted">—</span></td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <span class="stage-step-label">カート到達（セッション計測）</span>
-                        <span class="stage-step-hint tiny muted">カート到達率の分子</span>
-                      </td>
-                      <td>
-                        <select id="sr-cart-mode">
-                          <option value="view_cart_or_begin_checkout">view_cart または begin_checkout</option>
-                          <option value="view_cart_only">view_cart のみ</option>
-                          <option value="begin_checkout_only">begin_checkout のみ</option>
-                        </select>
-                      </td>
-                      <td><input id="sr-cart-url" type="text" placeholder="/cart" /></td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <span class="stage-step-label">チェックアウト開始</span>
-                        <span class="stage-step-hint tiny muted">推奨: begin_checkout</span>
-                      </td>
-                      <td>
-                        <div class="sr-event-wrap">
-                          <select id="sr-checkout-event-select" class="sr-event-select" data-field="checkoutEventName">
-                            <option value="">— GA4から取得してください —</option>
-                          </select>
-                          <input id="sr-checkout-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </td>
-                      <td><input id="sr-checkout-url" type="text" placeholder="/checkout" /></td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <span class="stage-step-label">購入完了</span>
-                        <span class="stage-step-hint tiny muted">推奨: purchase</span>
-                      </td>
-                      <td>
-                        <div class="sr-event-wrap">
-                          <select id="sr-purchase-event-select" class="sr-event-select" data-field="purchaseEventName">
-                            <option value="">— GA4から取得してください —</option>
-                          </select>
-                          <input id="sr-purchase-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </td>
-                      <td><input id="sr-purchase-url" type="text" placeholder="/thank-you または /orders/" /></td>
-                    </tr>
-                    <tr>
-                      <td><span class="stage-step-label">カテゴリページ</span><span class="stage-step-hint tiny muted">任意・URLパターンのみ</span></td>
-                      <td><span class="tiny muted">page_view（自動）</span></td>
-                      <td><input id="sr-category-url" type="text" placeholder="/collections/" /></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="stage-rules-footer">
-                  <button type="submit" class="btn-primary">保存して再同期</button>
-                  <span class="tiny muted">※保存後、最新30日分を再取得します（数分かかる場合があります）</span>
-                </div>
-              </form>
-            </section>
+                <!-- データエクスポート -->
+                <div class="account-wide-col">
+                  <div class="account-card-head" style="margin-bottom:12px;">
+                    <div>
+                      <p class="dashboard-card-kicker">Export</p>
+                      <h2>データエクスポート</h2>
+                    </div>
+                  </div>
+                  <p class="tiny muted" style="margin:0 0 14px">日別の計測データをCSVでダウンロードするか、Google Sheetsに自動取り込みできます。</p>
 
-            <!-- データエクスポート / スプレッドシート連携 -->
-            <section class="panel account-card">
-              <div class="account-card-head">
-                <div>
-                  <p class="dashboard-card-kicker">Export</p>
-                  <h2>データエクスポート</h2>
-                </div>
-              </div>
-              <p class="tiny muted" style="margin:0 0 14px">日別の計測データをCSVでダウンロードするか、Google Sheetsに自動取り込みできます。</p>
-              <div class="export-section">
-                <div class="export-block">
-                  <div class="export-block-title">📥 CSVダウンロード</div>
-                  <div class="export-date-row">
-                    <input id="export-from" type="date" />
-                    <span>〜</span>
-                    <input id="export-to" type="date" />
-                    <button id="export-csv-btn" type="button">ダウンロード</button>
+                  <div class="export-block" style="margin-bottom:20px;">
+                    <div class="export-block-title">📥 CSVダウンロード</div>
+                    <div class="export-date-row">
+                      <input id="export-from" type="date" />
+                      <span>〜</span>
+                      <input id="export-to" type="date" />
+                      <button id="export-csv-btn" type="button">ダウンロード</button>
+                    </div>
+                    <p class="tiny muted" style="margin-top:6px">日別 × チャネル × デバイス の全指標CSVが取得できます</p>
                   </div>
-                  <p class="tiny muted" style="margin-top:6px">日別 × チャネル × デバイス の全指標CSVが取得できます</p>
-                </div>
-                <div class="export-block">
-                  <div class="export-block-title">📊 Google Sheets 連携（GAS）</div>
-                  <p class="tiny muted">以下のスクリプトをGoogle SheetsのApps ScriptにコピーしてAPIキーを設定すると、毎日自動でデータが蓄積されます。</p>
-                  <div id="gas-snippet-wrap" class="gas-snippet-wrap">
-                    <pre id="gas-snippet" class="gas-snippet-code">プロジェクトを選択してください</pre>
-                    <button id="copy-gas-btn" type="button" class="ghost" style="margin-top:6px;font-size:12px;">コピー</button>
+
+                  <div class="export-block">
+                    <div class="export-block-title">📊 Google Sheets 連携（GAS）</div>
+                    <p class="tiny muted" style="margin:4px 0 8px">以下のスクリプトをApps ScriptにコピーしてAPIキーを設定すると、毎日自動でデータが蓄積されます。</p>
+                    <div id="gas-snippet-wrap" class="gas-snippet-wrap">
+                      <pre id="gas-snippet" class="gas-snippet-code">プロジェクトを選択してください</pre>
+                      <button id="copy-gas-btn" type="button" class="ghost" style="margin-top:6px;font-size:12px;">コピー</button>
+                    </div>
                   </div>
                 </div>
+
               </div>
             </section>
 
-            <!-- 招待 -->
+            <!-- ④ 招待ユーザー -->
             <section class="panel account-card">
               <div class="account-card-head">
                 <div>
@@ -705,7 +703,7 @@
               <ul id="invite-list" class="account-invite-list"></ul>
             </section>
 
-            <!-- アカウント削除 -->
+            <!-- ⑤ Danger Zone -->
             <section class="panel account-card account-danger-zone">
               <div class="account-card-head">
                 <div>
@@ -715,7 +713,6 @@
               </div>
               <p class="account-danger-desc">アカウントを削除すると、すべてのプロジェクト・GA4連携・施策ログ・データが完全に削除されます。この操作は取り消せません。</p>
               <button id="open-delete-account" type="button" class="account-delete-btn">アカウントを削除する</button>
-
               <div id="delete-account-confirm" class="account-delete-confirm hidden">
                 <div class="account-divider"></div>
                 <p class="account-danger-label">本当に削除しますか？確認のためパスワードを入力してください。</p>
