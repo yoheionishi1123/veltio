@@ -2507,7 +2507,137 @@ async function loadAccount() {
   });
   q("invite-status").textContent = `${(data.account.invitedUsers || []).length}/3 使用中`;
   renderProjectHeader();
+  // Load stage rules for funnel settings
+  if (state.projectId) {
+    loadStageRules();
+    updateGasSnippet();
+    const today = todayISO();
+    const monthAgo = daysAgoISO(30);
+    if (q("export-from")) q("export-from").value = monthAgo;
+    if (q("export-to")) q("export-to").value = today;
+  }
 }
+
+// ── Stage Rules (funnel settings) ─────────────────
+async function loadStageRules() {
+  if (!state.projectId) return;
+  try {
+    const data = await api(`/api/projects/${state.projectId}/setup/stage-rules`);
+    const r = data.rules || {};
+    if (q("sr-pdp-event")) q("sr-pdp-event").value = r.pdpEventName || "view_item";
+    if (q("sr-pdp-url")) q("sr-pdp-url").value = r.pdpUrlPattern || "/products/";
+    if (q("sr-cart-mode")) q("sr-cart-mode").value = r.cartReachMode || "view_cart_or_begin_checkout";
+    if (q("sr-cart-url")) q("sr-cart-url").value = r.cartUrlPattern || "/cart";
+    if (q("sr-checkout-event")) q("sr-checkout-event").value = r.checkoutEventName || "begin_checkout";
+    if (q("sr-checkout-url")) q("sr-checkout-url").value = r.checkoutUrlPattern || "/checkout";
+    if (q("sr-purchase-url")) q("sr-purchase-url").value = r.purchaseUrlPattern || "/thank-you";
+    if (q("sr-category-url")) q("sr-category-url").value = r.categoryUrlPattern || "/collections/";
+  } catch { /* silent */ }
+}
+
+// ── Gas snippet for Google Sheets ─────────────────
+function updateGasSnippet() {
+  const el = q("gas-snippet");
+  if (!el || !state.projectId) return;
+  const host = window.location.origin;
+  const pid = state.projectId;
+  el.textContent = `// Veltio → Google Sheets 日別データ自動取込スクリプト
+// Google Sheets > 拡張機能 > Apps Script に貼り付けてください
+
+const VELTIO_PROJECT_ID = "${pid}";
+const VELTIO_BASE_URL = "${host}";
+
+function importVeltioDaily() {
+  const to = new Date().toISOString().slice(0, 10);
+  const d = new Date(); d.setDate(d.getDate() - 90);
+  const from = d.toISOString().slice(0, 10);
+
+  const url = VELTIO_BASE_URL + "/api/projects/" + VELTIO_PROJECT_ID
+    + "/export/daily?from=" + from + "&to=" + to;
+
+  // ※セッションCookieが必要です。ブラウザで一度ログイン後、
+  //   デベロッパーツール > Application > Cookies から
+  //   "veltio_session" の値をコピーして下記に貼り付けてください
+  const SESSION_COOKIE = "veltio_session=YOUR_SESSION_VALUE_HERE";
+
+  const resp = UrlFetchApp.fetch(url, {
+    headers: { Cookie: SESSION_COOKIE },
+    muteHttpExceptions: true
+  });
+
+  if (resp.getResponseCode() !== 200) {
+    console.log("Error:", resp.getContentText());
+    return;
+  }
+
+  const csv = Utilities.parseCsv(resp.getContentText().replace(/^\\uFEFF/, ""));
+  const sheet = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName("veltio_daily") || SpreadsheetApp.getActiveSpreadsheet().insertSheet("veltio_daily");
+
+  const existing = sheet.getDataRange().getValues();
+  const existingDates = new Set(existing.slice(1).map(r => r[0]));
+
+  if (existing.length <= 1) {
+    sheet.getRange(1, 1, 1, csv[0].length).setValues([csv[0]]);
+  }
+
+  const newRows = csv.slice(1).filter(r => !existingDates.has(r[0]));
+  if (newRows.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
+    console.log("追加行数:", newRows.length);
+  } else {
+    console.log("新しいデータなし");
+  }
+}
+
+// 毎日自動実行する場合:
+// トリガー > 時間ベース > 毎日 > importVeltioDaily`;
+}
+
+// ── CSV Export ─────────────────────────────────────
+q("export-csv-btn")?.addEventListener("click", () => {
+  if (!state.projectId) return;
+  const from = q("export-from")?.value || daysAgoISO(30);
+  const to = q("export-to")?.value || todayISO();
+  const url = `/api/projects/${state.projectId}/export/daily?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `veltio-${from}-${to}.csv`;
+  a.click();
+});
+
+q("copy-gas-btn")?.addEventListener("click", () => {
+  const text = q("gas-snippet")?.textContent || "";
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = q("copy-gas-btn");
+    if (btn) { btn.textContent = "コピー済 ✓"; setTimeout(() => { btn.textContent = "コピー"; }, 2000); }
+  });
+});
+
+q("stage-rules-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!state.projectId) return;
+  const statusEl = q("stage-rules-status");
+  if (statusEl) statusEl.textContent = "保存・再同期中…";
+  try {
+    await api(`/api/projects/${state.projectId}/setup/stage-rules`, {
+      method: "POST",
+      body: {
+        pdpEventName: q("sr-pdp-event")?.value.trim() || "view_item",
+        pdpUrlPattern: q("sr-pdp-url")?.value.trim() || "/products/",
+        cartReachMode: q("sr-cart-mode")?.value || "view_cart_or_begin_checkout",
+        cartUrlPattern: q("sr-cart-url")?.value.trim() || "/cart",
+        checkoutEventName: q("sr-checkout-event")?.value.trim() || "begin_checkout",
+        checkoutUrlPattern: q("sr-checkout-url")?.value.trim() || "/checkout",
+        purchaseUrlPattern: q("sr-purchase-url")?.value.trim() || "/thank-you",
+        categoryUrlPattern: q("sr-category-url")?.value.trim() || "/collections/"
+      }
+    });
+    if (statusEl) { statusEl.textContent = "保存完了 ✓ 再同期が始まります"; setTimeout(() => { statusEl.textContent = ""; }, 4000); }
+  } catch (err) {
+    if (statusEl) statusEl.textContent = "保存失敗: " + err.message;
+  }
+});
 
 async function loadAssistantHistory() {
   const host = q("assistant-chat");

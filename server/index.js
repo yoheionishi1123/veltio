@@ -3415,6 +3415,39 @@ async function handleApi(req, res, urlObj) {
     return json(res, 200, { ok: true, lastSyncedAt: conn.lastSyncedAt || null, lastSyncError: conn.lastSyncError || null });
   }
 
+  // GET /api/projects/:id/export/daily — CSV export of daily metrics
+  const exportDailyMatch = urlObj.pathname.match(/^\/api\/projects\/([^/]+)\/export\/daily$/);
+  if (req.method === "GET" && exportDailyMatch) {
+    const user = requireAuth();
+    if (!user) return;
+    const project = findProjectAccessible(db, exportDailyMatch[1], user.id);
+    if (!project) return json(res, 404, { error: "project_not_found" });
+    const from = urlObj.searchParams.get("from") || shiftDate(new Date().toISOString().slice(0, 10), -90);
+    const to = urlObj.searchParams.get("to") || new Date().toISOString().slice(0, 10);
+    const rows = selectRowsForPeriod(db, project.id, from, to);
+    const header = ["date","channel","device","landingPage","sessions","engagedSessions","pdpSessions","addToCartSessions","cartReachSessions","checkoutSessions","purchaseSessions","revenue","bounce_rate","pdp_reach_rate","add_to_cart_rate","cart_abandon_rate","checkout_reach_rate","purchase_rate","cvr"];
+    const csvLines = [header.join(",")];
+    for (const r of rows.sort((a, b) => a.date.localeCompare(b.date))) {
+      const m = computeRates(r);
+      const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      csvLines.push([
+        r.date, esc(r.channel), esc(r.device), esc(r.landingPage),
+        r.sessions, r.engagedSessions, r.pdpSessions, r.addToCartSessions,
+        r.cartReachSessions, r.checkoutSessions, r.purchaseSessions, r.revenue,
+        m.bounce_rate.toFixed(4), m.pdp_reach_rate.toFixed(4), m.add_to_cart_rate.toFixed(4),
+        m.cart_abandon_rate.toFixed(4), m.checkout_reach_rate.toFixed(4), m.purchase_rate.toFixed(4), m.cvr.toFixed(4)
+      ].join(","));
+    }
+    const csv = csvLines.join("\n");
+    res.writeHead(200, {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="veltio-daily-${from}-${to}.csv"`,
+      "Access-Control-Allow-Origin": "*"
+    });
+    res.end("\uFEFF" + csv); // BOM for Excel UTF-8 compatibility
+    return;
+  }
+
   const stageRulesMatch = urlObj.pathname.match(/^\/api\/projects\/([^/]+)\/setup\/stage-rules$/);
   if (stageRulesMatch) {
     const user = requireAuth();

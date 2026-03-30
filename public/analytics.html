@@ -546,6 +546,97 @@
               </div>
             </section>
 
+            <!-- ファネル計測設定 -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Funnel Settings</p>
+                  <h2>ファネル計測設定</h2>
+                </div>
+                <span id="stage-rules-status" class="tiny muted"></span>
+              </div>
+              <p class="tiny muted" style="margin:0 0 12px">GA4イベント名とURLパターンをサイト構造に合わせて設定します。変更後に自動で再同期します。</p>
+              <form id="stage-rules-form" class="stage-rules-form">
+                <table class="stage-rules-table">
+                  <thead>
+                    <tr>
+                      <th>ファネルステップ</th>
+                      <th>GA4イベント名</th>
+                      <th>URLパターン（参考）</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="stage-step-label">商品詳細ページ（PDP）</span><span class="stage-step-hint tiny muted">view_item が一般的</span></td>
+                      <td><input id="sr-pdp-event" type="text" placeholder="view_item" /></td>
+                      <td><input id="sr-pdp-url" type="text" placeholder="/products/" /></td>
+                    </tr>
+                    <tr>
+                      <td><span class="stage-step-label">カート到達</span><span class="stage-step-hint tiny muted">複数可: view_cart または begin_checkout</span></td>
+                      <td>
+                        <select id="sr-cart-mode">
+                          <option value="view_cart_or_begin_checkout">view_cart または begin_checkout</option>
+                          <option value="view_cart_only">view_cart のみ</option>
+                          <option value="begin_checkout_only">begin_checkout のみ</option>
+                        </select>
+                      </td>
+                      <td><input id="sr-cart-url" type="text" placeholder="/cart" /></td>
+                    </tr>
+                    <tr>
+                      <td><span class="stage-step-label">チェックアウト開始</span></td>
+                      <td><input id="sr-checkout-event" type="text" placeholder="begin_checkout" /></td>
+                      <td><input id="sr-checkout-url" type="text" placeholder="/checkout" /></td>
+                    </tr>
+                    <tr>
+                      <td><span class="stage-step-label">購入完了</span><span class="stage-step-hint tiny muted">固定: purchase</span></td>
+                      <td><input value="purchase" disabled style="opacity:0.5" /></td>
+                      <td><input id="sr-purchase-url" type="text" placeholder="/thank-you または /orders/" /></td>
+                    </tr>
+                    <tr>
+                      <td><span class="stage-step-label">カテゴリページ</span><span class="stage-step-hint tiny muted">任意・URLパターンのみ</span></td>
+                      <td><input value="page_view（自動）" disabled style="opacity:0.5" /></td>
+                      <td><input id="sr-category-url" type="text" placeholder="/collections/" /></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="stage-rules-footer">
+                  <button type="submit" class="btn-primary">保存して再同期</button>
+                  <span class="tiny muted">※保存後、最新30日分を再取得します（数分かかる場合があります）</span>
+                </div>
+              </form>
+            </section>
+
+            <!-- データエクスポート / スプレッドシート連携 -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Export</p>
+                  <h2>データエクスポート</h2>
+                </div>
+              </div>
+              <p class="tiny muted" style="margin:0 0 14px">日別の計測データをCSVでダウンロードするか、Google Sheetsに自動取り込みできます。</p>
+              <div class="export-section">
+                <div class="export-block">
+                  <div class="export-block-title">📥 CSVダウンロード</div>
+                  <div class="export-date-row">
+                    <input id="export-from" type="date" />
+                    <span>〜</span>
+                    <input id="export-to" type="date" />
+                    <button id="export-csv-btn" type="button">ダウンロード</button>
+                  </div>
+                  <p class="tiny muted" style="margin-top:6px">日別 × チャネル × デバイス の全指標CSVが取得できます</p>
+                </div>
+                <div class="export-block">
+                  <div class="export-block-title">📊 Google Sheets 連携（GAS）</div>
+                  <p class="tiny muted">以下のスクリプトをGoogle SheetsのApps ScriptにコピーしてAPIキーを設定すると、毎日自動でデータが蓄積されます。</p>
+                  <div id="gas-snippet-wrap" class="gas-snippet-wrap">
+                    <pre id="gas-snippet" class="gas-snippet-code">プロジェクトを選択してください</pre>
+                    <button id="copy-gas-btn" type="button" class="ghost" style="margin-top:6px;font-size:12px;">コピー</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <!-- 招待 -->
             <section class="panel account-card">
               <div class="account-card-head">
