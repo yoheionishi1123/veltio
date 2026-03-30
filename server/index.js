@@ -214,11 +214,13 @@ const RECOMMENDATION_TEMPLATES = [
 const DEFAULT_STAGE_RULES = {
   pdpEventName: "view_item",
   pdpUrlPattern: "/products/",
+  addToCartEventName: "add_to_cart",
   cartEventName: "view_cart",
   cartAltEventName: "begin_checkout",
   cartUrlPattern: "/cart",
   checkoutEventName: "begin_checkout",
   checkoutUrlPattern: "/checkout",
+  purchaseEventName: "purchase",
   cartReachMode: "view_cart_or_begin_checkout"
 };
 
@@ -985,11 +987,11 @@ async function syncProjectMetricsFromGa4(db, project, from, to) {
 
   const eventNames = new Set([
     rules.pdpEventName || "view_item",
-    "add_to_cart",
+    rules.addToCartEventName || "add_to_cart",
     rules.cartEventName || "view_cart",
     rules.cartAltEventName || "begin_checkout",
     rules.checkoutEventName || "begin_checkout",
-    "purchase"
+    rules.purchaseEventName || "purchase"
   ]);
 
   const eventReport = await runGa4Report(conn.ga4PropertyId, conn.accessToken, {
@@ -1059,10 +1061,12 @@ async function syncProjectMetricsFromGa4(db, project, from, to) {
     const cartAltEvent = rules.cartAltEventName || "begin_checkout";
     const checkoutEvent = rules.checkoutEventName || "begin_checkout";
 
+    const addToCartEvent = rules.addToCartEventName || "add_to_cart";
+    const purchaseEvent = rules.purchaseEventName || "purchase";
     row.pdpSessions = Number(ev[pdpEvent] || 0);
-    row.addToCartSessions = Number(ev.add_to_cart || 0);
+    row.addToCartSessions = Number(ev[addToCartEvent] || 0);
     row.checkoutSessions = Number(ev[checkoutEvent] || 0);
-    row.purchaseSessions = Number(ev.purchase || 0);
+    row.purchaseSessions = Number(ev[purchaseEvent] || 0);
 
     const cartByViewCart = Number(ev[cartEvent] || 0);
     const cartByBeginCheckout = Number(ev[cartAltEvent] || 0);
@@ -3520,6 +3524,39 @@ async function handleApi(req, res, urlObj) {
       await syncProjectMetrics(db, project);
       await writeDb(db);
       return json(res, 200, { rules: next });
+    }
+  }
+
+  // GET /api/projects/:id/ga4/events — fetch event names from GA4 (last 30 days)
+  const ga4EventsMatch = urlObj.pathname.match(/^\/api\/projects\/([^/]+)\/ga4\/events$/);
+  if (req.method === "GET" && ga4EventsMatch) {
+    const user = requireAuth();
+    if (!user) return;
+    const projectId = ga4EventsMatch[1];
+    const project = findProjectAccessible(db, projectId, user.id);
+    if (!project) return json(res, 404, { error: "project_not_found" });
+    try {
+      const conn = await ensureFreshAccessToken(db, projectId);
+      if (!hasAnalyticsReadonlyScope(conn)) {
+        return json(res, 403, { error: "ga4_missing_scope" });
+      }
+      const today = isoDateOnly(new Date());
+      const thirtyDaysAgo = shiftDate(today, -30);
+      const report = await runGa4Report(conn.ga4PropertyId, conn.accessToken, {
+        dateRanges: [{ startDate: thirtyDaysAgo, endDate: today }],
+        dimensions: [{ name: "eventName" }],
+        metrics: [{ name: "eventCount" }],
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+        limit: "100",
+        keepEmptyRows: false
+      });
+      const events = (report.rows || []).map((row) => ({
+        name: row.dimensionValues[0].value,
+        count: parseInt(row.metricValues[0].value || "0", 10)
+      }));
+      return json(res, 200, { events });
+    } catch (err) {
+      return json(res, 500, { error: "ga4_fetch_failed", message: err.message });
     }
   }
 

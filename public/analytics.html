@@ -553,9 +553,12 @@
                   <p class="dashboard-card-kicker">Funnel Settings</p>
                   <h2>ファネル計測設定</h2>
                 </div>
-                <span id="stage-rules-status" class="tiny muted"></span>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <button type="button" id="fetch-ga4-events-btn" class="btn-ghost btn-sm">🔄 GA4から取得</button>
+                  <span id="stage-rules-status" class="tiny muted"></span>
+                </div>
               </div>
-              <p class="tiny muted" style="margin:0 0 12px">GA4イベント名とURLパターンをサイト構造に合わせて設定します。変更後に自動で再同期します。</p>
+              <p class="tiny muted" style="margin:0 0 12px">「GA4から取得」でプロパティで実際に使われているイベント名を自動入力。ドロップダウンから選択するか、カスタムイベント名を直接入力できます。</p>
               <form id="stage-rules-form" class="stage-rules-form">
                 <table class="stage-rules-table">
                   <thead>
@@ -567,12 +570,40 @@
                   </thead>
                   <tbody>
                     <tr>
-                      <td><span class="stage-step-label">商品詳細ページ（PDP）</span><span class="stage-step-hint tiny muted">view_item が一般的</span></td>
-                      <td><input id="sr-pdp-event" type="text" placeholder="view_item" /></td>
+                      <td>
+                        <span class="stage-step-label">商品詳細ページ（PDP）</span>
+                        <span class="stage-step-hint tiny muted">推奨: view_item</span>
+                      </td>
+                      <td>
+                        <div class="sr-event-wrap">
+                          <select id="sr-pdp-event-select" class="sr-event-select" data-field="pdpEventName">
+                            <option value="">— GA4から取得してください —</option>
+                          </select>
+                          <input id="sr-pdp-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                        </div>
+                      </td>
                       <td><input id="sr-pdp-url" type="text" placeholder="/products/" /></td>
                     </tr>
                     <tr>
-                      <td><span class="stage-step-label">カート到達</span><span class="stage-step-hint tiny muted">複数可: view_cart または begin_checkout</span></td>
+                      <td>
+                        <span class="stage-step-label">カート追加</span>
+                        <span class="stage-step-hint tiny muted">推奨: add_to_cart</span>
+                      </td>
+                      <td>
+                        <div class="sr-event-wrap">
+                          <select id="sr-add-to-cart-event-select" class="sr-event-select" data-field="addToCartEventName">
+                            <option value="">— GA4から取得してください —</option>
+                          </select>
+                          <input id="sr-add-to-cart-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                        </div>
+                      </td>
+                      <td><span class="tiny muted">—</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span class="stage-step-label">カート到達（セッション計測）</span>
+                        <span class="stage-step-hint tiny muted">カート到達率の分子</span>
+                      </td>
                       <td>
                         <select id="sr-cart-mode">
                           <option value="view_cart_or_begin_checkout">view_cart または begin_checkout</option>
@@ -583,18 +614,38 @@
                       <td><input id="sr-cart-url" type="text" placeholder="/cart" /></td>
                     </tr>
                     <tr>
-                      <td><span class="stage-step-label">チェックアウト開始</span></td>
-                      <td><input id="sr-checkout-event" type="text" placeholder="begin_checkout" /></td>
+                      <td>
+                        <span class="stage-step-label">チェックアウト開始</span>
+                        <span class="stage-step-hint tiny muted">推奨: begin_checkout</span>
+                      </td>
+                      <td>
+                        <div class="sr-event-wrap">
+                          <select id="sr-checkout-event-select" class="sr-event-select" data-field="checkoutEventName">
+                            <option value="">— GA4から取得してください —</option>
+                          </select>
+                          <input id="sr-checkout-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                        </div>
+                      </td>
                       <td><input id="sr-checkout-url" type="text" placeholder="/checkout" /></td>
                     </tr>
                     <tr>
-                      <td><span class="stage-step-label">購入完了</span><span class="stage-step-hint tiny muted">固定: purchase</span></td>
-                      <td><input value="purchase" disabled style="opacity:0.5" /></td>
+                      <td>
+                        <span class="stage-step-label">購入完了</span>
+                        <span class="stage-step-hint tiny muted">推奨: purchase</span>
+                      </td>
+                      <td>
+                        <div class="sr-event-wrap">
+                          <select id="sr-purchase-event-select" class="sr-event-select" data-field="purchaseEventName">
+                            <option value="">— GA4から取得してください —</option>
+                          </select>
+                          <input id="sr-purchase-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                        </div>
+                      </td>
                       <td><input id="sr-purchase-url" type="text" placeholder="/thank-you または /orders/" /></td>
                     </tr>
                     <tr>
                       <td><span class="stage-step-label">カテゴリページ</span><span class="stage-step-hint tiny muted">任意・URLパターンのみ</span></td>
-                      <td><input value="page_view（自動）" disabled style="opacity:0.5" /></td>
+                      <td><span class="tiny muted">page_view（自動）</span></td>
                       <td><input id="sr-category-url" type="text" placeholder="/collections/" /></td>
                     </tr>
                   </tbody>

@@ -2582,20 +2582,127 @@ async function loadAccount() {
 }
 
 // ── Stage Rules (funnel settings) ─────────────────
+
+// Recommended defaults shown first in every event dropdown
+const RECOMMENDED_EVENTS = [
+  { name: "view_item",        label: "view_item（商品ページ閲覧・推奨）" },
+  { name: "add_to_cart",      label: "add_to_cart（カート追加・推奨）" },
+  { name: "view_cart",        label: "view_cart（カート閲覧）" },
+  { name: "begin_checkout",   label: "begin_checkout（チェックアウト開始・推奨）" },
+  { name: "purchase",         label: "purchase（購入完了・推奨）" }
+];
+
+// Populate a <select> with GA4-fetched events + recommended defaults
+function populateEventSelect(selectId, customInputId, ga4Events, currentValue) {
+  const sel = q(selectId);
+  const customInput = q(customInputId);
+  if (!sel) return;
+
+  // Build option set: recommended + fetched (deduped)
+  const seen = new Set();
+  const options = [];
+  for (const rec of RECOMMENDED_EVENTS) {
+    seen.add(rec.name);
+    options.push({ value: rec.name, label: rec.label });
+  }
+  if (ga4Events?.length) {
+    // Separator
+    options.push({ value: "__sep__", label: "─── GA4で確認されたイベント ───", disabled: true });
+    for (const ev of ga4Events) {
+      if (!seen.has(ev.name)) {
+        seen.add(ev.name);
+        const cnt = ev.count > 0 ? ` (${ev.count.toLocaleString()}回)` : "";
+        options.push({ value: ev.name, label: ev.name + cnt });
+      }
+    }
+  }
+  options.push({ value: "__custom__", label: "✏️ カスタム入力..." });
+
+  sel.innerHTML = options.map((o) =>
+    `<option value="${escapeHtml(o.value)}"${o.disabled ? " disabled" : ""}>${escapeHtml(o.label)}</option>`
+  ).join("");
+
+  // Select current value
+  if (currentValue && seen.has(currentValue)) {
+    sel.value = currentValue;
+    if (customInput) customInput.classList.add("hidden");
+  } else if (currentValue) {
+    // custom value not in list
+    sel.value = "__custom__";
+    if (customInput) { customInput.classList.remove("hidden"); customInput.value = currentValue; }
+  } else {
+    sel.value = "";
+    if (customInput) customInput.classList.add("hidden");
+  }
+
+  // Toggle custom input on change
+  sel.onchange = () => {
+    if (!customInput) return;
+    if (sel.value === "__custom__") {
+      customInput.classList.remove("hidden");
+      customInput.focus();
+    } else {
+      customInput.classList.add("hidden");
+    }
+  };
+}
+
+// Read the effective value from a select+custom combo
+function getEventValue(selectId, customInputId) {
+  const sel = q(selectId);
+  const customInput = q(customInputId);
+  if (!sel) return "";
+  if (sel.value === "__custom__") return (customInput?.value || "").trim();
+  if (sel.value === "__sep__" || sel.value === "") return "";
+  return sel.value;
+}
+
 async function loadStageRules() {
   if (!state.projectId) return;
   try {
     const data = await api(`/api/projects/${state.projectId}/setup/stage-rules`);
     const r = data.rules || {};
-    if (q("sr-pdp-event")) q("sr-pdp-event").value = r.pdpEventName || "view_item";
+    // Populate URL pattern inputs immediately
     if (q("sr-pdp-url")) q("sr-pdp-url").value = r.pdpUrlPattern || "/products/";
     if (q("sr-cart-mode")) q("sr-cart-mode").value = r.cartReachMode || "view_cart_or_begin_checkout";
     if (q("sr-cart-url")) q("sr-cart-url").value = r.cartUrlPattern || "/cart";
-    if (q("sr-checkout-event")) q("sr-checkout-event").value = r.checkoutEventName || "begin_checkout";
     if (q("sr-checkout-url")) q("sr-checkout-url").value = r.checkoutUrlPattern || "/checkout";
     if (q("sr-purchase-url")) q("sr-purchase-url").value = r.purchaseUrlPattern || "/thank-you";
     if (q("sr-category-url")) q("sr-category-url").value = r.categoryUrlPattern || "/collections/";
+    // Populate event selects with saved values (no GA4 events yet — just recommended defaults)
+    populateEventSelect("sr-pdp-event-select", "sr-pdp-event-custom", [], r.pdpEventName || "view_item");
+    populateEventSelect("sr-add-to-cart-event-select", "sr-add-to-cart-event-custom", [], r.addToCartEventName || "add_to_cart");
+    populateEventSelect("sr-checkout-event-select", "sr-checkout-event-custom", [], r.checkoutEventName || "begin_checkout");
+    populateEventSelect("sr-purchase-event-select", "sr-purchase-event-custom", [], r.purchaseEventName || "purchase");
   } catch { /* silent */ }
+}
+
+// Fetch live event names from GA4 and repopulate selects
+async function loadGa4Events() {
+  if (!state.projectId) return;
+  const statusEl = q("stage-rules-status");
+  const btn = q("fetch-ga4-events-btn");
+  if (statusEl) statusEl.textContent = "GA4から取得中…";
+  if (btn) { btn.disabled = true; btn.textContent = "取得中…"; }
+  try {
+    const data = await api(`/api/projects/${state.projectId}/ga4/events`);
+    const events = data.events || [];
+
+    // Re-read current saved values to preserve selection
+    const savedData = await api(`/api/projects/${state.projectId}/setup/stage-rules`);
+    const r = savedData.rules || {};
+
+    populateEventSelect("sr-pdp-event-select",          "sr-pdp-event-custom",          events, r.pdpEventName || "view_item");
+    populateEventSelect("sr-add-to-cart-event-select",  "sr-add-to-cart-event-custom",  events, r.addToCartEventName || "add_to_cart");
+    populateEventSelect("sr-checkout-event-select",     "sr-checkout-event-custom",     events, r.checkoutEventName || "begin_checkout");
+    populateEventSelect("sr-purchase-event-select",     "sr-purchase-event-custom",     events, r.purchaseEventName || "purchase");
+
+    if (statusEl) { statusEl.textContent = `✓ ${events.length}件取得`; setTimeout(() => { statusEl.textContent = ""; }, 3000); }
+  } catch (err) {
+    if (statusEl) statusEl.textContent = err.message?.includes("ga4_not_connected") ? "GA4未連携" : "取得失敗: " + err.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "🔄 GA4から取得"; }
+  }
 }
 
 // ── Gas snippet for Google Sheets ─────────────────
@@ -2686,12 +2793,14 @@ q("stage-rules-form")?.addEventListener("submit", async (e) => {
     await api(`/api/projects/${state.projectId}/setup/stage-rules`, {
       method: "POST",
       body: {
-        pdpEventName: q("sr-pdp-event")?.value.trim() || "view_item",
-        pdpUrlPattern: q("sr-pdp-url")?.value.trim() || "/products/",
-        cartReachMode: q("sr-cart-mode")?.value || "view_cart_or_begin_checkout",
-        cartUrlPattern: q("sr-cart-url")?.value.trim() || "/cart",
-        checkoutEventName: q("sr-checkout-event")?.value.trim() || "begin_checkout",
+        pdpEventName:       getEventValue("sr-pdp-event-select",         "sr-pdp-event-custom")         || "view_item",
+        addToCartEventName: getEventValue("sr-add-to-cart-event-select", "sr-add-to-cart-event-custom") || "add_to_cart",
+        pdpUrlPattern:      q("sr-pdp-url")?.value.trim()      || "/products/",
+        cartReachMode:      q("sr-cart-mode")?.value           || "view_cart_or_begin_checkout",
+        cartUrlPattern:     q("sr-cart-url")?.value.trim()     || "/cart",
+        checkoutEventName:  getEventValue("sr-checkout-event-select",    "sr-checkout-event-custom")    || "begin_checkout",
         checkoutUrlPattern: q("sr-checkout-url")?.value.trim() || "/checkout",
+        purchaseEventName:  getEventValue("sr-purchase-event-select",    "sr-purchase-event-custom")    || "purchase",
         purchaseUrlPattern: q("sr-purchase-url")?.value.trim() || "/thank-you",
         categoryUrlPattern: q("sr-category-url")?.value.trim() || "/collections/"
       }
@@ -2701,6 +2810,8 @@ q("stage-rules-form")?.addEventListener("submit", async (e) => {
     if (statusEl) statusEl.textContent = "保存失敗: " + err.message;
   }
 });
+
+q("fetch-ga4-events-btn")?.addEventListener("click", loadGa4Events);
 
 async function loadAssistantHistory() {
   const host = q("assistant-chat");
