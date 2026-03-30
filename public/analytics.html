@@ -790,6 +790,13 @@
               </div>
             </div>
             <div id="action-log-timeline" class="task-list"></div>
+            <!-- 完了日入力バー（prompt()の代替） -->
+            <div id="task-complete-bar" class="task-complete-bar hidden">
+              <span class="task-complete-bar-label">✅ 完了日を入力</span>
+              <input id="task-complete-date-input" type="date" />
+              <button id="task-complete-confirm-btn" type="button" class="btn-primary btn-sm">完了にする</button>
+              <button id="task-complete-cancel-btn" type="button" class="btn-ghost btn-sm">キャンセル</button>
+            </div>
             <!-- hidden compat elements -->
             <div id="company-note-timeline" class="hidden"></div>
           </section>

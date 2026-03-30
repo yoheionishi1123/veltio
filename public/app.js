@@ -1104,54 +1104,143 @@ const ACTION_STATUS_META = {
 let activeTaskTab = "all";
 
 // ── Group measurement panel ──────────────────────────────────────────────────
+function buildGmSparkline(group) {
+  const key = group.metricKey;
+  const base = group.baselineMetrics?.[key];
+  if (base == null) return "";
+
+  // Build data points: baseline + each available evaluation window
+  const points = [{ label: "施策前", value: base, days: 0 }];
+  for (const ev of (group.evaluations || [])) {
+    if (ev.available && ev.metrics?.[key] != null) {
+      points.push({ label: `${ev.days}日後`, value: ev.metrics[key], days: ev.days });
+    }
+  }
+  if (points.length < 2) {
+    return `<div class="gm-chart-waiting">完了後のデータが蓄積されるとグラフが表示されます（7日後〜）</div>`;
+  }
+
+  const lowerBetter = ["bounce_rate", "cart_abandon_rate"].includes(key);
+  const W = 340, H = 110, PL = 48, PR = 16, PT = 16, PB = 28;
+  const iW = W - PL - PR, iH = H - PT - PB;
+  const vals = points.map((p) => p.value);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const range = maxV - minV || 0.005;
+  const xP = (i) => PL + (i / (points.length - 1)) * iW;
+  const yP = (v) => PT + (1 - (v - minV) / range) * iH;
+
+  const lastVal = points[points.length - 1].value;
+  const improved = lowerBetter ? lastVal < base : lastVal > base;
+  const lineColor = improved ? "#16a34a" : "#dc2626";
+
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xP(i).toFixed(1)} ${yP(p.value).toFixed(1)}`).join(" ");
+
+  const circles = points.map((p, i) => {
+    const cx = xP(i).toFixed(1), cy = yP(p.value).toFixed(1);
+    const color = i === 0 ? "#94a3b8" : lineColor;
+    return `<circle cx="${cx}" cy="${cy}" r="5" fill="${color}" stroke="white" stroke-width="1.5"/>
+            <text x="${cx}" y="${parseFloat(cy) - 9}" text-anchor="middle" fill="${color}" font-size="10" font-weight="600">${escapeHtml((p.value * 100).toFixed(1))}%</text>`;
+  }).join("");
+
+  const xLabels = points.map((p, i) =>
+    `<text x="${xP(i).toFixed(1)}" y="${H - 4}" text-anchor="middle" fill="#94a3b8" font-size="10">${escapeHtml(p.label)}</text>`
+  ).join("");
+
+  // Reference line at baseline
+  const baselineY = yP(base).toFixed(1);
+  const refLine = `<line x1="${PL}" y1="${baselineY}" x2="${W - PR}" y2="${baselineY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="gm-chart-svg" style="width:100%;max-width:${W}px;height:${H}px">
+    ${refLine}
+    <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${circles}
+    ${xLabels}
+  </svg>`;
+}
+
 function buildGroupMeasurementPanel(group) {
   const label = metricLabel(group.metricKey);
+  const lowerBetter = ["bounce_rate", "cart_abandon_rate"].includes(group.metricKey);
+  const fmtPct = (v) => (v == null ? "–" : (v * 100).toFixed(2) + "%");
   const baseVal = group.baselineMetrics?.[group.metricKey];
 
-  // Best available evaluation window (prefer 30 > 14 > 7)
-  const bestEval = [...(group.evaluations || [])].reverse().find((e) => e.available && e.metrics)
-    || null;
-  const currentVal = bestEval?.metrics?.[group.metricKey];
+  // Build per-window comparison rows
+  const ALL_SHOW_METRICS = [
+    { key: group.metricKey, label: label, primary: true },
+    { key: "bounce_rate", label: "直帰率" },
+    { key: "add_to_cart_rate", label: "カート追加率" },
+    { key: "purchase_rate", label: "購入完了率" },
+    { key: "cvr", label: "CVR" }
+  ].filter((m, i, arr) => arr.findIndex((x) => x.key === m.key) === i); // dedupe
 
-  const fmtPct = (v) => (v == null ? "–" : (v * 100).toFixed(2) + "%");
+  // Window tabs: show available ones
+  const availEvals = (group.evaluations || []).filter((e) => e.available && e.metrics);
+  const bestEval = availEvals[availEvals.length - 1] || null;
 
-  let diffHtml = "";
-  if (baseVal != null && currentVal != null) {
-    const lowerBetter = ["bounce_rate", "cart_abandon_rate"].includes(group.metricKey);
-    const delta = currentVal - baseVal;
-    const improved = lowerBetter ? delta < 0 : delta > 0;
-    const sign = delta >= 0 ? "+" : "";
-    const cls = improved ? "gm-delta-good" : "gm-delta-bad";
-    diffHtml = `
-      <div class="gm-metric-row">
-        <div class="gm-metric-before"><span class="gm-metric-label">施策前</span><span class="gm-metric-val">${escapeHtml(fmtPct(baseVal))}</span></div>
-        <div class="gm-arrow">→</div>
-        <div class="gm-metric-after"><span class="gm-metric-label">${escapeHtml(bestEval.days)}日後</span><span class="gm-metric-val">${escapeHtml(fmtPct(currentVal))}</span></div>
-        <div class="${cls}">${escapeHtml(sign + (delta * 100).toFixed(2))}pt</div>
+  // Before/After table for best window
+  let compTable = "";
+  if (bestEval && baseVal != null) {
+    const rows = ALL_SHOW_METRICS.map((m) => {
+      const bv = group.baselineMetrics?.[m.key];
+      const av = bestEval.metrics[m.key];
+      if (bv == null && av == null) return "";
+      const lb = ["bounce_rate", "cart_abandon_rate"].includes(m.key);
+      const delta = av != null && bv != null ? av - bv : null;
+      const improved = delta != null ? (lb ? delta < 0 : delta > 0) : null;
+      const sign = delta != null && delta >= 0 ? "+" : "";
+      const deltaCls = improved === true ? "gm-cmp-good" : improved === false ? "gm-cmp-bad" : "gm-cmp-neutral";
+      return `<tr class="${m.primary ? "gm-cmp-primary" : ""}">
+        <td class="gm-cmp-name">${escapeHtml(m.label)}</td>
+        <td class="gm-cmp-val">${escapeHtml(fmtPct(bv))}</td>
+        <td class="gm-cmp-val gm-cmp-after">${escapeHtml(fmtPct(av))}</td>
+        <td class="${deltaCls}">${delta != null ? escapeHtml(sign + (delta * 100).toFixed(2) + "pt") : "–"}</td>
+      </tr>`;
+    }).filter(Boolean).join("");
+    compTable = `
+      <div class="gm-cmp-wrap">
+        <table class="gm-cmp-table">
+          <thead><tr><th>指標</th><th>施策前</th><th>${escapeHtml(bestEval.days)}日後</th><th>変化</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
       </div>`;
   }
 
   const windowBadges = (group.evaluations || []).map((e) => {
     const cls = e.available ? "gm-win-badge gm-win-ok" : "gm-win-badge gm-win-wait";
-    const icon = e.available ? "✓" : "…";
-    return `<span class="${cls}" title="${e.available ? e.comment : "データ蓄積中"}">${icon} ${escapeHtml(String(e.days))}日</span>`;
+    return `<span class="${cls}">${e.available ? "✓" : "…"} ${escapeHtml(String(e.days))}日</span>`;
   }).join("");
 
   const taskChips = (group.tasks || []).map((t) =>
-    `<span class="gm-task-chip">✅ ${escapeHtml(t.content.length > 24 ? t.content.slice(0, 24) + "…" : t.content)}</span>`
+    `<span class="gm-task-chip">✅ ${escapeHtml(t.content.length > 30 ? t.content.slice(0, 30) + "…" : t.content)}</span>`
   ).join("");
+
+  const sparkline = buildGmSparkline(group);
+
+  const overallDelta = bestEval && baseVal != null && bestEval.metrics?.[group.metricKey] != null
+    ? bestEval.metrics[group.metricKey] - baseVal : null;
+  const improved = overallDelta != null ? (lowerBetter ? overallDelta < 0 : overallDelta > 0) : null;
+  const verdictCls = improved === true ? "gm-verdict-good" : improved === false ? "gm-verdict-bad" : "gm-verdict-pending";
+  const verdictText = improved === true ? "📈 改善" : improved === false ? "📉 悪化" : "⏳ 計測中";
 
   return `
     <div class="gm-panel" data-metric="${escapeHtml(group.metricKey)}">
       <div class="gm-panel-head">
         <div class="gm-panel-badge">🏁 全施策完了</div>
         <div class="gm-panel-title">🎯 ${escapeHtml(label)} グループ効果測定</div>
-        <div class="gm-panel-meta">最終完了: ${escapeHtml(group.lastCompletedDate)} · ${escapeHtml(String(group.taskCount))}施策</div>
+        <div class="gm-panel-right">
+          <span class="gm-verdict ${verdictCls}">${verdictText}</span>
+          <span class="gm-panel-meta">${escapeHtml(group.firstCompletedDate || group.lastCompletedDate)}〜${escapeHtml(group.lastCompletedDate)} · ${escapeHtml(String(group.taskCount))}施策</span>
+        </div>
       </div>
       <div class="gm-tasks-row">${taskChips}</div>
-      ${diffHtml}
-      <div class="gm-windows-row">${windowBadges}</div>
-      ${bestEval?.comment ? `<div class="gm-comment">${escapeHtml(bestEval.comment)}</div>` : ""}
+      <div class="gm-body">
+        <div class="gm-chart-col">
+          <div class="gm-chart-label">${escapeHtml(label)} の推移</div>
+          ${sparkline}
+          <div class="gm-windows-row">${windowBadges}</div>
+        </div>
+        ${compTable ? `<div class="gm-table-col">${compTable}</div>` : ""}
+      </div>
     </div>`;
 }
 
@@ -2813,6 +2902,59 @@ q("stage-rules-form")?.addEventListener("submit", async (e) => {
 
 q("fetch-ga4-events-btn")?.addEventListener("click", loadGa4Events);
 
+// ── 完了日バー（prompt代替）─────────────────────────────────────────
+async function submitTaskComplete() {
+  const bar = q("task-complete-bar");
+  const dateInput = q("task-complete-date-input");
+  if (!bar || !dateInput) return;
+  const editId = bar.dataset.pendingId;
+  const dateStr = dateInput.value;
+  if (!editId || !dateStr || !validateDateStr(dateStr)) {
+    dateInput.style.borderColor = "#ef4444";
+    setTimeout(() => { dateInput.style.borderColor = ""; }, 2000);
+    return;
+  }
+  const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === editId);
+  if (!row) return;
+  const confirmBtn = q("task-complete-confirm-btn");
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "更新中…"; }
+  try {
+    await api(`/api/projects/${state.projectId}/context`, {
+      method: "POST",
+      body: {
+        actionLog: row.content,
+        actionLogId: editId,
+        actionOwner: row.owner || "",
+        actionStatus: "done",
+        actionPriority: row.priority || "medium",
+        actionCompletedAtDate: dateStr,
+        targetMetricKey: row.targetMetricKey || "",
+        from: state.from,
+        to: state.to
+      }
+    });
+    bar.classList.add("hidden");
+    bar.dataset.pendingId = "";
+    await loadProjectContext();
+  } catch (err) {
+    alert("更新に失敗しました: " + err.message);
+  } finally {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "完了にする"; }
+  }
+}
+
+q("task-complete-confirm-btn")?.addEventListener("click", submitTaskComplete);
+
+q("task-complete-date-input")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); submitTaskComplete(); }
+  if (e.key === "Escape") { q("task-complete-bar")?.classList.add("hidden"); }
+});
+
+q("task-complete-cancel-btn")?.addEventListener("click", () => {
+  const bar = q("task-complete-bar");
+  if (bar) { bar.classList.add("hidden"); bar.dataset.pendingId = ""; }
+});
+
 async function loadAssistantHistory() {
   const host = q("assistant-chat");
   host.innerHTML = "";
@@ -3521,36 +3663,17 @@ q("action-log-timeline").addEventListener("click", async (e) => {
     return;
   }
 
-  // 完了にする（インライン）
+  // 完了にする → インライン日付バーを表示（prompt()を使わない）
   if (btn.classList.contains("task-complete-btn")) {
-    const dateStr = prompt("完了日を入力してください（例: 2026-03-29）", todayISO());
-    if (!dateStr) return;
-    if (!validateDateStr(dateStr)) { alert("日付の形式が正しくありません（YYYY-MM-DD）"); return; }
-    const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === editId);
-    if (!row) return;
-    btn.disabled = true;
-    btn.textContent = "更新中…";
-    try {
-      await api(`/api/projects/${state.projectId}/context`, {
-        method: "POST",
-        body: {
-          actionLog: row.content,
-          actionLogId: editId,
-          actionOwner: row.owner || "",
-          actionStatus: "done",
-          actionPriority: row.priority || "medium",
-          actionCompletedAtDate: dateStr,
-          targetMetricKey: row.targetMetricKey || "",
-          from: state.from,
-          to: state.to
-        }
-      });
-      await loadProjectContext();
-    } catch (err) {
-      btn.disabled = false;
-      btn.textContent = "✓ 完了にする";
-      alert("更新に失敗しました: " + err.message);
-    }
+    const bar = q("task-complete-bar");
+    const dateInput = q("task-complete-date-input");
+    if (!bar || !dateInput) return;
+    dateInput.value = todayISO();
+    bar.dataset.pendingId = editId;
+    bar.classList.remove("hidden");
+    dateInput.focus();
+    // スクロールして見えるようにする
+    bar.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
 
