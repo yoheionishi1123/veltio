@@ -511,8 +511,22 @@
                 <div id="account-plan-badge" class="plan-badge plan-free">FREE</div>
               </div>
 
+              <!-- trial banner -->
+              <div id="trial-banner" class="trial-banner hidden"></div>
+
               <!-- current plan status row -->
               <div id="plan-current-status" class="plan-current-status"></div>
+
+              <!-- session usage bar -->
+              <div id="session-usage-wrap" class="session-usage-wrap hidden">
+                <div class="session-usage-label">
+                  <span>今月のセッション数</span>
+                  <span id="session-usage-text"></span>
+                </div>
+                <div class="session-usage-bar-bg">
+                  <div id="session-usage-bar" class="session-usage-bar"></div>
+                </div>
+              </div>
 
               <!-- 3-tier pricing grid -->
               <div class="pricing-grid">
@@ -522,15 +536,13 @@
                   <div class="pricing-tier-head">
                     <span class="pricing-tier-name">Free</span>
                     <div class="pricing-tier-price">¥0<span class="pricing-tier-per">/月</span></div>
+                    <div class="pricing-tier-sessions">月間セッション 〜1万</div>
                   </div>
                   <ul class="pricing-features">
-                    <li>✅ プロジェクト 1件</li>
                     <li>✅ ファネル計測・GA4連携</li>
-                    <li>✅ AI診断（月3回）</li>
-                    <li>✅ タスク管理</li>
+                    <li>✅ AI診断・タスク管理</li>
                     <li class="feat-locked">❌ 期間比較・ブレークダウン</li>
                     <li class="feat-locked">❌ PPTレポート出力</li>
-                    <li class="feat-locked">❌ 複数プロジェクト</li>
                     <li class="feat-locked">❌ チームメンバー招待</li>
                   </ul>
                   <button class="pricing-cta pricing-cta-current" id="plan-free-btn" type="button" disabled>現在のプラン</button>
@@ -541,16 +553,14 @@
                   <div class="pricing-tier-badge-wrap"><span class="pricing-tier-popular">人気 No.1</span></div>
                   <div class="pricing-tier-head">
                     <span class="pricing-tier-name">Pro</span>
-                    <div class="pricing-tier-price">¥29,800<span class="pricing-tier-per">/月〜 税抜</span></div>
+                    <div class="pricing-tier-price">¥15,000<span class="pricing-tier-per">/月 税抜</span></div>
+                    <div class="pricing-tier-sessions">月間セッション 1〜10万</div>
                   </div>
                   <ul class="pricing-features">
-                    <li>✅ プロジェクト 3件</li>
                     <li>✅ ファネル計測・GA4連携</li>
-                    <li>✅ AI診断（無制限）</li>
-                    <li>✅ タスク管理</li>
+                    <li>✅ AI診断・タスク管理</li>
                     <li>✅ 期間比較・ブレークダウン</li>
                     <li>✅ PPTレポート出力</li>
-                    <li class="feat-locked">❌ 複数プロジェクト（無制限）</li>
                     <li class="feat-locked">❌ チームメンバー招待</li>
                   </ul>
                   <button class="pricing-cta pricing-cta-upgrade" id="plan-pro-btn" type="button">Proにアップグレード</button>
@@ -560,16 +570,14 @@
                 <div class="pricing-tier" id="pricing-business">
                   <div class="pricing-tier-head">
                     <span class="pricing-tier-name">Business</span>
-                    <div class="pricing-tier-price">¥79,800<span class="pricing-tier-per">/月〜 税抜</span></div>
+                    <div class="pricing-tier-price">¥50,000<span class="pricing-tier-per">/月 税抜</span></div>
+                    <div class="pricing-tier-sessions">月間セッション 10万以上</div>
                   </div>
                   <ul class="pricing-features">
-                    <li>✅ プロジェクト 無制限</li>
                     <li>✅ ファネル計測・GA4連携</li>
-                    <li>✅ AI診断（無制限）</li>
-                    <li>✅ タスク管理</li>
+                    <li>✅ AI診断・タスク管理</li>
                     <li>✅ 期間比較・ブレークダウン</li>
                     <li>✅ PPTレポート出力</li>
-                    <li>✅ 複数プロジェクト（無制限）</li>
                     <li>✅ チームメンバー招待（最大10名）</li>
                   </ul>
                   <button class="pricing-cta pricing-cta-upgrade" id="plan-business-btn" type="button">Businessにアップグレード</button>

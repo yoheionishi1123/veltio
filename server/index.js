@@ -753,6 +753,21 @@ function primaryTenantForUser(db, userId) {
   return db.tenants.find((t) => t.id === membership.tenantId) || null;
 }
 
+// ── Plan session limits ────────────────────────────────────────────────────────
+const PLAN_SESSION_LIMITS = {
+  free:     10_000,
+  pro:     100_000,
+  business: Infinity // unlimited
+};
+const TRIAL_DAYS = 14;
+
+function isTrialActive(tenant) {
+  if (!tenant) return false;
+  const endsAt = tenant.trialEndsAt;
+  if (!endsAt) return false;
+  return new Date(endsAt) > new Date();
+}
+
 function ensureTenantDefaults(tenant) {
   if (!tenant) return tenant;
   tenant.accountName = tenant.accountName || tenant.name || "";
@@ -762,6 +777,12 @@ function ensureTenantDefaults(tenant) {
   // migrate legacy "starter" to "free"
   if (tenant.plan === "starter") tenant.plan = "free";
   tenant.plan = tenant.plan || "free";
+  // trial: set trialEndsAt 14 days from creation if not present
+  if (!tenant.trialEndsAt) {
+    const base = tenant.createdAt ? new Date(tenant.createdAt) : new Date();
+    const end = new Date(base.getTime() + TRIAL_DAYS * ONE_DAY_MS);
+    tenant.trialEndsAt = end.toISOString();
+  }
   if (!Array.isArray(tenant.planHistory)) {
     tenant.planHistory = [{
       id: uid(),
@@ -1251,11 +1272,16 @@ function normalizeGranularity(input) {
 
 function userHasProPlan(db, userId) {
   const tenant = primaryTenantForUser(db, userId);
-  return tenant?.plan === "pro" || tenant?.plan === "business";
+  if (!tenant) return false;
+  // Trial gives full Pro access
+  if (isTrialActive(tenant)) return true;
+  return tenant.plan === "pro" || tenant.plan === "business";
 }
 function userHasBusinessPlan(db, userId) {
   const tenant = primaryTenantForUser(db, userId);
-  return tenant?.plan === "business";
+  if (!tenant) return false;
+  if (isTrialActive(tenant)) return true; // trial = full business access
+  return tenant.plan === "business";
 }
 function setPlanForTenant(db, tenant, newPlan, source = "stripe_webhook") {
   const fromPlan = tenant.plan || "free";
@@ -2632,6 +2658,26 @@ async function handleApi(req, res, urlObj) {
     const projectSites = db.projects
       .filter((p) => p.tenantId === tenant.id)
       .map((p) => ({ id: p.id, name: p.name, domain: p.domain }));
+
+    // Monthly session count (current calendar month, all tenant projects)
+    const tenantProjectIds = new Set(db.projects.filter((p) => p.tenantId === tenant.id).map((p) => p.id));
+    const nowDate = new Date();
+    const monthPrefix = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, "0")}`;
+    const monthlySessionCount = (db.metricDaily || [])
+      .filter((row) => tenantProjectIds.has(row.projectId) && String(row.date || "").startsWith(monthPrefix))
+      .reduce((sum, row) => sum + (row.sessions || 0), 0);
+
+    // Trial info
+    const trialActive = isTrialActive(tenant);
+    const trialEndsAt = tenant.trialEndsAt || null;
+    const trialDaysLeft = trialActive
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt) - nowDate) / ONE_DAY_MS))
+      : 0;
+
+    // Effective plan (trial overrides to "business")
+    const effectivePlan = trialActive ? "business" : (tenant.plan || "free");
+    const planSessionLimit = PLAN_SESSION_LIMITS[effectivePlan] ?? PLAN_SESSION_LIMITS.free;
+
     return json(res, 200, {
       account: {
         id: tenant.id,
@@ -2640,6 +2686,13 @@ async function handleApi(req, res, urlObj) {
         contactName: tenant.contactName,
         jobTitle: tenant.jobTitle,
         plan: tenant.plan,
+        effectivePlan,
+        trialActive,
+        trialEndsAt,
+        trialDaysLeft,
+        planSessionLimit,
+        monthlySessionCount,
+        stripeSubscriptionStatus: tenant.stripeSubscriptionStatus,
         invitedUsers: tenant.invitedUsers,
         projectSites
       }

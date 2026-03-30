@@ -2603,31 +2603,38 @@ async function loadReports() {
   });
 }
 
-function syncPlanUI(plan) {
+function syncPlanUI(plan, { trialActive = false, trialDaysLeft = 0, monthlySessionCount = 0, planSessionLimit = 10000 } = {}) {
   const normalizedPlan = (plan === "starter") ? "free" : (plan || "free");
-  const isPro = normalizedPlan === "pro" || normalizedPlan === "business";
-  const isBusiness = normalizedPlan === "business";
+  const effectivePlan = trialActive ? "business" : normalizedPlan;
+  const isPro = effectivePlan === "pro" || effectivePlan === "business";
+  const isBusiness = effectivePlan === "business";
   state.isPro = isPro;
   state.isBusiness = isBusiness;
   state.plan = normalizedPlan;
+  state.trialActive = trialActive;
 
   // Badge
   const badge = q("account-plan-badge");
   if (badge) {
     const labels = { free: "FREE", pro: "PRO", business: "BUSINESS" };
-    badge.textContent = labels[normalizedPlan] || "FREE";
-    badge.className = `plan-badge plan-${normalizedPlan}`;
+    const label = trialActive ? "TRIAL" : (labels[normalizedPlan] || "FREE");
+    badge.textContent = label;
+    badge.className = `plan-badge ${trialActive ? "plan-trial" : `plan-${normalizedPlan}`}`;
   }
 
   // Current plan status text
   const statusEl = document.getElementById("plan-current-status");
   if (statusEl) {
-    const msgs = {
-      free: "現在 <strong>Free</strong> プランをご利用中です。",
-      pro: "現在 <strong>Pro</strong> プランをご利用中です。すべての主要機能が使えます。",
-      business: "現在 <strong>Business</strong> プランをご利用中です。フル機能 + チーム機能が使えます。"
-    };
-    statusEl.innerHTML = msgs[normalizedPlan] || msgs.free;
+    if (trialActive) {
+      statusEl.innerHTML = `🎉 <strong>14日間無料トライアル中</strong> — すべての機能をご利用いただけます。`;
+    } else {
+      const msgs = {
+        free: "現在 <strong>Free</strong> プランをご利用中です。",
+        pro: "現在 <strong>Pro</strong> プランをご利用中です。すべての主要機能が使えます。",
+        business: "現在 <strong>Business</strong> プランをご利用中です。フル機能 + チーム機能が使えます。"
+      };
+      statusEl.innerHTML = msgs[normalizedPlan] || msgs.free;
+    }
   }
 
   // Pricing card CTAs — show "現在のプラン" on the active tier
@@ -2688,11 +2695,49 @@ async function loadAccount() {
   q("company-name").value = data.account.companyName || "";
   q("contact-name").value = data.account.contactName || "";
   q("job-title").value = data.account.jobTitle || "";
-  syncPlanUI(data.account.plan || "free");
+  const acct = data.account;
+  syncPlanUI(acct.plan || "free", {
+    trialActive: !!acct.trialActive,
+    trialDaysLeft: acct.trialDaysLeft || 0,
+    monthlySessionCount: acct.monthlySessionCount || 0,
+    planSessionLimit: acct.planSessionLimit || 10000
+  });
+
+  // Trial banner
+  const trialBanner = document.getElementById("trial-banner");
+  if (trialBanner) {
+    if (acct.trialActive) {
+      trialBanner.innerHTML = `🎉 <strong>14日間無料トライアル中</strong> — あと <strong>${acct.trialDaysLeft}日</strong>。すべての機能を無料でお試しいただけます。`;
+      trialBanner.classList.remove("hidden");
+    } else {
+      trialBanner.classList.add("hidden");
+    }
+  }
+
+  // Session usage bar
+  const usageWrap = document.getElementById("session-usage-wrap");
+  const usageBar  = document.getElementById("session-usage-bar");
+  const usageText = document.getElementById("session-usage-text");
+  if (usageWrap && usageBar && usageText) {
+    const count = acct.monthlySessionCount || 0;
+    const limit = acct.planSessionLimit;
+    const isUnlimited = limit === null || limit >= 999999999;
+    if (!isUnlimited) {
+      const pct = Math.min(100, Math.round(count / limit * 100));
+      const overLimit = count > limit;
+      usageText.textContent = `${count.toLocaleString()} / ${limit.toLocaleString()} セッション`;
+      usageBar.style.width = pct + "%";
+      usageBar.className = `session-usage-bar ${overLimit ? "usage-over" : pct > 80 ? "usage-warn" : ""}`;
+      usageWrap.classList.remove("hidden");
+    } else {
+      usageWrap.classList.add("hidden");
+    }
+  }
+
   // Stripe subscription status hint
   const subStatusEl = document.getElementById("plan-sub-status");
-  if (subStatusEl && data.account.stripeSubscriptionStatus) {
-    subStatusEl.textContent = `ステータス: ${data.account.stripeSubscriptionStatus}`;
+  if (subStatusEl && acct.stripeSubscriptionStatus) {
+    subStatusEl.textContent = `ステータス: ${acct.stripeSubscriptionStatus}`;
   }
   const sites = q("account-sites");
   sites.innerHTML = "";
