@@ -502,35 +502,87 @@
             </section>
 
             <!-- ② プラン管理 -->
-            <section class="panel account-card">
+            <section class="panel account-card pricing-card">
               <div class="account-card-head">
                 <div>
                   <p class="dashboard-card-kicker">Plan</p>
                   <h2>プラン管理</h2>
                 </div>
-                <div id="account-plan-badge" class="plan-badge plan-starter">STARTER</div>
+                <div id="account-plan-badge" class="plan-badge plan-free">FREE</div>
               </div>
-              <div id="account-plan" class="account-plan-info"></div>
-              <div id="plan-starter-view" class="hidden">
-                <table class="plan-feature-table">
-                  <thead>
-                    <tr><th>機能</th><th>Starter</th><th>Pro</th></tr>
-                  </thead>
-                  <tbody>
-                    <tr><td>プロジェクト数</td><td>1件</td><td>複数</td></tr>
-                    <tr><td>期間比較（ブレークダウン）</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
-                    <tr><td>PPTレポート出力</td><td class="plan-lock-cell">❌</td><td>✅</td></tr>
-                    <tr><td>その他すべての機能</td><td>✅</td><td>✅</td></tr>
-                  </tbody>
-                </table>
-                <div class="account-plan-actions">
-                  <button id="upgrade-plan" type="button" class="account-upgrade-btn">Proにアップグレード</button>
+
+              <!-- current plan status row -->
+              <div id="plan-current-status" class="plan-current-status"></div>
+
+              <!-- 3-tier pricing grid -->
+              <div class="pricing-grid">
+
+                <!-- Free -->
+                <div class="pricing-tier" id="pricing-free">
+                  <div class="pricing-tier-head">
+                    <span class="pricing-tier-name">Free</span>
+                    <div class="pricing-tier-price">¥0<span class="pricing-tier-per">/月</span></div>
+                  </div>
+                  <ul class="pricing-features">
+                    <li>✅ プロジェクト 1件</li>
+                    <li>✅ ファネル計測・GA4連携</li>
+                    <li>✅ AI診断（月3回）</li>
+                    <li>✅ タスク管理</li>
+                    <li class="feat-locked">❌ 期間比較・ブレークダウン</li>
+                    <li class="feat-locked">❌ PPTレポート出力</li>
+                    <li class="feat-locked">❌ 複数プロジェクト</li>
+                    <li class="feat-locked">❌ チームメンバー招待</li>
+                  </ul>
+                  <button class="pricing-cta pricing-cta-current" id="plan-free-btn" type="button" disabled>現在のプラン</button>
                 </div>
+
+                <!-- Pro -->
+                <div class="pricing-tier pricing-tier-highlight" id="pricing-pro">
+                  <div class="pricing-tier-badge-wrap"><span class="pricing-tier-popular">人気 No.1</span></div>
+                  <div class="pricing-tier-head">
+                    <span class="pricing-tier-name">Pro</span>
+                    <div class="pricing-tier-price">¥29,800<span class="pricing-tier-per">/月〜 税抜</span></div>
+                  </div>
+                  <ul class="pricing-features">
+                    <li>✅ プロジェクト 3件</li>
+                    <li>✅ ファネル計測・GA4連携</li>
+                    <li>✅ AI診断（無制限）</li>
+                    <li>✅ タスク管理</li>
+                    <li>✅ 期間比較・ブレークダウン</li>
+                    <li>✅ PPTレポート出力</li>
+                    <li class="feat-locked">❌ 複数プロジェクト（無制限）</li>
+                    <li class="feat-locked">❌ チームメンバー招待</li>
+                  </ul>
+                  <button class="pricing-cta pricing-cta-upgrade" id="plan-pro-btn" type="button">Proにアップグレード</button>
+                </div>
+
+                <!-- Business -->
+                <div class="pricing-tier" id="pricing-business">
+                  <div class="pricing-tier-head">
+                    <span class="pricing-tier-name">Business</span>
+                    <div class="pricing-tier-price">¥79,800<span class="pricing-tier-per">/月〜 税抜</span></div>
+                  </div>
+                  <ul class="pricing-features">
+                    <li>✅ プロジェクト 無制限</li>
+                    <li>✅ ファネル計測・GA4連携</li>
+                    <li>✅ AI診断（無制限）</li>
+                    <li>✅ タスク管理</li>
+                    <li>✅ 期間比較・ブレークダウン</li>
+                    <li>✅ PPTレポート出力</li>
+                    <li>✅ 複数プロジェクト（無制限）</li>
+                    <li>✅ チームメンバー招待（最大10名）</li>
+                  </ul>
+                  <button class="pricing-cta pricing-cta-upgrade" id="plan-business-btn" type="button">Businessにアップグレード</button>
+                </div>
+
+              </div><!-- /pricing-grid -->
+
+              <!-- manage subscription (shown for paid plans) -->
+              <div id="plan-manage-row" class="plan-manage-row hidden">
+                <button id="manage-subscription-btn" type="button" class="btn-ghost btn-sm">🔧 サブスクリプション管理（Stripe）</button>
+                <span class="tiny muted" id="plan-sub-status"></span>
               </div>
-              <div id="plan-pro-view" class="hidden">
-                <p class="plan-pro-message">✅ すべての機能がご利用可能です。</p>
-                <button id="downgrade-plan" type="button" class="account-cancel-btn">解約する（無料プランに戻す）</button>
-              </div>
+
               <div id="plan-switch-status" class="tiny"></div>
             </section>
 

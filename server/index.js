@@ -37,6 +37,28 @@ const ADMIN_EMAILS = new Set(
 );
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
+// ── Stripe ────────────────────────────────────────────────────────────────────
+const STRIPE_SECRET_KEY        = process.env.STRIPE_SECRET_KEY || "";
+const STRIPE_WEBHOOK_SECRET    = process.env.STRIPE_WEBHOOK_SECRET || "";
+const STRIPE_PRO_PRICE_ID      = process.env.STRIPE_PRO_PRICE_ID || "";
+const STRIPE_BUSINESS_PRICE_ID = process.env.STRIPE_BUSINESS_PRICE_ID || "";
+const APP_BASE_URL             = process.env.APP_BASE_URL || "https://app.vel-tio.com";
+
+let stripe = null;
+if (STRIPE_SECRET_KEY) {
+  try {
+    const { default: Stripe } = await import("stripe");
+    stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-04-10" });
+  } catch (e) {
+    console.warn("[stripe] init failed:", e.message);
+  }
+}
+
+const PLAN_PRICE_MAP = {
+  [STRIPE_PRO_PRICE_ID]:      "pro",
+  [STRIPE_BUSINESS_PRICE_ID]: "business"
+};
+
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const BENCHMARK_DEFAULTS = [
@@ -486,6 +508,14 @@ async function parseBody(req) {
   }
 }
 
+async function readRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 
 function base64UrlEncode(value) {
   const buf = Buffer.isBuffer(value) ? value : Buffer.from(value);
@@ -729,7 +759,9 @@ function ensureTenantDefaults(tenant) {
   tenant.companyName = tenant.companyName || tenant.name || "";
   tenant.contactName = tenant.contactName || "";
   tenant.jobTitle = tenant.jobTitle || "";
-  tenant.plan = tenant.plan || "starter";
+  // migrate legacy "starter" to "free"
+  if (tenant.plan === "starter") tenant.plan = "free";
+  tenant.plan = tenant.plan || "free";
   if (!Array.isArray(tenant.planHistory)) {
     tenant.planHistory = [{
       id: uid(),
@@ -742,6 +774,10 @@ function ensureTenantDefaults(tenant) {
   if (!Array.isArray(tenant.invitedUsers)) {
     tenant.invitedUsers = [];
   }
+  // Stripe billing fields
+  tenant.stripeCustomerId        = tenant.stripeCustomerId        || null;
+  tenant.stripeSubscriptionId    = tenant.stripeSubscriptionId    || null;
+  tenant.stripeSubscriptionStatus = tenant.stripeSubscriptionStatus || null;
   return tenant;
 }
 
@@ -1215,7 +1251,25 @@ function normalizeGranularity(input) {
 
 function userHasProPlan(db, userId) {
   const tenant = primaryTenantForUser(db, userId);
-  return tenant?.plan === "pro";
+  return tenant?.plan === "pro" || tenant?.plan === "business";
+}
+function userHasBusinessPlan(db, userId) {
+  const tenant = primaryTenantForUser(db, userId);
+  return tenant?.plan === "business";
+}
+function setPlanForTenant(db, tenant, newPlan, source = "stripe_webhook") {
+  const fromPlan = tenant.plan || "free";
+  if (!["free", "pro", "business"].includes(newPlan)) return;
+  tenant.plan = newPlan;
+  if (!Array.isArray(tenant.planHistory)) tenant.planHistory = [];
+  if (fromPlan !== newPlan) {
+    tenant.planHistory.push({
+      id: uid(), fromPlan, toPlan: newPlan,
+      changedAt: new Date().toISOString(), source
+    });
+    trackAppEvent(db, { eventType: "tenant_plan_changed", tenantId: tenant.id,
+      meta: { fromPlan, toPlan: newPlan, source } });
+  }
 }
 
 function buildSeries(rows, granularity) {
@@ -3004,27 +3058,148 @@ async function handleApi(req, res, urlObj) {
     const tenant = primaryTenantForUser(db, user.id);
     if (!tenant) return json(res, 404, { error: "tenant_not_found" });
     const body = await parseBody(req);
-    const plan = body.plan === "pro" ? "pro" : "starter";
-    const fromPlan = tenant.plan || "starter";
-    tenant.plan = plan;
-    if (!Array.isArray(tenant.planHistory)) tenant.planHistory = [];
-    if (fromPlan !== plan) {
-      tenant.planHistory.push({
-        id: uid(),
-        fromPlan,
-        toPlan: plan,
-        changedAt: new Date().toISOString(),
-        source: "account_plan_api"
-      });
-      trackAppEvent(db, {
-        eventType: "tenant_plan_changed",
-        userId: user.id,
-        tenantId: tenant.id,
-        meta: { fromPlan, toPlan: plan }
-      });
-    }
+    const validPlans = ["free", "pro", "business", "starter"]; // starter=legacy alias for free
+    let plan = validPlans.includes(body.plan) ? body.plan : "free";
+    if (plan === "starter") plan = "free";
+    setPlanForTenant(db, tenant, plan, "account_plan_api");
     await writeDb(db);
-    return json(res, 200, { ok: true, plan });
+    return json(res, 200, { ok: true, plan: tenant.plan });
+  }
+
+  // ── Stripe: create checkout session ─────────────────────────────────────────
+  if (req.method === "POST" && urlObj.pathname === "/api/stripe/create-checkout-session") {
+    const user = requireAuth();
+    if (!user) return;
+    if (!stripe) return json(res, 503, { error: "stripe_not_configured" });
+    const body = await parseBody(req);
+    const planId = String(body.plan || "");
+    const priceId = planId === "pro" ? STRIPE_PRO_PRICE_ID : planId === "business" ? STRIPE_BUSINESS_PRICE_ID : null;
+    if (!priceId) return json(res, 400, { error: "invalid_plan" });
+
+    const tenant = primaryTenantForUser(db, user.id);
+    if (!tenant) return json(res, 404, { error: "tenant_not_found" });
+
+    // Ensure Stripe customer exists
+    let customerId = tenant.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: tenant.companyName || tenant.accountName || user.email,
+        metadata: { tenantId: tenant.id, userId: user.id }
+      });
+      customerId = customer.id;
+      tenant.stripeCustomerId = customerId;
+      await writeDb(db);
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${APP_BASE_URL}/analytics.html?stripe=success&plan=${planId}`,
+      cancel_url:  `${APP_BASE_URL}/analytics.html?stripe=cancel`,
+      allow_promotion_codes: true,
+      subscription_data: {
+        metadata: { tenantId: tenant.id, userId: user.id, plan: planId }
+      }
+    });
+    return json(res, 200, { url: session.url });
+  }
+
+  // ── Stripe: create customer portal session ───────────────────────────────────
+  if (req.method === "POST" && urlObj.pathname === "/api/stripe/create-portal-session") {
+    const user = requireAuth();
+    if (!user) return;
+    if (!stripe) return json(res, 503, { error: "stripe_not_configured" });
+
+    const tenant = primaryTenantForUser(db, user.id);
+    if (!tenant) return json(res, 404, { error: "tenant_not_found" });
+    if (!tenant.stripeCustomerId) return json(res, 400, { error: "no_stripe_customer" });
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: tenant.stripeCustomerId,
+      return_url: `${APP_BASE_URL}/analytics.html`
+    });
+    return json(res, 200, { url: session.url });
+  }
+
+  // ── Stripe: webhook ──────────────────────────────────────────────────────────
+  if (req.method === "POST" && urlObj.pathname === "/api/stripe/webhook") {
+    const rawBody = await readRawBody(req);
+    const sig = req.headers["stripe-signature"] || "";
+    if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+      return json(res, 503, { error: "stripe_not_configured" });
+    }
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, sig, STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+      console.error("[stripe webhook] signature verification failed:", err.message);
+      return json(res, 400, { error: "invalid_signature" });
+    }
+
+    // Helper: find tenant by stripeCustomerId
+    function tenantByCustomer(customerId) {
+      return db.tenants.find((t) => t.stripeCustomerId === customerId) || null;
+    }
+
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        if (session.mode !== "subscription") break;
+        const customerId = session.customer;
+        const subscriptionId = session.subscription;
+        const planId = session.metadata?.plan ||
+          PLAN_PRICE_MAP[(await stripe.subscriptions.retrieve(subscriptionId))?.items?.data?.[0]?.price?.id] ||
+          "pro";
+        const tenant = tenantByCustomer(customerId);
+        if (tenant) {
+          tenant.stripeSubscriptionId = subscriptionId;
+          tenant.stripeSubscriptionStatus = "active";
+          setPlanForTenant(db, tenant, planId, "stripe_checkout");
+          await writeDb(db);
+          console.log(`[stripe] checkout completed: tenant=${tenant.id} plan=${planId}`);
+        }
+        break;
+      }
+      case "customer.subscription.updated": {
+        const sub = event.data.object;
+        const customerId = sub.customer;
+        const tenant = tenantByCustomer(customerId);
+        if (tenant) {
+          tenant.stripeSubscriptionId = sub.id;
+          tenant.stripeSubscriptionStatus = sub.status;
+          const priceId = sub.items?.data?.[0]?.price?.id;
+          const planId = PLAN_PRICE_MAP[priceId] || null;
+          if (planId) {
+            setPlanForTenant(db, tenant, planId, "stripe_sub_update");
+          }
+          // If subscription is no longer active, downgrade to free
+          if (!["active", "trialing"].includes(sub.status)) {
+            setPlanForTenant(db, tenant, "free", "stripe_sub_inactive");
+          }
+          await writeDb(db);
+          console.log(`[stripe] subscription updated: tenant=${tenant.id} status=${sub.status} plan=${planId}`);
+        }
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const sub = event.data.object;
+        const tenant = tenantByCustomer(sub.customer);
+        if (tenant) {
+          tenant.stripeSubscriptionId = null;
+          tenant.stripeSubscriptionStatus = "canceled";
+          setPlanForTenant(db, tenant, "free", "stripe_sub_deleted");
+          await writeDb(db);
+          console.log(`[stripe] subscription deleted: tenant=${tenant.id}`);
+        }
+        break;
+      }
+      default:
+        // Unhandled event types — ignore
+        break;
+    }
+    return json(res, 200, { received: true });
   }
 
   if (req.method === "POST" && urlObj.pathname === "/api/account/email-delivery/test") {

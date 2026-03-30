@@ -2604,24 +2604,72 @@ async function loadReports() {
 }
 
 function syncPlanUI(plan) {
-  const isPro = plan === "pro";
+  const normalizedPlan = (plan === "starter") ? "free" : (plan || "free");
+  const isPro = normalizedPlan === "pro" || normalizedPlan === "business";
+  const isBusiness = normalizedPlan === "business";
   state.isPro = isPro;
+  state.isBusiness = isBusiness;
+  state.plan = normalizedPlan;
+
+  // Badge
   const badge = q("account-plan-badge");
   if (badge) {
-    badge.textContent = isPro ? "PRO" : "STARTER";
-    badge.className = `plan-badge ${isPro ? "plan-pro" : "plan-starter"}`;
+    const labels = { free: "FREE", pro: "PRO", business: "BUSINESS" };
+    badge.textContent = labels[normalizedPlan] || "FREE";
+    badge.className = `plan-badge plan-${normalizedPlan}`;
   }
-  q("plan-starter-view")?.classList.toggle("hidden", isPro);
-  q("plan-pro-view")?.classList.toggle("hidden", !isPro);
-  q("upgrade-plan")?.classList.toggle("hidden", isPro);
-  q("downgrade-plan")?.classList.toggle("hidden", !isPro);
+
+  // Current plan status text
+  const statusEl = document.getElementById("plan-current-status");
+  if (statusEl) {
+    const msgs = {
+      free: "現在 <strong>Free</strong> プランをご利用中です。",
+      pro: "現在 <strong>Pro</strong> プランをご利用中です。すべての主要機能が使えます。",
+      business: "現在 <strong>Business</strong> プランをご利用中です。フル機能 + チーム機能が使えます。"
+    };
+    statusEl.innerHTML = msgs[normalizedPlan] || msgs.free;
+  }
+
+  // Pricing card CTAs — show "現在のプラン" on the active tier
+  const freeTier = document.getElementById("pricing-free");
+  const proTier = document.getElementById("pricing-pro");
+  const bizTier = document.getElementById("pricing-business");
+  const freeBtn = document.getElementById("plan-free-btn");
+  const proBtn = document.getElementById("plan-pro-btn");
+  const bizBtn = document.getElementById("plan-business-btn");
+
+  if (freeTier && proTier && bizTier) {
+    freeTier.classList.toggle("pricing-tier-active", normalizedPlan === "free");
+    proTier.classList.toggle("pricing-tier-active", normalizedPlan === "pro");
+    bizTier.classList.toggle("pricing-tier-active", normalizedPlan === "business");
+  }
+  if (freeBtn) {
+    freeBtn.textContent = normalizedPlan === "free" ? "現在のプラン" : "Freeに戻す";
+    freeBtn.disabled = normalizedPlan === "free";
+    freeBtn.className = normalizedPlan === "free" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-downgrade";
+  }
+  if (proBtn) {
+    proBtn.textContent = normalizedPlan === "pro" ? "現在のプラン" : "Proにアップグレード";
+    proBtn.disabled = normalizedPlan === "pro";
+    proBtn.className = normalizedPlan === "pro" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
+  }
+  if (bizBtn) {
+    bizBtn.textContent = normalizedPlan === "business" ? "現在のプラン" : "Businessにアップグレード";
+    bizBtn.disabled = normalizedPlan === "business";
+    bizBtn.className = normalizedPlan === "business" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
+  }
+
+  // Manage subscription row (show only for paid plans)
+  const manageRow = document.getElementById("plan-manage-row");
+  if (manageRow) manageRow.classList.toggle("hidden", normalizedPlan === "free");
+
   // Compare lock badge
   const compareLock = document.getElementById("compare-lock-badge");
   if (compareLock) compareLock.classList.toggle("hidden", isPro);
   // PPT lock badge
   const pptLock = document.getElementById("ppt-lock-badge");
   if (pptLock) pptLock.classList.toggle("hidden", isPro);
-  // Disable compare select options when on Starter
+  // Disable compare select options when on Free
   const comparePreset = q("compare-preset");
   if (comparePreset) {
     Array.from(comparePreset.options).forEach((opt) => {
@@ -2640,8 +2688,12 @@ async function loadAccount() {
   q("company-name").value = data.account.companyName || "";
   q("contact-name").value = data.account.contactName || "";
   q("job-title").value = data.account.jobTitle || "";
-  q("account-plan").textContent = `現在のプラン: ${data.account.plan === "pro" ? "Pro（全機能解放）" : "Starter（無料）"}`;
-  syncPlanUI(data.account.plan || "starter");
+  syncPlanUI(data.account.plan || "free");
+  // Stripe subscription status hint
+  const subStatusEl = document.getElementById("plan-sub-status");
+  if (subStatusEl && data.account.stripeSubscriptionStatus) {
+    subStatusEl.textContent = `ステータス: ${data.account.stripeSubscriptionStatus}`;
+  }
   const sites = q("account-sites");
   sites.innerHTML = "";
   (data.account.projectSites || data.account.projectUrls?.map(d => ({ name: d, domain: d })) || []).forEach((site) => {
@@ -3524,29 +3576,82 @@ q("invite-form").addEventListener("submit", async (e) => {
   }
 });
 
-q("upgrade-plan").addEventListener("click", async () => {
-  q("plan-switch-status").textContent = "切替中...";
+// ── Stripe pricing CTAs ─────────────────────────────────────────────────────
+async function startStripeCheckout(plan) {
+  const statusEl = document.getElementById("plan-switch-status");
+  if (statusEl) statusEl.textContent = "Stripeへ接続中...";
   try {
-    await api("/api/account/plan", { method: "POST", body: { plan: "pro" } });
-    trackGa4("upgrade_to_pro", {});
-    q("plan-switch-status").textContent = "✅ Proプランに切り替えました。";
-    await loadAccount();
+    const data = await api("/api/stripe/create-checkout-session", { method: "POST", body: { plan } });
+    if (data.url) {
+      trackGa4("stripe_checkout_start", { plan });
+      window.location.href = data.url;
+    } else {
+      if (statusEl) statusEl.textContent = "エラー: URLが取得できませんでした。";
+    }
   } catch (err) {
-    q("plan-switch-status").textContent = uiErrorText(err);
+    if (statusEl) statusEl.textContent = uiErrorText(err);
+  }
+}
+
+document.getElementById("plan-pro-btn")?.addEventListener("click", () => {
+  if (state.plan === "pro") return;
+  startStripeCheckout("pro");
+});
+
+document.getElementById("plan-business-btn")?.addEventListener("click", () => {
+  if (state.plan === "business") return;
+  startStripeCheckout("business");
+});
+
+document.getElementById("plan-free-btn")?.addEventListener("click", async () => {
+  if (state.plan === "free") return;
+  // Downgrade goes through the Stripe Customer Portal so the user can cancel
+  const statusEl = document.getElementById("plan-switch-status");
+  if (statusEl) statusEl.textContent = "Stripeポータルへ接続中...";
+  try {
+    const data = await api("/api/stripe/create-portal-session", { method: "POST" });
+    if (data.url) window.location.href = data.url;
+    else if (statusEl) statusEl.textContent = "エラー: ポータルURLが取得できませんでした。";
+  } catch (err) {
+    if (statusEl) statusEl.textContent = uiErrorText(err);
   }
 });
 
-q("downgrade-plan").addEventListener("click", async () => {
-  if (!confirm("Starterプランに戻しますか？一部機能が制限されます。")) return;
-  q("plan-switch-status").textContent = "切替中...";
+document.getElementById("manage-subscription-btn")?.addEventListener("click", async () => {
+  const statusEl = document.getElementById("plan-switch-status");
+  if (statusEl) statusEl.textContent = "Stripeポータルへ接続中...";
   try {
-    await api("/api/account/plan", { method: "POST", body: { plan: "starter" } });
-    q("plan-switch-status").textContent = "⬇️ Starterプランに戻しました。";
-    await loadAccount();
+    const data = await api("/api/stripe/create-portal-session", { method: "POST" });
+    if (data.url) window.location.href = data.url;
+    else if (statusEl) statusEl.textContent = "エラー: ポータルURLが取得できませんでした。";
   } catch (err) {
-    q("plan-switch-status").textContent = uiErrorText(err);
+    if (statusEl) statusEl.textContent = uiErrorText(err);
   }
 });
+
+// Handle Stripe return URL params
+(function handleStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const stripeStatus = params.get("stripe");
+  if (!stripeStatus) return;
+  // Remove query param from URL without reload
+  const url = new URL(window.location.href);
+  url.searchParams.delete("stripe");
+  url.searchParams.delete("plan");
+  window.history.replaceState({}, "", url.toString());
+  if (stripeStatus === "success") {
+    setTimeout(() => {
+      const statusEl = document.getElementById("plan-switch-status");
+      if (statusEl) statusEl.textContent = "✅ プランのアップグレードが完了しました。反映まで少々お待ちください。";
+      // Navigate to account tab
+      document.querySelector('[data-tab="account"]')?.click();
+    }, 200);
+  } else if (stripeStatus === "cancel") {
+    setTimeout(() => {
+      document.querySelector('[data-tab="account"]')?.click();
+    }, 200);
+  }
+})();
 
 q("send-test-email").addEventListener("click", async () => {
   q("test-email-status").textContent = "送信中...";

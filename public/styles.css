@@ -2083,65 +2083,6 @@ tr:hover td { background: var(--panel-2); }
   border: 1px solid var(--line);
 }
 
-.account-plan-actions { margin-bottom: 20px; }
-
-.account-upgrade-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
-  background: linear-gradient(135deg, var(--accent), #ea6c06);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13.5px;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.account-upgrade-btn:hover { opacity: 0.88; }
-
-.account-downgrade-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 7px 16px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 600;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.account-downgrade-btn:hover { background: var(--panel-3); }
-
-.account-cancel-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 18px;
-  background: transparent;
-  color: var(--danger, #dc2626);
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid var(--danger, #dc2626);
-  border-radius: 20px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.account-cancel-btn:hover {
-  background: rgba(220,38,38,0.06);
-  border-color: var(--danger, #dc2626);
-}
-
-.plan-pro-message {
-  font-size: 14px;
-  color: var(--ink-2);
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-
 /* ── Plan badge (in account-card-head) ── */
 .plan-badge {
   font-size: 11px;
@@ -2150,26 +2091,148 @@ tr:hover td { background: var(--panel-2); }
   padding: 4px 12px;
   border-radius: 999px;
 }
-.plan-starter { background: #f2f4f7; color: #667085; border: 1px solid #d0d5dd; }
-.plan-pro { background: #0a58ca; color: #fff; border: 1px solid #0a58ca; }
+.plan-free     { background: #f2f4f7; color: #667085; border: 1px solid #d0d5dd; }
+.plan-starter  { background: #f2f4f7; color: #667085; border: 1px solid #d0d5dd; }
+.plan-pro      { background: #0a58ca; color: #fff; border: 1px solid #0a58ca; }
+.plan-business { background: linear-gradient(135deg,#7c3aed,#4f46e5); color: #fff; border: 1px solid #7c3aed; }
 
-/* ── Plan feature comparison table ── */
-.plan-feature-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  margin-bottom: 16px;
+/* ── Plan current status ── */
+.plan-current-status {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+  line-height: 1.5;
 }
-.plan-feature-table th,
-.plan-feature-table td {
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--line);
+
+/* ── 3-tier pricing grid ── */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+@media (max-width: 760px) {
+  .pricing-grid { grid-template-columns: 1fr; }
+}
+
+.pricing-tier {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pricing-tier-highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(234,108,6,0.10);
+}
+.pricing-tier-active {
+  border-color: #0a58ca;
+  background: #f0f5ff;
+}
+.pricing-tier-badge-wrap {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.pricing-tier-popular {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pricing-tier-head {
+  margin-bottom: 12px;
+}
+.pricing-tier-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+.pricing-tier-price {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.pricing-tier-per {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.pricing-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pricing-features li {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.4;
+}
+.pricing-features li.feat-locked {
+  color: var(--muted);
+  opacity: 0.65;
+}
+
+.pricing-cta {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s, background 0.15s;
   text-align: center;
 }
-.plan-feature-table th:first-child,
-.plan-feature-table td:first-child { text-align: left; color: var(--ink-2); }
-.plan-feature-table th { font-size: 11px; color: var(--muted); font-weight: 700; }
-.plan-lock-cell { color: var(--danger); }
+.pricing-cta-upgrade {
+  background: linear-gradient(135deg, var(--accent), #ea6c06);
+  color: #fff;
+}
+.pricing-cta-upgrade:hover { opacity: 0.88; }
+.pricing-cta-current {
+  background: var(--panel-3);
+  color: var(--muted);
+  cursor: default;
+}
+.pricing-cta-downgrade {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.pricing-cta-downgrade:hover { background: var(--panel-3); }
+
+/* ── Plan manage row ── */
+.plan-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--line);
+}
+.pricing-card .panel { overflow: visible; }
 
 /* ── Pro lock badge (on compare/PPT) ── */
 .compare-select-wrap { position: relative; display: inline-flex; align-items: center; gap: 4px; }
