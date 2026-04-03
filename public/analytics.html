@@ -594,145 +594,135 @@
               <div id="plan-switch-status" class="tiny"></div>
             </section>
 
-            <!-- ③ ファネル設定 + データエクスポート（横並び1枚） -->
-            <section class="panel account-card account-wide-card">
-              <div class="account-wide-cols">
+            <!-- ③ ファネル計測設定 -->
+            <section class="panel account-card">
+              <div class="sr-header">
+                <div>
+                  <p class="dashboard-card-kicker">Funnel Settings</p>
+                  <h2>ファネル計測設定</h2>
+                </div>
+                <div class="sr-header-actions">
+                  <button type="button" id="fetch-ga4-events-btn" class="sr-fetch-btn">🔄 GA4から取得</button>
+                  <span id="stage-rules-status" class="tiny muted"></span>
+                </div>
+              </div>
+              <form id="stage-rules-form">
+                <div class="sr-list">
 
-                <!-- ファネル計測設定 -->
-                <div class="account-wide-col">
-                  <div class="sr-header">
-                    <div>
-                      <p class="dashboard-card-kicker">Funnel Settings</p>
-                      <h2>ファネル計測設定</h2>
+                  <div class="sr-row">
+                    <div class="sr-row-label">
+                      <span class="sr-step-name">商品詳細ページ</span>
+                      <span class="sr-step-hint">推奨: view_item</span>
                     </div>
-                    <div class="sr-header-actions">
-                      <button type="button" id="fetch-ga4-events-btn" class="sr-fetch-btn">🔄 GA4から取得</button>
-                      <span id="stage-rules-status" class="tiny muted"></span>
+                    <div class="sr-event-wrap">
+                      <select id="sr-pdp-event-select" class="sr-event-select" data-field="pdpEventName">
+                        <option value="">— GA4から取得 —</option>
+                      </select>
+                      <input id="sr-pdp-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
                     </div>
                   </div>
-                  <form id="stage-rules-form">
-                    <div class="sr-list">
 
-                      <div class="sr-row">
-                        <div class="sr-row-label">
-                          <span class="sr-step-name">商品詳細ページ</span>
-                          <span class="sr-step-hint">推奨: view_item</span>
-                        </div>
-                        <div class="sr-event-wrap">
-                          <select id="sr-pdp-event-select" class="sr-event-select" data-field="pdpEventName">
-                            <option value="">— GA4から取得 —</option>
-                          </select>
-                          <input id="sr-pdp-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </div>
-
-                      <div class="sr-row">
-                        <div class="sr-row-label">
-                          <span class="sr-step-name">カート追加</span>
-                          <span class="sr-step-hint">推奨: add_to_cart</span>
-                        </div>
-                        <div class="sr-event-wrap">
-                          <select id="sr-add-to-cart-event-select" class="sr-event-select" data-field="addToCartEventName">
-                            <option value="">— GA4から取得 —</option>
-                          </select>
-                          <input id="sr-add-to-cart-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </div>
-
-                      <div class="sr-row">
-                        <div class="sr-row-label">
-                          <span class="sr-step-name">カート到達</span>
-                          <span class="sr-step-hint">到達率の計測方法</span>
-                        </div>
-                        <div class="sr-event-wrap">
-                          <select id="sr-cart-mode" class="sr-event-select">
-                            <option value="view_cart_or_begin_checkout">view_cart または begin_checkout</option>
-                            <option value="view_cart_only">view_cart のみ</option>
-                            <option value="begin_checkout_only">begin_checkout のみ</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div class="sr-row">
-                        <div class="sr-row-label">
-                          <span class="sr-step-name">チェックアウト開始</span>
-                          <span class="sr-step-hint">推奨: begin_checkout</span>
-                        </div>
-                        <div class="sr-event-wrap">
-                          <select id="sr-checkout-event-select" class="sr-event-select" data-field="checkoutEventName">
-                            <option value="">— GA4から取得 —</option>
-                          </select>
-                          <input id="sr-checkout-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </div>
-
-                      <div class="sr-row">
-                        <div class="sr-row-label">
-                          <span class="sr-step-name">購入完了</span>
-                          <span class="sr-step-hint">推奨: purchase</span>
-                        </div>
-                        <div class="sr-event-wrap">
-                          <select id="sr-purchase-event-select" class="sr-event-select" data-field="purchaseEventName">
-                            <option value="">— GA4から取得 —</option>
-                          </select>
-                          <input id="sr-purchase-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
-                        </div>
-                      </div>
-
+                  <div class="sr-row">
+                    <div class="sr-row-label">
+                      <span class="sr-step-name">カート追加</span>
+                      <span class="sr-step-hint">推奨: add_to_cart</span>
                     </div>
-
-                    <!-- hidden URL inputs (still saved, just not prominent) -->
-                    <input id="sr-pdp-url" type="hidden" />
-                    <input id="sr-cart-url" type="hidden" />
-                    <input id="sr-checkout-url" type="hidden" />
-                    <input id="sr-purchase-url" type="hidden" />
-                    <input id="sr-category-url" type="hidden" />
-
-                    <div class="stage-rules-footer">
-                      <button type="submit" class="btn-primary">保存して再同期</button>
-                      <span class="tiny muted">※保存後、最新30日分を再取得</span>
+                    <div class="sr-event-wrap">
+                      <select id="sr-add-to-cart-event-select" class="sr-event-select" data-field="addToCartEventName">
+                        <option value="">— GA4から取得 —</option>
+                      </select>
+                      <input id="sr-add-to-cart-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
                     </div>
-                  </form>
+                  </div>
+
+                  <div class="sr-row">
+                    <div class="sr-row-label">
+                      <span class="sr-step-name">カート到達</span>
+                      <span class="sr-step-hint">到達率の計測方法</span>
+                    </div>
+                    <div class="sr-event-wrap">
+                      <select id="sr-cart-mode" class="sr-event-select">
+                        <option value="view_cart_or_begin_checkout">view_cart または begin_checkout</option>
+                        <option value="view_cart_only">view_cart のみ</option>
+                        <option value="begin_checkout_only">begin_checkout のみ</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="sr-row">
+                    <div class="sr-row-label">
+                      <span class="sr-step-name">チェックアウト開始</span>
+                      <span class="sr-step-hint">推奨: begin_checkout</span>
+                    </div>
+                    <div class="sr-event-wrap">
+                      <select id="sr-checkout-event-select" class="sr-event-select" data-field="checkoutEventName">
+                        <option value="">— GA4から取得 —</option>
+                      </select>
+                      <input id="sr-checkout-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                    </div>
+                  </div>
+
+                  <div class="sr-row">
+                    <div class="sr-row-label">
+                      <span class="sr-step-name">購入完了</span>
+                      <span class="sr-step-hint">推奨: purchase</span>
+                    </div>
+                    <div class="sr-event-wrap">
+                      <select id="sr-purchase-event-select" class="sr-event-select" data-field="purchaseEventName">
+                        <option value="">— GA4から取得 —</option>
+                      </select>
+                      <input id="sr-purchase-event-custom" class="sr-event-custom hidden" type="text" placeholder="カスタムイベント名" />
+                    </div>
+                  </div>
+
                 </div>
 
-                <!-- 縦区切り線 -->
-                <div class="account-wide-divider"></div>
+                <!-- hidden URL inputs (still saved, just not prominent) -->
+                <input id="sr-pdp-url" type="hidden" />
+                <input id="sr-cart-url" type="hidden" />
+                <input id="sr-checkout-url" type="hidden" />
+                <input id="sr-purchase-url" type="hidden" />
+                <input id="sr-category-url" type="hidden" />
 
-                <!-- データエクスポート -->
-                <div class="account-wide-col">
-                  <div class="account-card-head" style="margin-bottom:12px;">
-                    <div>
-                      <p class="dashboard-card-kicker">Export</p>
-                      <h2>データエクスポート</h2>
-                    </div>
-                  </div>
-                  <p class="tiny muted" style="margin:0 0 14px">日別の計測データをCSVでダウンロードするか、Google Sheetsに自動取り込みできます。</p>
-
-                  <div class="export-block" style="margin-bottom:20px;">
-                    <div class="export-block-title">📥 CSVダウンロード</div>
-                    <div class="export-date-row">
-                      <input id="export-from" type="date" />
-                      <span>〜</span>
-                      <input id="export-to" type="date" />
-                      <button id="export-csv-btn" type="button">ダウンロード</button>
-                    </div>
-                    <p class="tiny muted" style="margin-top:6px">日別 × チャネル × デバイス の全指標CSVが取得できます</p>
-                  </div>
-
-                  <div class="export-block">
-                    <div class="export-block-title">📊 Google Sheets 連携（GAS）</div>
-                    <p class="tiny muted" style="margin:4px 0 8px">以下のスクリプトをApps ScriptにコピーしてAPIキーを設定すると、毎日自動でデータが蓄積されます。</p>
-                    <div id="gas-snippet-wrap" class="gas-snippet-wrap">
-                      <pre id="gas-snippet" class="gas-snippet-code">プロジェクトを選択してください</pre>
-                      <button id="copy-gas-btn" type="button" class="ghost" style="margin-top:6px;font-size:12px;">コピー</button>
-                    </div>
-                  </div>
+                <div class="stage-rules-footer">
+                  <button type="submit" class="btn-primary">保存して再同期</button>
+                  <span class="tiny muted">※保存後、最新30日分を再取得</span>
                 </div>
+              </form>
+            </section>
 
+            <!-- ④ データエクスポート -->
+            <section class="panel account-card">
+              <div class="account-card-head">
+                <div>
+                  <p class="dashboard-card-kicker">Export</p>
+                  <h2>データエクスポート</h2>
+                </div>
+              </div>
+              <p class="tiny muted" style="margin:0 0 14px">日別の計測データをCSVでダウンロードするか、Google Sheetsに自動取り込みできます。</p>
+
+              <div class="export-block" style="margin-bottom:20px;">
+                <div class="export-block-title">📥 CSVダウンロード</div>
+                <div class="export-date-row">
+                  <input id="export-from" type="date" />
+                  <span>〜</span>
+                  <input id="export-to" type="date" />
+                  <button id="export-csv-btn" type="button">ダウンロード</button>
+                </div>
+                <p class="tiny muted" style="margin-top:6px">日別 × チャネル × デバイス の全指標CSVが取得できます</p>
+              </div>
+
+              <div class="export-block">
+                <div class="export-block-title">📊 Google Sheets 連携（GAS）</div>
+                <p class="tiny muted" style="margin:4px 0 8px">以下のスクリプトをApps ScriptにコピーしてAPIキーを設定すると、毎日自動でデータが蓄積されます。</p>
+                <div id="gas-snippet-wrap" class="gas-snippet-wrap">
+                  <pre id="gas-snippet" class="gas-snippet-code">プロジェクトを選択してください</pre>
+                  <button id="copy-gas-btn" type="button" class="ghost" style="margin-top:6px;font-size:12px;">コピー</button>
+                </div>
               </div>
             </section>
 
-            <!-- ④ 招待ユーザー -->
+            <!-- ⑤ 招待ユーザー -->
             <section class="panel account-card">
               <div class="account-card-head">
                 <div>
