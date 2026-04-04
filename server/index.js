@@ -36,6 +36,7 @@ const ADMIN_EMAILS = new Set(
     .filter(Boolean)
 );
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
 const STRIPE_SECRET_KEY        = process.env.STRIPE_SECRET_KEY || "";
@@ -2700,6 +2701,11 @@ async function handleApi(req, res, urlObj) {
   }
 
   const requireAdmin = () => {
+    // APIキー認証（レポート用）
+    const apiKey = req.headers["x-admin-api-key"] || urlObj.searchParams.get("api_key");
+    if (ADMIN_API_KEY && apiKey === ADMIN_API_KEY) {
+      return { id: "api-key", email: "api-key", isApiKey: true };
+    }
     const user = requireAuth();
     if (!user) return null;
     if (!isAdminUser(user)) {
