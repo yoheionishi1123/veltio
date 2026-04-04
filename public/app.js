@@ -653,10 +653,12 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
   const height = 220;
   const pad = 28;
   const bm = METRIC_BENCHMARKS[metricKey];
+  const targetCvr = metricKey === "cvr" ? currentProject()?.targetCvr : null;
   const allValues = [
     ...series.map((item) => seriesMetricValue(item, metricKey)),
     ...compareSeries.map((item) => seriesMetricValue(item, metricKey)),
-    ...(bm ? [bm.value] : [])
+    ...(bm ? [bm.value] : []),
+    ...(typeof targetCvr === "number" ? [targetCvr] : [])
   ];
   const maxValue = Math.max(...allValues, 1);
   const pointsMain = series
@@ -712,6 +714,17 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
     `;
   }
 
+  // Goal CVR line (user's own target)
+  let goalCvrSvg = "";
+  if (typeof targetCvr === "number" && maxValue > 0) {
+    const goalY = height - pad - (targetCvr / maxValue) * (height - pad * 2);
+    goalCvrSvg = `
+      <line x1="${pad}" y1="${goalY.toFixed(1)}" x2="${width - pad}" y2="${goalY.toFixed(1)}"
+            stroke="#dc2626" stroke-width="2" stroke-dasharray="4 3" opacity="0.9"/>
+      <text x="${pad + 4}" y="${(goalY - 5).toFixed(1)}" fill="#dc2626" font-size="10" font-weight="700">目標 ${fmtPct(targetCvr)}</text>
+    `;
+  }
+
   host.innerHTML = `
     <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}">
       <rect x="0" y="0" width="${width}" height="${height}" fill="#f8fafc" rx="10"></rect>
@@ -719,6 +732,7 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
       <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" stroke="#cbd5e1"></line>
       ${campaignBands}
       ${benchmarkSvg}
+      ${goalCvrSvg}
       <polyline fill="none" stroke="#0a58ca" stroke-width="3" points="${pointsMain}"></polyline>
       ${pointsCompare ? `<polyline fill="none" stroke="#94a3b8" stroke-dasharray="6 4" stroke-width="3" points="${pointsCompare}"></polyline>` : ""}
       <text x="${pad}" y="18" fill="#0a58ca" font-size="12">${escapeHtml(metricLabel(metricKey))}</text>
@@ -3425,13 +3439,17 @@ q("campaign-form").addEventListener("submit", async (e) => {
         endDate: q("campaign-end-date").value,
         recurringAnnual: q("campaign-recurring").checked,
         goalRevenue: parseFloat(q("campaign-goal-revenue")?.value || "") || 0,
-        goalCvr: parseFloat(q("campaign-goal-cvr")?.value || "") || 0
+        goalCvr: parseFloat(q("campaign-goal-cvr")?.value || "") || 0,
+        customCompareStart: q("campaign-compare-start")?.value || "",
+        customCompareEnd: q("campaign-compare-end")?.value || ""
       }
     });
     q("campaign-name").value = "";
     q("campaign-start-date").value = "";
     q("campaign-end-date").value = "";
     q("campaign-recurring").checked = false;
+    if (q("campaign-compare-start")) q("campaign-compare-start").value = "";
+    if (q("campaign-compare-end")) q("campaign-compare-end").value = "";
     q("campaign-status").textContent = "保存しました。";
     await loadCampaigns();
   } catch (err) {
@@ -3944,13 +3962,14 @@ async function sendAssistantMessage(message) {
   try {
     const out = await api(`/api/projects/${state.projectId}/assistant/chat`, {
       method: "POST",
+      allowUnauthorized: true,
       body: {
         message: text,
         from: state.from,
         to: state.to,
         compareFrom: state.compareFrom,
         compareTo: state.compareTo,
-        dimension: q("dimension-select").value
+        dimension: q("dimension-select")?.value || "channel"
       }
     });
     appendChatMessage("assistant", out.answer);
@@ -3960,7 +3979,11 @@ async function sendAssistantMessage(message) {
   } catch (err) {
     q("assistant-status").textContent = "";
     renderAssistantReferences([]);
-    appendChatMessage("assistant", `回答できませんでした: ${err.message}`);
+    if (err.status === 401) {
+      appendChatMessage("assistant", "セッションが切れています。ページを再読み込みしてログインし直してください。");
+    } else {
+      appendChatMessage("assistant", `回答できませんでした: ${err.message}`);
+    }
   }
 }
 

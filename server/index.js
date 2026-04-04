@@ -2206,8 +2206,15 @@ function campaignImpactSummary(db, projectId, campaign) {
   const currentMetrics = computeRates(currentAgg);
   const currentBlock = { totals: currentAgg, metrics: currentMetrics };
   const durationDays = Math.max(1, dayList(campaign.startDate, campaign.endDate).length);
-  const baselineEnd = shiftDate(campaign.startDate, -1);
-  const baselineStart = shiftDate(baselineEnd, -(durationDays - 1));
+  // 比較期間：カスタム指定があればそちらを使用、なければ直前同期間
+  let baselineStart, baselineEnd;
+  if (campaign.customCompareStart && campaign.customCompareEnd && validateDate(campaign.customCompareStart) && validateDate(campaign.customCompareEnd)) {
+    baselineStart = campaign.customCompareStart;
+    baselineEnd = campaign.customCompareEnd;
+  } else {
+    baselineEnd = shiftDate(campaign.startDate, -1);
+    baselineStart = shiftDate(baselineEnd, -(durationDays - 1));
+  }
   const baselineRows = selectRowsForPeriod(db, projectId, baselineStart, baselineEnd);
   const baselineAgg = aggregateMetricRows(baselineRows);
   const baselineMetrics = computeRates(baselineAgg);
@@ -3481,6 +3488,8 @@ async function handleApi(req, res, urlObj) {
       if (!name || !type || !startDate || !endDate || !validateDate(startDate) || !validateDate(endDate)) {
         return json(res, 400, { error: "missing_fields", message: "名称、種別、開始日、終了日は必須です" });
       }
+      const customCompareStart = validateDate(String(body.customCompareStart || "")) ? String(body.customCompareStart) : "";
+      const customCompareEnd = validateDate(String(body.customCompareEnd || "")) ? String(body.customCompareEnd) : "";
       const nextItem = {
         id: id || uid(),
         name: String(name).trim(),
@@ -3490,6 +3499,8 @@ async function handleApi(req, res, urlObj) {
         recurringAnnual: Boolean(recurringAnnual),
         goalRevenue: Number(body.goalRevenue) > 0 ? Number(body.goalRevenue) : 0,
         goalCvr: Number(body.goalCvr) > 0 ? Number(body.goalCvr) : 0,
+        customCompareStart,
+        customCompareEnd,
         memo: String(body.memo || "").slice(0, 500),
         updatedAt: new Date().toISOString()
       };

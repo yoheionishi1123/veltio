@@ -353,6 +353,14 @@
                 <input id="campaign-end-date" type="date" required />
                 <label class="dashboard-checkbox"><input id="campaign-recurring" type="checkbox" /> 毎年同時期に実施</label>
               </div>
+              <div class="ci-form-row">
+                <label class="ci-goal-input-label" style="flex:1">比較開始日（省略可・空欄=直前同期間）
+                  <input id="campaign-compare-start" type="date" />
+                </label>
+                <label class="ci-goal-input-label" style="flex:1">比較終了日
+                  <input id="campaign-compare-end" type="date" />
+                </label>
+              </div>
               <div class="ci-form-row ci-form-goals">
                 <label class="ci-goal-input-label">目標売上（円・省略可）
                   <input id="campaign-goal-revenue" type="number" min="0" placeholder="例: 1000000" />
@@ -889,11 +897,7 @@
           <section class="panel">
             <h2>AIアシスタント</h2>
             <p class="muted tiny">現在のGA4指標、診断結果、施策検証データを参照して回答します。</p>
-            <div id="assistant-suggestions" class="suggestion-row">
-              <button class="suggestion-chip" type="button" data-message="今の最大ボトルネックはどこ？">今の最大ボトルネックはどこ？</button>
-              <button class="suggestion-chip" type="button" data-message="直帰率を下げる優先施策を教えて">直帰率を下げる優先施策を教えて</button>
-              <button class="suggestion-chip" type="button" data-message="チャネル別の見方を教えて">チャネル別の見方を教えて</button>
-            </div>
+            <div id="assistant-suggestions" class="suggestion-row"></div>
             <div id="assistant-reference-card" class="timeline-card hidden">
               <h3>参照した根拠メモ</h3>
               <div id="assistant-references" class="timeline-list"></div>
