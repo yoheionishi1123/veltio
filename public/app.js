@@ -3523,10 +3523,22 @@ q("load-breakdown").addEventListener("click", loadBreakdown);
 
 q("run-diagnosis").addEventListener("click", async () => {
   if (!state.projectId) return;
-  const data = await api(`/api/projects/${state.projectId}/diagnosis/run?from=${state.from}&to=${state.to}`, {
-    method: "POST"
-  });
-  renderDiagnosis(data.result);
+  const btn = q("run-diagnosis");
+  const host = q("diagnosis-unified");
+  btn.disabled = true;
+  btn.textContent = "診断中…";
+  if (host) host.innerHTML = `<div class="muted tiny" style="padding:16px">診断を実行しています…</div>`;
+  try {
+    const data = await api(`/api/projects/${state.projectId}/diagnosis/run?from=${state.from}&to=${state.to}`, {
+      method: "POST"
+    });
+    renderDiagnosis(data.result);
+  } catch (err) {
+    if (host) host.innerHTML = `<div class="muted tiny" style="padding:16px;color:var(--red,#e53e3e)">診断に失敗しました: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "診断実行";
+  }
 });
 
 async function createReport(format) {
