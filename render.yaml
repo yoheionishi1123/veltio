@@ -32,6 +32,16 @@ services:
         sync: false
       - key: SELF_GA4_SERVICE_ACCOUNT_PRIVATE_KEY
         sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRO_PRICE_ID
+        sync: false
+      - key: STRIPE_BUSINESS_PRICE_ID
+        sync: false
+      - key: APP_BASE_URL
+        value: https://app.vel-tio.com
     disk:
       name: veltio-data
       mountPath: /var/data
