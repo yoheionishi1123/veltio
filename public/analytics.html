@@ -823,34 +823,41 @@
             </form>
           </section>
 
+          <!-- 成功施策ランキング -->
+          <section class="panel success-ranking-panel hidden" id="success-ranking-section">
+            <div class="success-ranking-header">
+              <h3>成功施策ランキング</h3>
+              <span class="success-ranking-sub">改善ptで降順ソート</span>
+            </div>
+            <div id="success-ranking-list" class="success-ranking-list"></div>
+          </section>
+
           <!-- タスクボード -->
           <section class="panel task-board-panel">
             <div class="task-board-header">
-              <h3>施策タスク一覧</h3>
+              <h3>改善結果一覧</h3>
               <div class="task-board-tabs">
                 <button class="task-tab active" data-tab="all">すべて</button>
                 <button class="task-tab" data-tab="todo">未着手</button>
-                <button class="task-tab" data-tab="doing">進行中</button>
-                <button class="task-tab" data-tab="done">完了済み</button>
+                <button class="task-tab" data-tab="doing">実施中</button>
+                <button class="task-tab" data-tab="done">完了</button>
               </div>
             </div>
             <div id="action-log-timeline" class="task-list"></div>
-            <!-- 完了日入力バー（prompt()の代替） -->
+            <!-- hidden compat elements -->
             <div id="task-complete-bar" class="task-complete-bar hidden">
-              <span class="task-complete-bar-label">✅ 完了日を入力</span>
               <input id="task-complete-date-input" type="date" />
               <button id="task-complete-confirm-btn" type="button" class="btn-primary btn-sm">完了にする</button>
               <button id="task-complete-cancel-btn" type="button" class="btn-ghost btn-sm">キャンセル</button>
             </div>
-            <!-- hidden compat elements -->
             <div id="company-note-timeline" class="hidden"></div>
           </section>
 
-          <!-- 効果測定パネル（完了タスク選択時に展開） -->
+          <!-- 効果測定詳細パネル（詳細表示用・通常は非表示） -->
           <section class="panel task-compare-panel hidden" id="task-compare-panel">
             <div class="task-compare-head">
               <div class="task-compare-head-left">
-                <h3>効果測定</h3>
+                <h3>効果測定 詳細</h3>
                 <div id="task-compare-title" class="task-compare-task-name"></div>
               </div>
               <button id="close-compare-panel" type="button" class="btn-ghost btn-sm">閉じる ✕</button>
@@ -860,9 +867,7 @@
               <span id="task-compare-page-label"></span>
               <button id="task-compare-page-apply" type="button" class="btn-ghost btn-sm">このページでフィルター</button>
             </div>
-            <!-- 主要指標トレンド -->
             <div id="validation-primary-metric" class="validation-primary-metric hidden"></div>
-            <!-- トレンドチャート（実施前→7日後→14日後→30日後） -->
             <div id="validation-trend-chart" class="validation-trend-chart"></div>
             <div id="validation-detail-summary" class="tiny muted" style="margin-top:8px;"></div>
             <div class="suggestion-row" style="margin-top:10px;">
@@ -877,6 +882,32 @@
           <div id="validation-suggestions" class="suggestion-row" style="margin-top:8px;">
             <button class="suggestion-chip" type="button" data-message="今やる施策の優先順を教えて">今やる施策の優先順を教えて</button>
             <button class="suggestion-chip" type="button" data-message="直近の施策ログの効果を教えて">直近の施策ログの効果を教えて</button>
+          </div>
+        </div>
+
+        <!-- 施策完了モーダル -->
+        <div id="task-complete-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+          <div class="modal-dialog">
+            <div class="modal-header">
+              <div class="modal-header-icon">📊</div>
+              <div class="modal-header-text">
+                <h3>施策を完了にする</h3>
+                <p class="modal-subtitle">この施策の効果測定を開始します</p>
+              </div>
+              <button id="task-complete-modal-close" type="button" class="btn-ghost btn-sm modal-close-btn">✕</button>
+            </div>
+            <div class="modal-body">
+              <p class="modal-desc">完了日以降のGA4データを自動で収集し、KPIへの影響を計測します。</p>
+              <label class="modal-date-label">
+                <span>完了日 <span class="required-mark">*</span></span>
+                <input id="task-complete-modal-date" type="date" class="modal-date-input" />
+              </label>
+              <div id="task-complete-modal-task-name" class="modal-task-name"></div>
+            </div>
+            <div class="modal-footer">
+              <button id="task-complete-modal-confirm" type="button" class="btn-primary">効果測定を開始する</button>
+              <button id="task-complete-modal-cancel" type="button" class="btn-ghost">キャンセル</button>
+            </div>
           </div>
         </div>
 

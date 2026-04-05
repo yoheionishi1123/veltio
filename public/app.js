@@ -703,6 +703,29 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
     `;
   }).join("");
 
+  // 施策実施日ライン（完了タスク）
+  const seriesStart = series[0]?.bucket;
+  const seriesEnd = series[series.length - 1]?.bucket;
+  const actionLines = (state.projectContext?.actionLogHistory || [])
+    .filter((a) => a.status === "done" && a.completedAtDate && seriesStart && seriesEnd
+      && a.completedAtDate >= seriesStart && a.completedAtDate <= seriesEnd)
+    .map((a) => {
+      const idx = series.findIndex((point) => {
+        const bucketStart = point.bucket;
+        const bucketEnd = bucketEndForGranularity(point.bucket, state.granularity);
+        return a.completedAtDate >= bucketStart && a.completedAtDate <= bucketEnd;
+      });
+      if (idx === -1) return "";
+      const x = (pad + (idx * (width - pad * 2)) / Math.max(series.length - 1, 1)).toFixed(1);
+      const label = (a.content || "").length > 10 ? a.content.substring(0, 10) + "…" : (a.content || "");
+      return `
+        <line x1="${x}" y1="${pad}" x2="${x}" y2="${height - pad}" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.85"/>
+        <circle cx="${x}" cy="${pad}" r="4" fill="#8b5cf6" opacity="0.85"/>
+        <text x="${parseFloat(x) + 4}" y="${pad + 12}" fill="#8b5cf6" font-size="9" font-weight="600">${escapeHtml(label)}</text>
+      `;
+    }).join("");
+  const hasActionLines = actionLines.trim().length > 0;
+
   // Benchmark line
   let benchmarkSvg = "";
   if (bm && metricKey !== "sessions") {
@@ -731,6 +754,7 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
       <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" stroke="#cbd5e1"></line>
       <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}" stroke="#cbd5e1"></line>
       ${campaignBands}
+      ${actionLines}
       ${benchmarkSvg}
       ${goalCvrSvg}
       <polyline fill="none" stroke="#0a58ca" stroke-width="3" points="${pointsMain}"></polyline>
@@ -739,6 +763,7 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
       ${pointsCompare ? `<text x="${pad + 110}" y="18" fill="#94a3b8" font-size="12">${escapeHtml(comparePresetLabel(state.comparePreset) || "比較期間")}</text>` : ""}
       ${activeCampaigns.length ? `<text x="${pad + 240}" y="18" fill="#b45309" font-size="12">セール / キャンペーン期間</text>` : ""}
       ${bm && metricKey !== "sessions" ? `<text x="${pad + (pointsCompare ? 220 : 110)}" y="18" fill="#ef4444" font-size="10">— ${escapeHtml(bm.label)}</text>` : ""}
+      ${hasActionLines ? `<text x="${width - 130}" y="18" fill="#8b5cf6" font-size="10" font-weight="600">| 施策実施日</text>` : ""}
       <text x="${width - 90}" y="18" fill="#475467" font-size="12">${escapeHtml(state.granularity)}</text>
     </svg>
   `;
@@ -1258,6 +1283,117 @@ function buildGroupMeasurementPanel(group) {
     </div>`;
 }
 
+function buildInlineEffectSection(item) {
+  if (item.status !== "done") return "";
+  const hasEvals = (item.evaluations || []).some((e) => e.available && e.metrics);
+  if (!hasEvals || !item.metrics) {
+    return `
+      <div class="task-effect-section task-effect-pending">
+        <span class="task-effect-pending-icon">⏳</span>
+        <span class="task-effect-pending-text">効果測定中 — 完了後のデータが蓄積されると自動表示されます</span>
+      </div>
+    `;
+  }
+  const evalEntry = [...(item.evaluations || [])].sort((a, b) => b.days - a.days).find((e) => e.available && e.metrics);
+  const targetKey = item.targetMetricKey || null;
+  if (!targetKey || !evalEntry) return "";
+
+  const before = item.metrics[targetKey] || 0;
+  const after = evalEntry.metrics[targetKey] || 0;
+  const delta = after - before;
+  const lowerIsBetter = ["bounce_rate", "cart_abandon_rate"].includes(targetKey);
+  const improved = lowerIsBetter ? delta < 0 : delta > 0;
+  const worsened = lowerIsBetter ? delta > 0.005 : delta < -0.005;
+  const neutral = Math.abs(delta * 100) < 0.5;
+
+  const code = item.effectiveness?.code || "pending";
+  let effectWrapClass = "task-effect-neutral";
+  if (code === "effective") effectWrapClass = "task-effect-good";
+  else if (code === "ineffective") effectWrapClass = "task-effect-bad";
+
+  const toneClass = neutral ? "tone-neutral" : improved ? "tone-good" : "tone-bad";
+  const deltaText = `${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(2)}pt`;
+
+  // Mini sparkline using evaluations
+  const sparkPoints = (() => {
+    const allEvals = (item.evaluations || []).filter((e) => e.available && e.metrics);
+    if (allEvals.length < 1) return "";
+    const pts = [{ label: "前", value: before }, ...allEvals.map((e) => ({ label: `${e.days}日`, value: e.metrics[targetKey] || 0 }))];
+    if (pts.length < 2) return "";
+    const W = 120, H = 32, PL = 4, PR = 4, PT = 4, PB = 4;
+    const vals = pts.map((p) => p.value);
+    const minV = Math.min(...vals);
+    const maxV = Math.max(...vals);
+    const range = maxV - minV || 0.001;
+    const xPos = (i) => PL + (i / Math.max(pts.length - 1, 1)) * (W - PL - PR);
+    const yPos = (v) => PT + (1 - (v - minV) / range) * (H - PT - PB);
+    const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${xPos(i).toFixed(1)},${yPos(p.value).toFixed(1)}`).join(" ");
+    const lineColor = improved ? "#16a34a" : neutral ? "#94a3b8" : "#dc2626";
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="task-effect-sparkline" style="overflow:visible">
+      <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${xPos(pts.length - 1).toFixed(1)}" cy="${yPos(pts[pts.length - 1].value).toFixed(1)}" r="3" fill="${lineColor}"/>
+    </svg>`;
+  })();
+
+  return `
+    <div class="task-effect-section ${effectWrapClass}">
+      <div class="task-effect-row">
+        <div class="task-effect-kv">
+          <span class="task-effect-kv-label">実施前</span>
+          <span class="task-effect-kv-val">${fmtPct(before)}</span>
+        </div>
+        <div class="task-effect-arrow ${toneClass}">→</div>
+        <div class="task-effect-kv">
+          <span class="task-effect-kv-label">${evalEntry.days}日後</span>
+          <span class="task-effect-kv-val ${toneClass}">${fmtPct(after)}</span>
+        </div>
+        <div class="task-effect-delta ${toneClass}">${deltaText}</div>
+        <div class="task-effect-sparkline-wrap">${sparkPoints}</div>
+      </div>
+      ${item.effectiveness?.label ? `<div class="task-effect-verdict ${effectWrapClass}-label">${escapeHtml(item.effectiveness.label)}</div>` : ""}
+    </div>
+  `;
+}
+
+function renderSuccessRanking(items) {
+  const section = document.getElementById("success-ranking-section");
+  if (!section) return;
+  const doneItems = (items || []).filter((a) => a.status === "done" && a.targetMetricKey && a.metrics);
+  const ranked = doneItems.map((a) => {
+    const evalEntry = [...(a.evaluations || [])].sort((b, c) => c.days - b.days).find((e) => e.available && e.metrics);
+    if (!evalEntry) return null;
+    const key = a.targetMetricKey;
+    const before = a.metrics[key] || 0;
+    const after = evalEntry.metrics[key] || 0;
+    const delta = after - before;
+    const lowerIsBetter = ["bounce_rate", "cart_abandon_rate"].includes(key);
+    const improvePt = lowerIsBetter ? -delta : delta;
+    return { ...a, improvePt, delta };
+  }).filter(Boolean).sort((a, b) => b.improvePt - a.improvePt);
+
+  if (!ranked.length) {
+    section.classList.add("hidden");
+    return;
+  }
+  section.classList.remove("hidden");
+
+  const list = document.getElementById("success-ranking-list");
+  if (!list) return;
+  list.innerHTML = ranked.slice(0, 5).map((item, idx) => {
+    const tone = item.improvePt > 0 ? "tone-good" : item.improvePt < -0.005 ? "tone-bad" : "tone-neutral";
+    const deltaText = `${item.improvePt >= 0 ? "+" : ""}${(item.improvePt * 100).toFixed(2)}pt`;
+    const medals = ["🥇", "🥈", "🥉", "4位", "5位"];
+    return `
+      <div class="ranking-row">
+        <span class="ranking-pos">${medals[idx] || `${idx + 1}位`}</span>
+        <span class="ranking-name">${escapeHtml(item.content || "")}</span>
+        <span class="ranking-kpi">${escapeHtml(metricLabel(item.targetMetricKey))}</span>
+        <span class="ranking-delta ${tone}">${deltaText}</span>
+      </div>
+    `;
+  }).join("");
+}
+
 function renderActionLogTimeline(items) {
   const allItems = (items || []).slice().reverse(); // newest first
   const tab = activeTaskTab;
@@ -1293,6 +1429,9 @@ function renderActionLogTimeline(items) {
     return;
   }
 
+  // Render success ranking
+  renderSuccessRanking(allItems);
+
   const taskCardsHtml = filtered.map((item) => {
     // 完了から30日以内はステータスを「効果測定中」に切り替え
     let sm = ACTION_STATUS_META[item.status] || ACTION_STATUS_META.todo;
@@ -1300,19 +1439,21 @@ function renderActionLogTimeline(items) {
       const daysSince = Math.floor((Date.now() - new Date(item.completedAtDate).getTime()) / 86400000);
       if (daysSince <= 30) sm = { label: "効果測定中", cls: "status-measuring" };
     }
-    const hasEvals = (item.evaluations || []).some((e) => e.available && e.metrics);
-    const isSelected = item.id === state.selectedValidationActionId;
     const priorityColors = { high: "task-priority-high", medium: "task-priority-medium", low: "task-priority-low" };
     const priCls = priorityColors[item.priority] || "task-priority-medium";
+    const code = item.effectiveness?.code || "pending";
+    const cardEffectCls = item.status === "done"
+      ? (code === "effective" ? "task-card-effective" : code === "ineffective" ? "task-card-ineffective" : "")
+      : "";
     return `
-      <div class="task-card ${isSelected ? "task-card-selected" : ""}" data-id="${escapeHtml(item.id)}">
+      <div class="task-card ${cardEffectCls}" data-id="${escapeHtml(item.id)}">
         <div class="task-card-header">
           <div class="task-card-left">
             <span class="action-status-badge ${sm.cls}">${sm.label}</span>
             <span class="task-priority-dot ${priCls}" title="優先度: ${escapeHtml(priorityLabel(item.priority || 'medium'))}"></span>
           </div>
           <div class="task-card-actions">
-            ${item.status !== "done" ? `<button type="button" class="task-complete-btn" data-id="${escapeHtml(item.id)}">✓ 完了にする</button>` : `<button type="button" class="task-view-effect-btn" data-id="${escapeHtml(item.id)}">📊 効果を見る</button>`}
+            ${item.status !== "done" ? `<button type="button" class="task-complete-btn" data-id="${escapeHtml(item.id)}">✓ 完了にする</button>` : ""}
             <button type="button" class="task-edit-btn" data-id="${escapeHtml(item.id)}">編集</button>
             <button type="button" class="task-delete-btn" data-id="${escapeHtml(item.id)}">削除</button>
           </div>
@@ -1322,33 +1463,33 @@ function renderActionLogTimeline(items) {
           ${item.targetMetricKey ? `<span class="task-metric-badge">🎯 ${escapeHtml(metricLabel(item.targetMetricKey))}</span>` : ""}
           ${item.targetPage ? `<span class="task-page-chip">📄 ${escapeHtml(item.targetPage)}</span>` : ""}
           ${item.owner ? `<span class="task-meta-chip">👤 ${escapeHtml(item.owner)}</span>` : ""}
-          ${item.completedAtDate ? `<span class="task-meta-chip ${hasEvals ? "task-chip-data" : "task-chip-waiting"}">✅ 完了 ${escapeHtml(item.completedAtDate)}${hasEvals ? " · データあり" : " · データ集計中"}</span>` : ""}
-          ${item.effectiveness?.label ? `<span class="task-meta-chip">📈 ${escapeHtml(item.effectiveness.label)}</span>` : ""}
+          ${item.completedAtDate ? `<span class="task-meta-chip task-chip-date">完了 ${escapeHtml(item.completedAtDate)}</span>` : ""}
         </div>
-        ${item.autoComment ? `<div class="task-card-comment">${escapeHtml(item.autoComment)}</div>` : ""}
+        ${buildInlineEffectSection(item)}
       </div>
     `;
   }).join("");
 
   // ③ アーカイブセクション（完了30日超）
   const buildArchivedCard = (item) => {
-    const isSelected = item.id === state.selectedValidationActionId;
+    const code = item.effectiveness?.code || "pending";
+    const cardEffectCls = code === "effective" ? "task-card-effective" : code === "ineffective" ? "task-card-ineffective" : "";
     return `
-      <div class="task-card task-card-archived ${isSelected ? "task-card-selected" : ""}" data-id="${escapeHtml(item.id)}">
+      <div class="task-card task-card-archived ${cardEffectCls}" data-id="${escapeHtml(item.id)}">
         <div class="task-card-header">
           <div class="task-card-left">
             <span class="action-status-badge status-done">完了済</span>
           </div>
           <div class="task-card-actions">
-            <button type="button" class="task-view-effect-btn" data-id="${escapeHtml(item.id)}">📊 効果を見る</button>
             <button type="button" class="task-delete-btn" data-id="${escapeHtml(item.id)}">削除</button>
           </div>
         </div>
         <div class="task-card-title">${escapeHtml(item.content)}</div>
         <div class="task-card-meta">
           ${item.targetMetricKey ? `<span class="task-metric-badge">🎯 ${escapeHtml(metricLabel(item.targetMetricKey))}</span>` : ""}
-          ${item.completedAtDate ? `<span class="task-meta-chip">✅ 完了 ${escapeHtml(item.completedAtDate)}</span>` : ""}
+          ${item.completedAtDate ? `<span class="task-meta-chip task-chip-date">完了 ${escapeHtml(item.completedAtDate)}</span>` : ""}
         </div>
+        ${buildInlineEffectSection(item)}
       </div>`;
   };
 
@@ -2315,6 +2456,22 @@ async function loadMetrics() {
       isCritical ? "metric-card-critical" : "",
     ].filter(Boolean).join(" ");
 
+    // Related actions for this metric
+    const allActions = state.projectContext?.actionLogHistory || [];
+    const relatedActions = allActions.filter((a) => a.targetMetricKey === item.metricKey);
+    const doneWithData = relatedActions.filter((a) => a.status === "done" && (a.evaluations || []).some((e) => e.available && e.metrics));
+    let recentImprove = null;
+    doneWithData.forEach((a) => {
+      const ev = [...(a.evaluations || [])].sort((x, y) => y.days - x.days).find((e) => e.available && e.metrics);
+      if (!ev || !a.metrics) return;
+      const before = a.metrics[item.metricKey] || 0;
+      const after = ev.metrics[item.metricKey] || 0;
+      const delta = after - before;
+      const lowerIsBetter = ["bounce_rate", "cart_abandon_rate"].includes(item.metricKey);
+      const improvePt = lowerIsBetter ? -delta : delta;
+      if (recentImprove === null || Math.abs(improvePt) > Math.abs(recentImprove)) recentImprove = improvePt;
+    });
+
     card.innerHTML = `
       <div class="metric-card-head">
         <span class="metric-card-label">${escapeHtml(item.label)}</span>
@@ -2328,6 +2485,12 @@ async function loadMetrics() {
       </div>
       <div class="metric-target-text">基準 ${fmtPct(item.target)}</div>
       ${compareRateMeta ? `<div class="metric-card-trend ${trendTone}">${trendIcon} ${escapeHtml(compareRateMeta.text)}</div>` : ""}
+      ${relatedActions.length > 0 ? `
+        <div class="metric-card-actions-row">
+          <span class="metric-card-action-count">改善施策 ${relatedActions.length}件</span>
+          ${recentImprove !== null ? `<span class="metric-card-improvement ${recentImprove >= 0 ? "is-up" : "is-down"}">直近 ${recentImprove >= 0 ? "+" : ""}${(recentImprove * 100).toFixed(2)}pt</span>` : ""}
+        </div>
+      ` : ""}
     `;
     cards.appendChild(card);
   });
@@ -3072,12 +3235,12 @@ q("stage-rules-form")?.addEventListener("submit", async (e) => {
 
 q("fetch-ga4-events-btn")?.addEventListener("click", loadGa4Events);
 
-// ── 完了日バー（prompt代替）─────────────────────────────────────────
+// ── 完了モーダル ─────────────────────────────────────────
 async function submitTaskComplete() {
-  const bar = q("task-complete-bar");
-  const dateInput = q("task-complete-date-input");
-  if (!bar || !dateInput) return;
-  const editId = bar.dataset.pendingId;
+  const modal = q("task-complete-modal");
+  const dateInput = q("task-complete-modal-date");
+  if (!modal || !dateInput) return;
+  const editId = modal.dataset.pendingId;
   const dateStr = dateInput.value;
   if (!editId || !dateStr || !validateDateStr(dateStr)) {
     dateInput.style.borderColor = "#ef4444";
@@ -3086,7 +3249,7 @@ async function submitTaskComplete() {
   }
   const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === editId);
   if (!row) return;
-  const confirmBtn = q("task-complete-confirm-btn");
+  const confirmBtn = q("task-complete-modal-confirm");
   if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "更新中…"; }
   try {
     await api(`/api/projects/${state.projectId}/context`, {
@@ -3103,32 +3266,34 @@ async function submitTaskComplete() {
         to: state.to
       }
     });
-    bar.classList.add("hidden");
-    bar.dataset.pendingId = "";
+    modal.classList.add("hidden");
+    modal.dataset.pendingId = "";
     await loadProjectContext();
-    // 完了後に自動で効果測定パネルを開く
-    state.selectedValidationActionId = editId;
     renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
-    renderValidationDetail(state.projectContext);
-    q("task-compare-panel")?.classList.remove("hidden");
-    q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
     alert("更新に失敗しました: " + err.message);
   } finally {
-    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "完了にする"; }
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "効果測定を開始する"; }
   }
 }
 
-q("task-complete-confirm-btn")?.addEventListener("click", submitTaskComplete);
+q("task-complete-modal-confirm")?.addEventListener("click", submitTaskComplete);
 
-q("task-complete-date-input")?.addEventListener("keydown", (e) => {
+q("task-complete-modal-date")?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); submitTaskComplete(); }
-  if (e.key === "Escape") { q("task-complete-bar")?.classList.add("hidden"); }
+  if (e.key === "Escape") { q("task-complete-modal")?.classList.add("hidden"); }
 });
 
-q("task-complete-cancel-btn")?.addEventListener("click", () => {
-  const bar = q("task-complete-bar");
-  if (bar) { bar.classList.add("hidden"); bar.dataset.pendingId = ""; }
+q("task-complete-modal-cancel")?.addEventListener("click", () => {
+  const modal = q("task-complete-modal");
+  if (modal) { modal.classList.add("hidden"); modal.dataset.pendingId = ""; }
+});
+q("task-complete-modal-close")?.addEventListener("click", () => {
+  const modal = q("task-complete-modal");
+  if (modal) { modal.classList.add("hidden"); modal.dataset.pendingId = ""; }
+});
+q("task-complete-modal")?.addEventListener("click", (e) => {
+  if (e.target === q("task-complete-modal")) { q("task-complete-modal").classList.add("hidden"); }
 });
 
 async function loadAssistantHistory() {
@@ -3905,26 +4070,18 @@ q("action-log-timeline").addEventListener("click", async (e) => {
   if (!btn) return;
   const editId = btn.dataset.id;
 
-  // 効果を見る（完了タスク）
-  if (btn.classList.contains("task-view-effect-btn")) {
-    state.selectedValidationActionId = editId || null;
-    renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
-    renderValidationDetail(state.projectContext);
-    q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
-
-  // 完了にする → インライン日付バーを表示（prompt()を使わない）
+  // 完了にする → モーダルを表示
   if (btn.classList.contains("task-complete-btn")) {
-    const bar = q("task-complete-bar");
-    const dateInput = q("task-complete-date-input");
-    if (!bar || !dateInput) return;
+    const modal = q("task-complete-modal");
+    const dateInput = q("task-complete-modal-date");
+    if (!modal || !dateInput) return;
+    const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === editId);
     dateInput.value = todayISO();
-    bar.dataset.pendingId = editId;
-    bar.classList.remove("hidden");
+    modal.dataset.pendingId = editId;
+    const nameEl = q("task-complete-modal-task-name");
+    if (nameEl) nameEl.textContent = row?.content || "";
+    modal.classList.remove("hidden");
     dateInput.focus();
-    // スクロールして見えるようにする
-    bar.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
 
@@ -3973,20 +4130,12 @@ document.addEventListener("click", (e) => {
   renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
 });
 
-// タスクカードクリック — task-card 自体をクリックで "前後比較" を選択
+// タスクカードクリック — 完了タスクは詳細パネルを開く（オプション）
 document.addEventListener("click", (e) => {
   const card = e.target.closest(".task-card");
   if (!card) return;
-  // ignore if clicking a button inside
   if (e.target.closest("button")) return;
-  const id = card.dataset.id;
-  if (!id) return;
-  const row = (state.projectContext?.actionLogHistory || []).find((item) => item.id === id);
-  if (!row || row.status !== "done") return;
-  state.selectedValidationActionId = id;
-  renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
-  renderValidationDetail(state.projectContext);
-  q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // No-op: effect is shown inline in the card
 });
 
 // 効果測定パネル閉じるボタン（イベント委譲で確実に動作）
