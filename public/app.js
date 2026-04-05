@@ -36,8 +36,10 @@ const SELF_GA_MEASUREMENT_ID = "G-VBKYWDLGE5";
 const SELF_GA_STREAM_ID = "14131607973";
 const SELF_GA_STREAM_NAME = "app.vel-tio.com";
 const AUTH_ROUTE_MODE_MAP = {
-  "/login": "login",
-  "/signin": "signup"
+  "/login":       "login",
+  "/app/login":   "login",
+  "/signin":      "signup",
+  "/app/signin":  "signup"
 };
 const AUTH_PRIMARY_CONTENT = {
   login: {
@@ -52,12 +54,19 @@ const AUTH_PRIMARY_CONTENT = {
   }
 };
 const APP_ROUTE_PAGE_MAP = {
-  "/dashboard": "dashboard",
-  "/analytics": "dashboard",
+  "/app/dashboard":   "dashboard",
+  "/app/analytics":   "dashboard",
+  "/app/experiments": "validation",
+  "/app/account":     "account",
+  "/app/agent":       "assistant",
+  "/app/admin":       "admin",
+  // Legacy fallbacks (server 301s these, but keep for safety)
+  "/dashboard":   "dashboard",
+  "/analytics":   "dashboard",
   "/experiments": "validation",
-  "/account": "account",
-  "/agent": "assistant",
-  "/admin": "admin"
+  "/account":     "account",
+  "/agent":       "assistant",
+  "/admin":       "admin"
 };
 
 const SITE_DIAGNOSIS_MAP = {
@@ -287,18 +296,18 @@ function authModeForPath(pathname = location.pathname) {
 }
 
 function authPathForMode(mode = "login") {
-  return authPrimaryMode(mode) === "signup" ? "/signin" : "/login";
+  return authPrimaryMode(mode) === "signup" ? "/app/signin" : "/app/login";
 }
 
 function currentAppPath() {
   const pathMap = {
-    dashboard: "/dashboard",
-    validation: "/experiments",
-    account: "/account",
-    assistant: "/agent",
-    admin: "/admin"
+    dashboard: "/app/dashboard",
+    validation: "/app/experiments",
+    account:    "/app/account",
+    assistant:  "/app/agent",
+    admin:      "/app/admin"
   };
-  return pathMap[state.activePage] || "/dashboard";
+  return pathMap[state.activePage] || "/app/dashboard";
 }
 
 function requestedAppPage(pathname = location.pathname) {
@@ -306,7 +315,7 @@ function requestedAppPage(pathname = location.pathname) {
   return APP_ROUTE_PAGE_MAP[key] || null;
 }
 
-function authRedirectPath(defaultPath = "/dashboard") {
+function authRedirectPath(defaultPath = "/app/dashboard") {
   const params = new URLSearchParams(location.search);
   const raw = params.get("next");
   if (!raw || !raw.startsWith("/")) return defaultPath;
@@ -315,7 +324,7 @@ function authRedirectPath(defaultPath = "/dashboard") {
 
 function authPathWithNext(mode = "login", nextPath = "") {
   const path = authPathForMode(mode);
-  if (!nextPath || nextPath === "/login" || nextPath === "/signin") return path;
+  if (!nextPath || nextPath === "/login" || nextPath === "/signin" || nextPath === "/app/login" || nextPath === "/app/signin") return path;
   const params = new URLSearchParams();
   params.set("next", nextPath);
   return `${path}?${params.toString()}`;
@@ -1975,17 +1984,17 @@ async function bootstrap() {
   state.compareTo = "";
   state.granularity = savedGranularity || "day";
   state.chartMetric = savedMetric || "sessions";
-  if (location.pathname === "/dashboard" || location.pathname.startsWith("/dashboard/") || location.pathname === "/analytics" || location.pathname.startsWith("/analytics/")) {
+  if (location.pathname.startsWith("/app/dashboard") || location.pathname.startsWith("/app/analytics") || location.pathname === "/dashboard" || location.pathname === "/analytics") {
     state.activePage = "dashboard";
-  } else if (location.pathname === "/experiments" || location.pathname.startsWith("/experiments/")) {
+  } else if (location.pathname.startsWith("/app/experiments") || location.pathname === "/experiments") {
     state.activePage = "validation";
-  } else if (location.pathname === "/account" || location.pathname.startsWith("/account/")) {
+  } else if (location.pathname.startsWith("/app/account") || location.pathname === "/account") {
     state.activePage = "account";
-  } else if (location.pathname === "/agent" || location.pathname.startsWith("/agent/")) {
+  } else if (location.pathname.startsWith("/app/agent") || location.pathname === "/agent") {
     state.activePage = "assistant";
-  } else if (location.pathname === "/admin" || location.pathname.startsWith("/admin/")) {
+  } else if (location.pathname.startsWith("/app/admin") || location.pathname === "/admin") {
     state.activePage = "admin";
-  } else if (location.pathname === "/dashboard" || location.pathname === "/analytics" || location.pathname === "/") {
+  } else {
     state.activePage = "dashboard";
   }
   q("from-date").value = state.from;
@@ -2003,27 +2012,28 @@ async function bootstrap() {
   renderSiteDiagnosis();
   void trackVisitor("page_view", {
     activePage:
-      location.pathname.startsWith("/admin")
+      location.pathname.startsWith("/app/admin") || location.pathname.startsWith("/admin")
         ? "admin"
-        : location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/analytics")
+        : location.pathname.startsWith("/app/dashboard") || location.pathname.startsWith("/app/analytics") || location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/analytics")
           ? "analytics"
-          : location.pathname.startsWith("/experiments")
+          : location.pathname.startsWith("/app/experiments") || location.pathname.startsWith("/experiments")
             ? "experiments"
-            : location.pathname.startsWith("/account")
+            : location.pathname.startsWith("/app/account") || location.pathname.startsWith("/account")
               ? "account"
-              : location.pathname.startsWith("/agent")
+              : location.pathname.startsWith("/app/agent") || location.pathname.startsWith("/agent")
                 ? "agent"
                 : "auth_or_dashboard",
   });
 
   // Retry /api/me to handle Render cold starts (server waking up)
+  // Retries: 2s → 4s → 6s → 8s = up to ~20s total for slow cold starts
   let me = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       me = await api("/api/me");
       break;
     } catch (err) {
-      if (attempt < 2 && (err.status === 0 || err.status >= 500)) {
+      if (attempt < 4 && (err.status === 0 || err.status >= 500)) {
         await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
         continue;
       }

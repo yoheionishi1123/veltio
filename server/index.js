@@ -2356,14 +2356,34 @@ async function serveStatic(req, res, urlObj) {
   // /ja/ directory index
   if (reqPath === "/ja" || reqPath === "/ja/") reqPath = "/ja/index.html";
 
-  if (reqPath === "/login" || reqPath.startsWith("/login/")) reqPath = "/analytics.html";
+  // 301 redirects: old app URLs → /app/* (permanent, SEO-safe)
+  const appRedirects = {
+    "/dashboard":  "/app/dashboard",
+    "/analytics":  "/app/dashboard",
+    "/experiments":"/app/experiments",
+    "/account":    "/app/account",
+    "/agent":      "/app/agent",
+    "/admin":      "/app/admin",
+  };
+  if (appRedirects[reqPath]) {
+    res.writeHead(301, { "Location": appRedirects[reqPath] });
+    res.end();
+    return;
+  }
+
+  // /app/* → analytics.html
+  if (reqPath === "/app" || reqPath === "/app/") { res.writeHead(302, { "Location": "/app/dashboard" }); res.end(); return; }
+  if (reqPath === "/app/login"   || reqPath.startsWith("/app/login/"))   reqPath = "/analytics.html";
+  if (reqPath === "/app/signin"  || reqPath.startsWith("/app/signin/"))  reqPath = "/analytics.html";
+  if (reqPath === "/app/dashboard"   || reqPath.startsWith("/app/dashboard/"))   reqPath = "/analytics.html";
+  if (reqPath === "/app/experiments" || reqPath.startsWith("/app/experiments/")) reqPath = "/analytics.html";
+  if (reqPath === "/app/account"     || reqPath.startsWith("/app/account/"))     reqPath = "/analytics.html";
+  if (reqPath === "/app/agent"       || reqPath.startsWith("/app/agent/"))       reqPath = "/analytics.html";
+  if (reqPath === "/app/admin"       || reqPath.startsWith("/app/admin/"))       reqPath = "/analytics.html";
+
+  // Legacy root-level login/signin (keep working)
+  if (reqPath === "/login"  || reqPath.startsWith("/login/"))  reqPath = "/analytics.html";
   if (reqPath === "/signin" || reqPath.startsWith("/signin/")) reqPath = "/analytics.html";
-  if (reqPath === "/dashboard" || reqPath.startsWith("/dashboard/")) reqPath = "/analytics.html";
-  if (reqPath === "/analytics" || reqPath.startsWith("/analytics/")) reqPath = "/analytics.html";
-  if (reqPath === "/experiments" || reqPath.startsWith("/experiments/")) reqPath = "/analytics.html";
-  if (reqPath === "/account" || reqPath.startsWith("/account/")) reqPath = "/analytics.html";
-  if (reqPath === "/agent" || reqPath.startsWith("/agent/")) reqPath = "/analytics.html";
-  if (reqPath === "/admin" || reqPath.startsWith("/admin/")) reqPath = "/analytics.html";
   if (reqPath.endsWith("/")) reqPath = `${reqPath}index.html`;
   if (!path.extname(reqPath)) reqPath = `${reqPath}.html`;
   const fsPath = path.join(PUBLIC_DIR, reqPath);
