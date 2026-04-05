@@ -435,8 +435,25 @@ async function ensureStorage() {
 }
 
 async function readDb() {
-  const raw = await fs.readFile(DB_FILE, "utf8");
-  const db = JSON.parse(raw);
+  let raw;
+  try {
+    raw = await fs.readFile(DB_FILE, "utf8");
+  } catch {
+    console.warn("[db] file read failed, reinitializing");
+    await ensureStorage();
+    raw = await fs.readFile(DB_FILE, "utf8");
+  }
+  let db;
+  try {
+    db = JSON.parse(raw);
+  } catch (e) {
+    console.error("[db] JSON parse error, backing up and reinitializing:", e.message);
+    const backupPath = DB_FILE + ".bak." + Date.now();
+    await fs.writeFile(backupPath, raw, "utf8").catch(() => {});
+    await fs.unlink(DB_FILE).catch(() => {});
+    await ensureStorage();
+    db = JSON.parse(await fs.readFile(DB_FILE, "utf8"));
+  }
   if (!Array.isArray(db.templates) || db.templates.length === 0) {
     db.templates = RECOMMENDATION_TEMPLATES;
   }
