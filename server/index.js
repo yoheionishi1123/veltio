@@ -3133,6 +3133,18 @@ async function handleApi(req, res, urlObj) {
   }
 
   // ── Stripe: create checkout session ─────────────────────────────────────────
+  // ── Stripe: status check ─────────────────────────────────────────────────────
+  if (req.method === "GET" && urlObj.pathname === "/api/stripe/status") {
+    const user = requireAuth();
+    if (!user) return;
+    return json(res, 200, {
+      configured: !!(stripe && STRIPE_PRO_PRICE_ID),
+      hasSecretKey: !!STRIPE_SECRET_KEY,
+      hasPriceId: !!STRIPE_PRO_PRICE_ID,
+      hasWebhook: !!STRIPE_WEBHOOK_SECRET
+    });
+  }
+
   if (req.method === "POST" && urlObj.pathname === "/api/stripe/create-checkout-session") {
     const user = requireAuth();
     if (!user) return;

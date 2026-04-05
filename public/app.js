@@ -1261,7 +1261,20 @@ function buildGroupMeasurementPanel(group) {
 function renderActionLogTimeline(items) {
   const allItems = (items || []).slice().reverse(); // newest first
   const tab = activeTaskTab;
-  const filtered = tab === "all" ? allItems : allItems.filter((i) => (i.status || "todo") === tab);
+  const allFiltered = tab === "all" ? allItems : allItems.filter((i) => (i.status || "todo") === tab);
+
+  // ③ 完了から30日超のdoneタスクはアーカイブへ
+  const today = new Date();
+  const filtered = allFiltered.filter((i) => {
+    if (i.status !== "done" || !i.completedAtDate) return true;
+    const daysSince = Math.floor((today - new Date(i.completedAtDate)) / 86400000);
+    return daysSince <= 30;
+  });
+  const archived = allFiltered.filter((i) => {
+    if (i.status !== "done" || !i.completedAtDate) return false;
+    const daysSince = Math.floor((today - new Date(i.completedAtDate)) / 86400000);
+    return daysSince > 30;
+  });
 
   const host = document.getElementById("action-log-timeline");
   if (!host) return;
@@ -1275,13 +1288,18 @@ function renderActionLogTimeline(items) {
        </div>`
     : "";
 
-  if (!filtered.length && !groupPanelsHtml) {
+  if (!filtered.length && !archived.length && !groupPanelsHtml) {
     host.innerHTML = `<div class="task-empty">タスクがありません。</div>`;
     return;
   }
 
   const taskCardsHtml = filtered.map((item) => {
-    const sm = ACTION_STATUS_META[item.status] || ACTION_STATUS_META.todo;
+    // 完了から30日以内はステータスを「効果測定中」に切り替え
+    let sm = ACTION_STATUS_META[item.status] || ACTION_STATUS_META.todo;
+    if (item.status === "done" && item.completedAtDate) {
+      const daysSince = Math.floor((Date.now() - new Date(item.completedAtDate).getTime()) / 86400000);
+      if (daysSince <= 30) sm = { label: "効果測定中", cls: "status-measuring" };
+    }
     const hasEvals = (item.evaluations || []).some((e) => e.available && e.metrics);
     const isSelected = item.id === state.selectedValidationActionId;
     const priorityColors = { high: "task-priority-high", medium: "task-priority-medium", low: "task-priority-low" };
@@ -1312,7 +1330,36 @@ function renderActionLogTimeline(items) {
     `;
   }).join("");
 
-  host.innerHTML = groupPanelsHtml + taskCardsHtml;
+  // ③ アーカイブセクション（完了30日超）
+  const buildArchivedCard = (item) => {
+    const isSelected = item.id === state.selectedValidationActionId;
+    return `
+      <div class="task-card task-card-archived ${isSelected ? "task-card-selected" : ""}" data-id="${escapeHtml(item.id)}">
+        <div class="task-card-header">
+          <div class="task-card-left">
+            <span class="action-status-badge status-done">完了済</span>
+          </div>
+          <div class="task-card-actions">
+            <button type="button" class="task-view-effect-btn" data-id="${escapeHtml(item.id)}">📊 効果を見る</button>
+            <button type="button" class="task-delete-btn" data-id="${escapeHtml(item.id)}">削除</button>
+          </div>
+        </div>
+        <div class="task-card-title">${escapeHtml(item.content)}</div>
+        <div class="task-card-meta">
+          ${item.targetMetricKey ? `<span class="task-metric-badge">🎯 ${escapeHtml(metricLabel(item.targetMetricKey))}</span>` : ""}
+          ${item.completedAtDate ? `<span class="task-meta-chip">✅ 完了 ${escapeHtml(item.completedAtDate)}</span>` : ""}
+        </div>
+      </div>`;
+  };
+
+  const archiveHtml = archived.length
+    ? `<details class="task-archive-section">
+        <summary class="task-archive-summary">📁 アーカイブ（${archived.length}件）— 完了から30日以上経過</summary>
+        <div class="task-archive-list">${archived.map(buildArchivedCard).join("")}</div>
+       </details>`
+    : "";
+
+  host.innerHTML = groupPanelsHtml + taskCardsHtml + archiveHtml;
 }
 
 function validationMetricItems(entry) {
@@ -1771,16 +1818,22 @@ async function loadCampaigns() {
 async function bootstrap() {
   const initialAuthMode = authModeForPath(location.pathname);
   await loadAuthConfig();
-  state.from = daysAgoISO(29);
-  state.to = todayISO();
+  // ④ 最後に設定した期間をlocalStorageから復元
+  const savedFrom = localStorage.getItem("veltio_from");
+  const savedTo = localStorage.getItem("veltio_to");
+  const savedPreset = localStorage.getItem("veltio_compare_preset");
+  const savedGranularity = localStorage.getItem("veltio_granularity");
+  const savedMetric = localStorage.getItem("veltio_chart_metric");
+  state.from = (savedFrom && savedFrom > "2020-01-01") ? savedFrom : daysAgoISO(29);
+  state.to = (savedTo && savedTo <= todayISO()) ? savedTo : todayISO();
   state.adminFrom = daysAgoISO(29);
   state.adminTo = todayISO();
   state.adminSearch = "";
-  state.comparePreset = "none";
+  state.comparePreset = savedPreset || "none";
   state.compareFrom = "";
   state.compareTo = "";
-  state.granularity = "day";
-  state.chartMetric = "sessions";
+  state.granularity = savedGranularity || "day";
+  state.chartMetric = savedMetric || "sessions";
   if (location.pathname === "/dashboard" || location.pathname.startsWith("/dashboard/") || location.pathname === "/analytics" || location.pathname.startsWith("/analytics/")) {
     state.activePage = "dashboard";
   } else if (location.pathname === "/experiments" || location.pathname.startsWith("/experiments/")) {
@@ -2088,14 +2141,15 @@ async function loadAdminDashboard() {
   if (state.adminSearch) {
     params.set("q", state.adminSearch);
   }
-  const [overview, trend, business, selfGa4, tenants, users, projects] = await Promise.all([
+  const [overview, trend, business, selfGa4, tenants, users, projects, stripeStatus] = await Promise.all([
     api(`/api/admin/overview?${params.toString()}`),
     api(`/api/admin/trend?${params.toString()}`),
     api(`/api/admin/business-kpi?${params.toString()}`),
     api(`/api/admin/self-ga4?${params.toString()}`).catch((err) => ({ error: err.message || String(err) })),
     api(`/api/admin/tenants?${params.toString()}`),
     api(`/api/admin/users?${params.toString()}`),
-    api(`/api/admin/projects?${params.toString()}`)
+    api(`/api/admin/projects?${params.toString()}`),
+    api("/api/stripe/status").catch(() => null)
   ]);
   state.adminCache = {
     tenants: tenants.rows || [],
@@ -2153,6 +2207,18 @@ async function loadAdminDashboard() {
       <td>${row.lastSyncError ? `<span class="error">${escapeHtml(row.lastSyncError)}</span>` : (row.lastSyncedAt ? `正常 (${new Date(row.lastSyncedAt).toLocaleString()})` : "未接続")}</td>
     </tr>
   `).join("");
+
+  // Stripe status
+  const stripeEl = q("stripe-status-detail");
+  if (stripeEl && stripeStatus) {
+    const rows = [
+      `STRIPE_SECRET_KEY: ${stripeStatus.hasSecretKey ? "✅ 設定済" : "❌ 未設定"}`,
+      `STRIPE_PRO_PRICE_ID: ${stripeStatus.hasPriceId ? "✅ 設定済" : "❌ 未設定 — Stripeで¥5,000/月の定期プランを作成後にRenderへ追加"}`,
+      `STRIPE_WEBHOOK_SECRET: ${stripeStatus.hasWebhook ? "✅ 設定済" : "❌ 未設定 — Stripeダッシュボード › Webhooks › https://app.vel-tio.com/api/stripe/webhook"}`,
+      `全体: ${stripeStatus.configured ? "✅ 決済有効" : "⚠️ 設定未完了 — 上記を確認"}`
+    ];
+    stripeEl.innerHTML = rows.map((r) => `<div>${escapeHtml(r)}</div>`).join("");
+  }
 }
 
 async function loadGa4Status() {
@@ -2654,15 +2720,12 @@ function syncPlanUI(plan, { trialActive = false, trialDaysLeft = 0, monthlySessi
   // Pricing card CTAs — show "現在のプラン" on the active tier
   const freeTier = document.getElementById("pricing-free");
   const proTier = document.getElementById("pricing-pro");
-  const bizTier = document.getElementById("pricing-business");
   const freeBtn = document.getElementById("plan-free-btn");
   const proBtn = document.getElementById("plan-pro-btn");
-  const bizBtn = document.getElementById("plan-business-btn");
 
-  if (freeTier && proTier && bizTier) {
+  if (freeTier && proTier) {
     freeTier.classList.toggle("pricing-tier-active", normalizedPlan === "free");
-    proTier.classList.toggle("pricing-tier-active", normalizedPlan === "pro");
-    bizTier.classList.toggle("pricing-tier-active", normalizedPlan === "business");
+    proTier.classList.toggle("pricing-tier-active", normalizedPlan === "pro" || normalizedPlan === "business");
   }
   if (freeBtn) {
     freeBtn.textContent = normalizedPlan === "free" ? "現在のプラン" : "Freeに戻す";
@@ -2670,14 +2733,10 @@ function syncPlanUI(plan, { trialActive = false, trialDaysLeft = 0, monthlySessi
     freeBtn.className = normalizedPlan === "free" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-downgrade";
   }
   if (proBtn) {
-    proBtn.textContent = normalizedPlan === "pro" ? "現在のプラン" : "Proにアップグレード";
-    proBtn.disabled = normalizedPlan === "pro";
-    proBtn.className = normalizedPlan === "pro" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
-  }
-  if (bizBtn) {
-    bizBtn.textContent = normalizedPlan === "business" ? "現在のプラン" : "Businessにアップグレード";
-    bizBtn.disabled = normalizedPlan === "business";
-    bizBtn.className = normalizedPlan === "business" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
+    const isPro = normalizedPlan === "pro" || normalizedPlan === "business";
+    proBtn.textContent = isPro ? "現在のプラン" : "Proにアップグレード";
+    proBtn.disabled = isPro;
+    proBtn.className = isPro ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
   }
 
   // Manage subscription row (show only for paid plans)
@@ -3047,6 +3106,12 @@ async function submitTaskComplete() {
     bar.classList.add("hidden");
     bar.dataset.pendingId = "";
     await loadProjectContext();
+    // 完了後に自動で効果測定パネルを開く
+    state.selectedValidationActionId = editId;
+    renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
+    renderValidationDetail(state.projectContext);
+    q("task-compare-panel")?.classList.remove("hidden");
+    q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
     alert("更新に失敗しました: " + err.message);
   } finally {
@@ -3517,6 +3582,11 @@ q("apply-range").addEventListener("click", async () => {
   q("compare-from-date").value = state.compareFrom;
   q("compare-to-date").value = state.compareTo;
   state.granularity = q("granularity-select").value;
+  // ④ 期間設定をlocalStorageに保存
+  localStorage.setItem("veltio_from", state.from);
+  localStorage.setItem("veltio_to", state.to);
+  localStorage.setItem("veltio_compare_preset", state.comparePreset);
+  localStorage.setItem("veltio_granularity", state.granularity);
   await refreshAll();
 });
 
@@ -3534,6 +3604,7 @@ q("action-status").addEventListener("change", (e) => {
 
 q("chart-metric-select").addEventListener("change", async (e) => {
   state.chartMetric = e.target.value;
+  localStorage.setItem("veltio_chart_metric", state.chartMetric);
   await loadMetrics();
 });
 
@@ -3918,15 +3989,14 @@ document.addEventListener("click", (e) => {
   q("task-compare-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-// 効果測定パネル閉じるボタン
-const closePanelBtn = q("close-compare-panel");
-if (closePanelBtn) {
-  closePanelBtn.addEventListener("click", () => {
+// 効果測定パネル閉じるボタン（イベント委譲で確実に動作）
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#close-compare-panel")) {
     state.selectedValidationActionId = null;
     q("task-compare-panel")?.classList.add("hidden");
     renderActionLogTimeline(state.projectContext?.actionLogHistory || []);
-  });
-}
+  }
+});
 
 // 対象ページでフィルターボタン
 const pageApplyBtn = q("task-compare-page-apply");

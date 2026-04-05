@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Veltio 収益試算表</title>
+  <script>
+    // ⑤ 認証チェック：管理者のみアクセス可
+    (async function() {
+      try {
+        const res = await fetch("/api/me", { credentials: "include" });
+        if (!res.ok) { location.href = "/app"; return; }
+        const data = await res.json();
+        if (!data.isAdmin) { location.href = "/app"; return; }
+      } catch(e) { location.href = "/app"; }
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif; background: #f5f7fa; color: #1a1a2e; padding: 32px 16px; }
@@ -42,7 +53,7 @@
 <body>
 <div class="container">
   <h1>💰 Veltio 収益試算表</h1>
-  <p class="subtitle">月額 ¥2,980 / 1プラン　　更新: 2026-04-05</p>
+  <p class="subtitle">月額 ¥5,000 / Proプラン　　更新: 2026-04-05</p>
 
   <!-- KPIs -->
   <div class="section">
@@ -50,12 +61,12 @@
     <div class="kpi-grid">
       <div class="kpi">
         <div class="kpi-label">月額料金</div>
-        <div class="kpi-value">¥2,980</div>
+        <div class="kpi-value">¥5,000</div>
         <div class="kpi-sub">税込・1ユーザー</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">手取り単価（Stripe後）</div>
-        <div class="kpi-value">¥2,833</div>
+        <div class="kpi-value">¥4,780</div>
         <div class="kpi-sub">3.6% + ¥40/件を控除</div>
       </div>
       <div class="kpi">
@@ -109,17 +120,17 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td>1人</td><td class="num">¥2,980</td><td class="num cost">-¥147</td><td class="num cost">-¥78</td><td class="num profit">¥2,755</td><td class="num">¥33,060</td><td><span class="badge badge-green">黒字</span></td></tr>
-        <tr><td>5人</td><td class="num">¥14,900</td><td class="num cost">-¥735</td><td class="num cost">-¥78</td><td class="num profit">¥14,087</td><td class="num">¥169,044</td><td><span class="badge badge-green">黒字</span></td></tr>
-        <tr class="highlight"><td><strong>10人</strong></td><td class="num">¥29,800</td><td class="num cost">-¥1,470</td><td class="num cost">-¥78</td><td class="num profit">¥28,252</td><td class="num">¥339,024</td><td><span class="badge badge-green">副業レベル</span></td></tr>
-        <tr><td>20人</td><td class="num">¥59,600</td><td class="num cost">-¥2,940</td><td class="num cost">-¥78</td><td class="num profit">¥56,582</td><td class="num">¥678,984</td><td><span class="badge badge-blue">安定</span></td></tr>
-        <tr><td>30人</td><td class="num">¥89,400</td><td class="num cost">-¥4,410</td><td class="num cost">-¥78</td><td class="num profit">¥84,912</td><td class="num">¥1,018,944</td><td><span class="badge badge-blue">年収100万超</span></td></tr>
-        <tr class="highlight"><td><strong>50人</strong></td><td class="num">¥149,000</td><td class="num cost">-¥7,350</td><td class="num cost">-¥78</td><td class="num profit">¥141,572</td><td class="num">¥1,698,864</td><td><span class="badge badge-blue">本業レベル</span></td></tr>
-        <tr><td>100人</td><td class="num">¥298,000</td><td class="num cost">-¥14,700</td><td class="num cost">-¥78</td><td class="num profit">¥283,222</td><td class="num">¥3,398,664</td><td><span class="badge badge-yellow">Render有料化推奨</span></td></tr>
-        <tr><td>200人</td><td class="num">¥596,000</td><td class="num cost">-¥29,400</td><td class="num cost">-¥78</td><td class="num profit">¥566,522</td><td class="num">¥6,798,264</td><td><span class="badge badge-yellow">インフラ要見直し</span></td></tr>
+        <tr><td>1人</td><td class="num">¥5,000</td><td class="num cost">-¥220</td><td class="num cost">-¥78</td><td class="num profit">¥4,702</td><td class="num">¥56,424</td><td><span class="badge badge-green">黒字</span></td></tr>
+        <tr><td>5人</td><td class="num">¥25,000</td><td class="num cost">-¥1,100</td><td class="num cost">-¥78</td><td class="num profit">¥23,822</td><td class="num">¥285,864</td><td><span class="badge badge-green">黒字</span></td></tr>
+        <tr class="highlight"><td><strong>10人</strong></td><td class="num">¥50,000</td><td class="num cost">-¥2,200</td><td class="num cost">-¥78</td><td class="num profit">¥47,722</td><td class="num">¥572,664</td><td><span class="badge badge-green">副業レベル</span></td></tr>
+        <tr><td>20人</td><td class="num">¥100,000</td><td class="num cost">-¥4,400</td><td class="num cost">-¥78</td><td class="num profit">¥95,522</td><td class="num">¥1,146,264</td><td><span class="badge badge-blue">安定</span></td></tr>
+        <tr><td>30人</td><td class="num">¥150,000</td><td class="num cost">-¥6,600</td><td class="num cost">-¥78</td><td class="num profit">¥143,322</td><td class="num">¥1,719,864</td><td><span class="badge badge-blue">年収170万超</span></td></tr>
+        <tr class="highlight"><td><strong>50人</strong></td><td class="num">¥250,000</td><td class="num cost">-¥11,000</td><td class="num cost">-¥78</td><td class="num profit">¥238,922</td><td class="num">¥2,867,064</td><td><span class="badge badge-blue">本業レベル</span></td></tr>
+        <tr><td>100人</td><td class="num">¥500,000</td><td class="num cost">-¥22,000</td><td class="num cost">-¥78</td><td class="num profit">¥477,922</td><td class="num">¥5,735,064</td><td><span class="badge badge-yellow">Render有料化推奨</span></td></tr>
+        <tr><td>200人</td><td class="num">¥1,000,000</td><td class="num cost">-¥44,000</td><td class="num cost">-¥78</td><td class="num profit">¥955,922</td><td class="num">¥11,471,064</td><td><span class="badge badge-yellow">インフラ要見直し</span></td></tr>
       </tbody>
     </table>
-    <p class="note">※ Stripe手数料: 2.9% + ¥40/件（国内カード）で計算。チャーン・返金は未考慮。</p>
+    <p class="note">※ Stripe手数料: 3.6% + ¥40/件（国内カード）で計算。チャーン・返金は未考慮。</p>
   </div>
 
   <!-- コスト詳細 -->
@@ -142,10 +153,10 @@
     <table>
       <thead><tr><th>フェーズ</th><th>目標ユーザー</th><th class="num">月次MRR</th><th class="num">年間収益</th><th>目安時期</th></tr></thead>
       <tbody class="milestone-row">
-        <tr><td>🌱 初収益</td><td>1人</td><td class="num">¥2,980</td><td class="num">¥35,760</td><td>2026 Q2</td></tr>
-        <tr><td>📈 副業レベル</td><td>10人</td><td class="num">¥29,800</td><td class="num">¥357,600</td><td>2026 Q3</td></tr>
-        <tr class="highlight"><td>🚀 本業レベル</td><td>50人</td><td class="num">¥149,000</td><td class="num">¥1,788,000</td><td>2026 Q4</td></tr>
-        <tr><td>🏢 事業化</td><td>100人</td><td class="num">¥298,000</td><td class="num">¥3,576,000</td><td>2027</td></tr>
+        <tr><td>🌱 初収益</td><td>1人</td><td class="num">¥5,000</td><td class="num">¥60,000</td><td>2026 Q2</td></tr>
+        <tr><td>📈 副業レベル</td><td>10人</td><td class="num">¥50,000</td><td class="num">¥600,000</td><td>2026 Q3</td></tr>
+        <tr class="highlight"><td>🚀 本業レベル</td><td>50人</td><td class="num">¥250,000</td><td class="num">¥3,000,000</td><td>2026 Q4</td></tr>
+        <tr><td>🏢 事業化</td><td>100人</td><td class="num">¥500,000</td><td class="num">¥6,000,000</td><td>2027</td></tr>
       </tbody>
     </table>
   </div>
@@ -158,12 +169,12 @@ function updateSim() {
   document.getElementById('sim-users-val').textContent = users + '人';
   document.getElementById('sim-churn-val').textContent = churn + '%';
 
-  const revenue = users * 2980;
-  const stripe = Math.round(users * (2980 * 0.036 + 40));
+  const revenue = users * 5000;
+  const stripe = Math.round(users * (5000 * 0.036 + 40));
   const fixed = 78;
   const activeUsers = Math.round(users * (1 - churn / 100));
-  const activeRevenue = activeUsers * 2980;
-  const activeStripe = Math.round(activeUsers * (2980 * 0.036 + 40));
+  const activeRevenue = activeUsers * 5000;
+  const activeStripe = Math.round(activeUsers * (5000 * 0.036 + 40));
   const profit = activeRevenue - activeStripe - fixed;
 
   document.getElementById('sim-profit').textContent = '¥' + profit.toLocaleString();

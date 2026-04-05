@@ -69,7 +69,7 @@
     <main class="container">
       <section id="auth-view" class="panel">
         <div class="auth-intro">
-          <p id="auth-kicker" class="auth-kicker">Veltio Account</p>
+          <p id="auth-kicker" class="auth-kicker">Veltio ログイン</p>
           <h2 id="auth-title">ログイン</h2>
           <p id="auth-description" class="muted">Veltio にログインして、プロジェクトの分析と改善を再開します。</p>
         </div>
@@ -172,7 +172,7 @@
           <section class="panel dashboard-hero-panel">
             <div class="dashboard-hero-head">
               <div>
-                <p class="dashboard-kicker">Veltio Dashboard</p>
+                <p class="dashboard-kicker">Veltio ダッシュボード</p>
                 <h2>分析ダッシュボード</h2>
               </div>
               <div class="dashboard-hero-actions">
@@ -222,7 +222,7 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">Overview</p>
+                <p class="dashboard-card-kicker">概要</p>
                 <h2>KPI 7指標</h2>
               </div>
               <details class="formula-details dashboard-formula-details">
@@ -246,7 +246,7 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">Diagnosis</p>
+                <p class="dashboard-card-kicker">診断</p>
                 <h2>診断と推奨施策</h2>
               </div>
               <button id="run-diagnosis" type="button">診断実行</button>
@@ -258,13 +258,13 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">Trend & Funnel</p>
+                <p class="dashboard-card-kicker">推移・ファネル</p>
                 <h2>CVR推移とファネル</h2>
               </div>
               <div class="dashboard-inline-control">
                 <label class="dashboard-select-label">表示指標
                   <select id="chart-metric-select">
-                    <option value="sessions">Sessions</option>
+                    <option value="sessions">セッション数</option>
                     <option value="bounce_rate">直帰率</option>
                     <option value="pdp_reach_rate">PDP到達率</option>
                     <option value="add_to_cart_rate">カート追加率</option>
@@ -291,7 +291,7 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">Journey</p>
+                <p class="dashboard-card-kicker">ジャーニー</p>
                 <h2>カスタマージャーニー</h2>
               </div>
             </div>
@@ -312,7 +312,7 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">Analysis Table</p>
+                <p class="dashboard-card-kicker">分解分析</p>
                 <h2>分解分析</h2>
               </div>
               <div class="dashboard-inline-control">
@@ -329,7 +329,7 @@
             <div id="breakdown-table-wrap" class="table-wrap">
               <table class="breakdown-table">
                 <thead id="breakdown-thead">
-                  <tr><th>Dimension</th><th>Sessions</th><th>Bounce</th><th>PDP</th><th>AddCart</th><th>CartAbandon</th></tr>
+                  <tr><th>ディメンション</th><th>セッション</th><th>直帰率</th><th>PDP到達率</th><th>カート追加率</th><th>カゴ落ち率</th></tr>
                 </thead>
                 <tbody id="breakdown-body"></tbody>
               </table>
@@ -340,7 +340,7 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">Campaign Impact</p>
+                <p class="dashboard-card-kicker">キャンペーン効果</p>
                 <h2>キャンペーン影響</h2>
               </div>
             </div>
@@ -382,7 +382,7 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">Reports</p>
+                <p class="dashboard-card-kicker">レポート</p>
                 <h2>レポート出力</h2>
               </div>
               <div class="dashboard-inline-control">
@@ -405,7 +405,7 @@
             <section class="panel account-card account-main-card">
               <div class="account-card-head">
                 <div>
-                  <p class="dashboard-card-kicker">Account Settings</p>
+                  <p class="dashboard-card-kicker">アカウント設定</p>
                   <h2>アカウント設定</h2>
                 </div>
                 <span id="project-status" class="tiny"></span>
@@ -517,7 +517,7 @@
             <section class="panel account-card pricing-card">
               <div class="account-card-head">
                 <div>
-                  <p class="dashboard-card-kicker">Plan</p>
+                  <p class="dashboard-card-kicker">プラン</p>
                   <h2>プラン管理</h2>
                 </div>
                 <div id="account-plan-badge" class="plan-badge plan-free">FREE</div>
@@ -562,37 +562,20 @@
 
                 <!-- Pro -->
                 <div class="pricing-tier pricing-tier-highlight" id="pricing-pro">
-                  <div class="pricing-tier-badge-wrap"><span class="pricing-tier-popular">人気 No.1</span></div>
+                  <div class="pricing-tier-badge-wrap"><span class="pricing-tier-popular">おすすめ</span></div>
                   <div class="pricing-tier-head">
                     <span class="pricing-tier-name">Pro</span>
-                    <div class="pricing-tier-price">¥15,000<span class="pricing-tier-per">/月 税抜</span></div>
-                    <div class="pricing-tier-sessions">月間セッション 1〜10万</div>
+                    <div class="pricing-tier-price">¥5,000<span class="pricing-tier-per">/月 税込</span></div>
+                    <div class="pricing-tier-sessions">月間セッション 1〜100万</div>
                   </div>
                   <ul class="pricing-features">
                     <li>✅ ファネル計測・GA4連携</li>
                     <li>✅ AI診断・タスク管理</li>
                     <li>✅ 期間比較・ブレークダウン</li>
                     <li>✅ PPTレポート出力</li>
-                    <li class="feat-locked">❌ チームメンバー招待</li>
+                    <li>✅ チームメンバー招待（最大3名）</li>
                   </ul>
                   <button class="pricing-cta pricing-cta-upgrade" id="plan-pro-btn" type="button">Proにアップグレード</button>
-                </div>
-
-                <!-- Business -->
-                <div class="pricing-tier" id="pricing-business">
-                  <div class="pricing-tier-head">
-                    <span class="pricing-tier-name">Business</span>
-                    <div class="pricing-tier-price">¥50,000<span class="pricing-tier-per">/月 税抜</span></div>
-                    <div class="pricing-tier-sessions">月間セッション 10万以上</div>
-                  </div>
-                  <ul class="pricing-features">
-                    <li>✅ ファネル計測・GA4連携</li>
-                    <li>✅ AI診断・タスク管理</li>
-                    <li>✅ 期間比較・ブレークダウン</li>
-                    <li>✅ PPTレポート出力</li>
-                    <li>✅ チームメンバー招待（最大10名）</li>
-                  </ul>
-                  <button class="pricing-cta pricing-cta-upgrade" id="plan-business-btn" type="button">Businessにアップグレード</button>
                 </div>
 
               </div><!-- /pricing-grid -->
@@ -610,7 +593,7 @@
             <section class="panel account-card">
               <div class="sr-header">
                 <div>
-                  <p class="dashboard-card-kicker">Funnel Settings</p>
+                  <p class="dashboard-card-kicker">ファネル設定</p>
                   <h2>ファネル計測設定</h2>
                 </div>
                 <div class="sr-header-actions">
@@ -707,7 +690,7 @@
             <section class="panel account-card">
               <div class="account-card-head">
                 <div>
-                  <p class="dashboard-card-kicker">Export</p>
+                  <p class="dashboard-card-kicker">エクスポート</p>
                   <h2>データエクスポート</h2>
                 </div>
               </div>
@@ -738,7 +721,7 @@
             <section class="panel account-card">
               <div class="account-card-head">
                 <div>
-                  <p class="dashboard-card-kicker">Team</p>
+                  <p class="dashboard-card-kicker">チーム管理</p>
                   <h2>招待ユーザー</h2>
                 </div>
                 <span class="account-invite-limit">最大3名</span>
@@ -755,7 +738,7 @@
             <section class="panel account-card account-danger-zone">
               <div class="account-card-head">
                 <div>
-                  <p class="dashboard-card-kicker danger-kicker">Danger Zone</p>
+                  <p class="dashboard-card-kicker danger-kicker">危険操作</p>
                   <h2>アカウント削除</h2>
                 </div>
               </div>
@@ -941,13 +924,17 @@
               <div id="admin-business-kpi-cards" class="cards"></div>
               <div id="admin-ga4-funnel" class="journey-steps"></div>
             </div>
+            <div class="chart-card" id="stripe-status-card">
+              <h3>⚡ Stripe 連携状況</h3>
+              <div id="stripe-status-detail" class="tiny muted">確認中...</div>
+            </div>
           </section>
           <section class="panel">
             <h3>企業一覧</h3>
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>会社名</th><th>プラン</th><th>ユーザー数</th><th>プロジェクト数</th><th>期間Sessions</th><th>期間CVR</th><th>最終同期</th><th>操作</th></tr>
+                  <tr><th>会社名</th><th>プラン</th><th>ユーザー数</th><th>プロジェクト数</th><th>期間セッション</th><th>期間CVR</th><th>最終同期</th><th>操作</th></tr>
                 </thead>
                 <tbody id="admin-tenants-body"></tbody>
               </table>
@@ -969,7 +956,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>企業</th><th>プロジェクト</th><th>ドメイン</th><th>GA4 Property</th><th>期間Sessions</th><th>期間CVR</th><th>同期状態</th></tr>
+                  <tr><th>企業</th><th>プロジェクト</th><th>ドメイン</th><th>GA4 Property</th><th>期間セッション</th><th>期間CVR</th><th>同期状態</th></tr>
                 </thead>
                 <tbody id="admin-projects-body"></tbody>
               </table>

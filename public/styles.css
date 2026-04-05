@@ -1369,6 +1369,7 @@ tr:hover td { background: var(--surface-2); }
 .action-status-badge.status-todo  { background: var(--surface-3); color: var(--muted); }
 .action-status-badge.status-doing { background: var(--warn-dim); color: #92400e; border: 1px solid rgba(245,158,11,0.30); }
 .action-status-badge.status-done  { background: var(--success-dim); color: var(--success); border: 1px solid rgba(22,163,74,0.30); }
+.action-status-badge.status-measuring { background: #eff6ff; color: #1d4ed8; border: 1px solid rgba(37,99,235,0.30); }
 .action-completed-on {
   font-size: 11px;
   color: var(--muted);
@@ -1575,6 +1576,11 @@ tr:hover td { background: var(--surface-2); }
 
 .task-list { display: grid; gap: 10px; }
 .task-empty { font-size: 13px; color: var(--muted); padding: 20px 0; text-align: center; }
+.task-archive-section { margin-top: 16px; }
+.task-archive-summary { font-size: 13px; color: var(--muted); cursor: pointer; padding: 8px 4px; user-select: none; }
+.task-archive-summary:hover { color: var(--text); }
+.task-archive-list { display: grid; gap: 8px; margin-top: 10px; }
+.task-card-archived { opacity: 0.7; }
 
 /* Task cards */
 .task-card {
