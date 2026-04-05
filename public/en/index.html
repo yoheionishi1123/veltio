@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veltio | CVR Analytics Workspace</title>
+    <meta name="description" content="Veltio is an all-in-one CVR analytics workspace — GA4 integration, KPI visualisation, bottleneck diagnosis, action logging and report export." />
+    <link rel="canonical" href="https://app.vel-tio.com/en/" />
+    <link rel="alternate" hreflang="ja" href="https://app.vel-tio.com/ja/" />
+    <link rel="alternate" hreflang="en" href="https://app.vel-tio.com/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://app.vel-tio.com/ja/" />
+    <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VBKYWDLGE5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-VBKYWDLGE5");
+    </script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #121926;
+        background: linear-gradient(150deg, #e7efff, #f8fafc 45%);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ── Topbar ── */
+      .lp-topbar {
+        background: #0b1320;
+        padding: 0 24px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      .lp-brand img { height: 28px; display: block; }
+      .lp-nav { display: flex; align-items: center; gap: 8px; }
+      .lp-nav a {
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 7px 16px;
+        border-radius: 999px;
+        transition: background 0.15s, color 0.15s;
+      }
+      .lp-nav-ghost { color: #a0aec0; border: 1px solid #2a3a52; }
+      .lp-nav-ghost:hover { background: #1a2744; color: #fff; }
+      .lp-nav-primary { background: #0a58ca; color: #fff; border: 1px solid #0a58ca; }
+      .lp-nav-primary:hover { background: #0847a8; }
+
+      /* ── Shell ── */
+      .lp-shell { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+      /* ── Hero ── */
+      .lp-hero { padding: 72px 0 56px; }
+      .lp-hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+        gap: 24px;
+        align-items: start;
+      }
+      .lp-hero-copy {
+        background: #ffffff;
+        border: 1px solid #d0d5dd;
+        border-radius: 20px;
+        padding: 44px 40px;
+        box-shadow: 0 2px 12px rgba(10,40,100,0.06);
+      }
+      .lp-kicker {
+        display: inline-block;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #0a58ca;
+        font-weight: 800;
+        margin: 0 0 20px;
+        background: #e8f0fe;
+        padding: 4px 12px;
+        border-radius: 20px;
+      }
+      .lp-hero-copy h1 {
+        margin: 0;
+        font-size: clamp(28px, 4.5vw, 48px);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: #0b1320;
+        font-weight: 800;
+      }
+      .lp-hero-copy p {
+        margin: 16px 0 0;
+        font-size: 15px;
+        line-height: 1.9;
+        color: #667085;
+      }
+      .lp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
+      .lp-actions a {
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 22px;
+        border-radius: 999px;
+        transition: opacity 0.15s, background 0.15s;
+      }
+      .lp-btn-primary { background: #0a58ca; color: #fff; border: 1px solid #0a58ca; }
+      .lp-btn-primary:hover { background: #0847a8; }
+      .lp-btn-ghost { background: transparent; color: #344054; border: 1px solid #d0d5dd; }
+      .lp-btn-ghost:hover { background: #f2f4f7; border-color: #98a2b3; }
+
+      /* ── Right col: stat cards ── */
+      .lp-hero-right { display: grid; gap: 14px; }
+      .lp-stat-card {
+        background: #ffffff;
+        border: 1px solid #d0d5dd;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 4px rgba(10,40,100,0.05);
+      }
+      .lp-stat-card-kicker {
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #98a2b3;
+        font-weight: 700;
+        margin: 0 0 10px;
+      }
+      .lp-stat-card strong {
+        display: block;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.4;
+        color: #0b1320;
+        margin-bottom: 8px;
+      }
+      .lp-stat-card p { margin: 0; color: #667085; font-size: 13px; line-height: 1.75; }
+      .lp-metrics-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .lp-metric-chip {
+        background: #f5f7fb;
+        border: 1px solid #e4e8f0;
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .lp-metric-chip span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #98a2b3; font-weight: 700; }
+      .lp-metric-chip strong { display: block; margin-top: 6px; font-size: 13px; font-weight: 700; color: #344054; }
+
+      /* ── Feature section ── */
+      .lp-features { padding: 12px 0 80px; }
+      .lp-section-label {
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #98a2b3;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 24px;
+      }
+      .lp-feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .lp-feature {
+        background: #ffffff;
+        border: 1px solid #d0d5dd;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(10,40,100,0.04);
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .lp-feature:hover { border-color: #0a58ca; box-shadow: 0 4px 16px rgba(10,88,202,0.1); }
+      .lp-feature-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        margin-bottom: 14px;
+        background: #e8f0fe;
+      }
+      .lp-feature h3 { margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #0b1320; }
+      .lp-feature p { margin: 0; color: #667085; font-size: 13.5px; line-height: 1.75; }
+
+      /* ── Steps ── */
+      .lp-steps { padding: 0 0 80px; }
+      .lp-steps-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .lp-step {
+        background: #ffffff;
+        border: 1px solid #e4e8f0;
+        border-radius: 14px;
+        padding: 20px;
+        text-align: center;
+      }
+      .lp-step-num {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #0a58ca;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 12px;
+      }
+      .lp-step h4 { margin: 0 0 6px; font-size: 13.5px; font-weight: 700; color: #0b1320; }
+      .lp-step p { margin: 0; font-size: 12.5px; color: #667085; line-height: 1.6; }
+
+      /* ── Footer ── */
+      .lp-footer {
+        background: #0b1320;
+        padding: 24px;
+        text-align: center;
+        color: #4a5a78;
+        font-size: 12.5px;
+      }
+
+      /* ── Responsive ── */
+      @media (max-width: 920px) {
+        .lp-hero-grid, .lp-feature-grid { grid-template-columns: 1fr; }
+        .lp-steps-grid { grid-template-columns: 1fr 1fr; }
+        .lp-hero { padding: 40px 0 32px; }
+        .lp-hero-copy { padding: 28px 24px; }
+      }
+      @media (max-width: 640px) {
+        .lp-steps-grid { grid-template-columns: 1fr; }
+        .lp-nav a { padding: 6px 12px; font-size: 12px; }
+      }
+
+      /* ── Lang switcher ── */
+      .lp-lang-switcher { display: flex; gap: 4px; }
+      .lp-lang-btn {
+        font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+        border: 1px solid #2a3a52; background: transparent; color: #a0aec0;
+        cursor: pointer; transition: background 0.15s, color 0.15s;
+        display: inline-block; text-decoration: none;
+      }
+      .lp-lang-btn:hover, .lp-lang-btn.active { background: #1a2744; color: #fff; }
+    </style>
+  </head>
+  <body>
+
+    <header class="lp-topbar">
+      <a href="/en/" class="lp-brand" aria-label="Veltio home">
+        <img src="/veltio-logo.svg" alt="Veltio" />
+      </a>
+      <nav class="lp-nav">
+        <div class="lp-lang-switcher">
+          <a href="/ja/" class="lp-lang-btn">JA</a>
+          <a href="/en/" class="lp-lang-btn active">EN</a>
+        </div>
+        <a href="/login" class="lp-nav-ghost">Log in</a>
+        <a href="/dashboard" class="lp-nav-primary">Get started free</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="lp-hero">
+        <div class="lp-shell lp-hero-grid">
+
+          <div class="lp-hero-copy">
+            <p class="lp-kicker">CVR Analytics Workspace</p>
+            <h1>Turn GA4 data into<br>your next growth action.</h1>
+            <p>Veltio is an all-in-one CVR analytics workspace — GA4 integration, KPI visualisation, bottleneck diagnosis, action logging and report export in a single screen.</p>
+            <div class="lp-actions">
+              <a href="/dashboard" class="lp-btn-primary">Open analytics</a>
+              <a href="/signin" class="lp-btn-ghost">Sign up</a>
+            </div>
+          </div>
+
+          <div class="lp-hero-right">
+            <div class="lp-stat-card">
+              <p class="lp-stat-card-kicker">What you get</p>
+              <strong>Dashboard, campaign validation, AI assist and ops — all in one.</strong>
+              <p>Manage projects per site, run comparisons, diagnose bottlenecks and export reports without switching tools.</p>
+            </div>
+            <div class="lp-metrics-mini">
+              <div class="lp-metric-chip">
+                <span>Analyze</span>
+                <strong>7 KPI metrics at a glance</strong>
+              </div>
+              <div class="lp-metric-chip">
+                <span>Validate</span>
+                <strong>Action log &amp; history</strong>
+              </div>
+              <div class="lp-metric-chip">
+                <span>Report</span>
+                <strong>PDF / PPT export</strong>
+              </div>
+              <div class="lp-metric-chip">
+                <span>Operate</span>
+                <strong>Ops management built-in</strong>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="lp-features">
+        <div class="lp-shell">
+          <p class="lp-section-label">Features</p>
+          <div class="lp-feature-grid">
+            <article class="lp-feature">
+              <div class="lp-feature-icon">📊</div>
+              <h3>Connect GA4 instantly</h3>
+              <p>Enter a GA4 URL or Property ID to start — Veltio sets up your analytics foundation per site.</p>
+            </article>
+            <article class="lp-feature">
+              <div class="lp-feature-icon">🎯</div>
+              <h3>Find improvement priorities</h3>
+              <p>Cross-analyse CVR, bounce rate, PDP reach rate and add-to-cart rate to auto-diagnose bottlenecks.</p>
+            </article>
+            <article class="lp-feature">
+              <div class="lp-feature-icon">✅</div>
+              <h3>Log and validate campaigns</h3>
+              <p>Set a completion date on each campaign log and automatically compare metrics before and after.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-steps">
+        <div class="lp-shell">
+          <p class="lp-section-label">How it works</p>
+          <div class="lp-steps-grid">
+            <div class="lp-step">
+              <div class="lp-step-num">1</div>
+              <h4>Create an account</h4>
+              <p>Sign up with your email. Free plan available.</p>
+            </div>
+            <div class="lp-step">
+              <div class="lp-step-num">2</div>
+              <h4>Create a project</h4>
+              <p>Enter a site name and domain to create a project.</p>
+            </div>
+            <div class="lp-step">
+              <div class="lp-step-num">3</div>
+              <h4>Connect GA4</h4>
+              <p>Enter your Property ID to pull in GA4 data.</p>
+            </div>
+            <div class="lp-step">
+              <div class="lp-step-num">4</div>
+              <h4>Analyse &amp; improve</h4>
+              <p>Diagnose with the dashboard, then log and validate your campaigns.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="lp-footer">
+      <div style="margin-bottom:12px;">
+        <a href="/en/terms" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;">Terms of Service</a>
+        <a href="/en/privacy" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;">Privacy Policy</a>
+        <a href="/en/contact" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;">Contact</a>
+      </div>
+      © Veltio — CVR Analytics Workspace
+    </footer>
+
+  </body>
+</html>

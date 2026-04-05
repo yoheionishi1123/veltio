@@ -2326,7 +2326,41 @@ function reprioritizedTemplateScore(template, context) {
 
 async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
-  if (reqPath === "/") reqPath = "/index.html";
+
+  // Language-based routing
+  // Root: detect language from Accept-Language header and redirect
+  if (reqPath === "/") {
+    const acceptLang = req.headers["accept-language"] || "";
+    const prefersJa = acceptLang.toLowerCase().includes("ja");
+    const redirectTo = prefersJa ? "/ja/" : "/en/";
+    res.writeHead(302, { "Location": redirectTo, "Vary": "Accept-Language" });
+    res.end();
+    return;
+  }
+
+  // 301 redirects for old URLs → /ja/
+  const jaRedirects = {
+    "/privacy": "/ja/privacy",
+    "/privacy.html": "/ja/privacy",
+    "/terms": "/ja/terms",
+    "/terms.html": "/ja/terms",
+    "/tokusho": "/ja/tokusho",
+    "/tokusho.html": "/ja/tokusho",
+    "/contact": "/ja/contact",
+    "/contact.html": "/ja/contact",
+    "/articles": "/ja/articles",
+    "/articles.html": "/ja/articles",
+  };
+  if (jaRedirects[reqPath]) {
+    res.writeHead(301, { "Location": jaRedirects[reqPath] });
+    res.end();
+    return;
+  }
+
+  // /ja/ and /en/ directory index
+  if (reqPath === "/ja" || reqPath === "/ja/") reqPath = "/ja/index.html";
+  if (reqPath === "/en" || reqPath === "/en/") reqPath = "/en/index.html";
+
   if (reqPath === "/login" || reqPath.startsWith("/login/")) reqPath = "/analytics.html";
   if (reqPath === "/signin" || reqPath.startsWith("/signin/")) reqPath = "/analytics.html";
   if (reqPath === "/dashboard" || reqPath.startsWith("/dashboard/")) reqPath = "/analytics.html";
