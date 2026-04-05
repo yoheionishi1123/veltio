@@ -2891,16 +2891,13 @@ function syncPlanUI(plan, { trialActive = false, trialDaysLeft = 0, monthlySessi
   }
 
   // Pricing card CTAs — show "現在のプラン" on the active tier
-  const freeTier     = document.getElementById("pricing-free");
-  const proTier      = document.getElementById("pricing-pro");
-  const businessTier = document.getElementById("pricing-business");
-  const freeBtn      = document.getElementById("plan-free-btn");
-  const proBtn       = document.getElementById("plan-pro-btn");
-  const businessBtn  = document.getElementById("plan-business-btn");
+  const freeTier = document.getElementById("pricing-free");
+  const proTier  = document.getElementById("pricing-pro");
+  const freeBtn  = document.getElementById("plan-free-btn");
+  const proBtn   = document.getElementById("plan-pro-btn");
 
-  if (freeTier)     freeTier.classList.toggle("pricing-tier-active",     normalizedPlan === "free");
-  if (proTier)      proTier.classList.toggle("pricing-tier-active",      normalizedPlan === "pro");
-  if (businessTier) businessTier.classList.toggle("pricing-tier-active", normalizedPlan === "business");
+  if (freeTier) freeTier.classList.toggle("pricing-tier-active", normalizedPlan === "free");
+  if (proTier)  proTier.classList.toggle("pricing-tier-active",  normalizedPlan === "pro");
 
   if (freeBtn) {
     freeBtn.textContent = normalizedPlan === "free" ? "現在のプラン" : "Freeに戻す";
@@ -2908,14 +2905,9 @@ function syncPlanUI(plan, { trialActive = false, trialDaysLeft = 0, monthlySessi
     freeBtn.className   = normalizedPlan === "free" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-downgrade";
   }
   if (proBtn) {
-    proBtn.textContent = normalizedPlan === "pro" ? "現在のプラン" : normalizedPlan === "business" ? "Proにダウングレード" : "Proにアップグレード";
+    proBtn.textContent = normalizedPlan === "pro" ? "現在のプラン" : "Proにアップグレード";
     proBtn.disabled    = normalizedPlan === "pro";
-    proBtn.className   = normalizedPlan === "pro" ? "pricing-cta pricing-cta-current" : normalizedPlan === "business" ? "pricing-cta pricing-cta-downgrade" : "pricing-cta pricing-cta-upgrade";
-  }
-  if (businessBtn) {
-    businessBtn.textContent = normalizedPlan === "business" ? "現在のプラン" : "Businessにアップグレード";
-    businessBtn.disabled    = normalizedPlan === "business";
-    businessBtn.className   = normalizedPlan === "business" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
+    proBtn.className   = normalizedPlan === "pro" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
   }
 
   // Manage subscription row (show only for paid plans)
@@ -3925,10 +3917,6 @@ document.getElementById("plan-pro-btn")?.addEventListener("click", () => {
   startStripeCheckout("pro");
 });
 
-document.getElementById("plan-business-btn")?.addEventListener("click", () => {
-  if (state.plan === "business") return;
-  startStripeCheckout("business");
-});
 
 document.getElementById("plan-free-btn")?.addEventListener("click", async () => {
   if (state.plan === "free") return;
