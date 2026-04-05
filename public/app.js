@@ -2891,25 +2891,31 @@ function syncPlanUI(plan, { trialActive = false, trialDaysLeft = 0, monthlySessi
   }
 
   // Pricing card CTAs — show "現在のプラン" on the active tier
-  const freeTier = document.getElementById("pricing-free");
-  const proTier = document.getElementById("pricing-pro");
-  const freeBtn = document.getElementById("plan-free-btn");
-  const proBtn = document.getElementById("plan-pro-btn");
+  const freeTier     = document.getElementById("pricing-free");
+  const proTier      = document.getElementById("pricing-pro");
+  const businessTier = document.getElementById("pricing-business");
+  const freeBtn      = document.getElementById("plan-free-btn");
+  const proBtn       = document.getElementById("plan-pro-btn");
+  const businessBtn  = document.getElementById("plan-business-btn");
 
-  if (freeTier && proTier) {
-    freeTier.classList.toggle("pricing-tier-active", normalizedPlan === "free");
-    proTier.classList.toggle("pricing-tier-active", normalizedPlan === "pro" || normalizedPlan === "business");
-  }
+  if (freeTier)     freeTier.classList.toggle("pricing-tier-active",     normalizedPlan === "free");
+  if (proTier)      proTier.classList.toggle("pricing-tier-active",      normalizedPlan === "pro");
+  if (businessTier) businessTier.classList.toggle("pricing-tier-active", normalizedPlan === "business");
+
   if (freeBtn) {
     freeBtn.textContent = normalizedPlan === "free" ? "現在のプラン" : "Freeに戻す";
-    freeBtn.disabled = normalizedPlan === "free";
-    freeBtn.className = normalizedPlan === "free" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-downgrade";
+    freeBtn.disabled    = normalizedPlan === "free";
+    freeBtn.className   = normalizedPlan === "free" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-downgrade";
   }
   if (proBtn) {
-    const isPro = normalizedPlan === "pro" || normalizedPlan === "business";
-    proBtn.textContent = isPro ? "現在のプラン" : "Proにアップグレード";
-    proBtn.disabled = isPro;
-    proBtn.className = isPro ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
+    proBtn.textContent = normalizedPlan === "pro" ? "現在のプラン" : normalizedPlan === "business" ? "Proにダウングレード" : "Proにアップグレード";
+    proBtn.disabled    = normalizedPlan === "pro";
+    proBtn.className   = normalizedPlan === "pro" ? "pricing-cta pricing-cta-current" : normalizedPlan === "business" ? "pricing-cta pricing-cta-downgrade" : "pricing-cta pricing-cta-upgrade";
+  }
+  if (businessBtn) {
+    businessBtn.textContent = normalizedPlan === "business" ? "現在のプラン" : "Businessにアップグレード";
+    businessBtn.disabled    = normalizedPlan === "business";
+    businessBtn.className   = normalizedPlan === "business" ? "pricing-cta pricing-cta-current" : "pricing-cta pricing-cta-upgrade";
   }
 
   // Manage subscription row (show only for paid plans)
