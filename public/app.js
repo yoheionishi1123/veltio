@@ -1965,8 +1965,8 @@ async function bootstrap() {
   const savedPreset = localStorage.getItem("veltio_compare_preset");
   const savedGranularity = localStorage.getItem("veltio_granularity");
   const savedMetric = localStorage.getItem("veltio_chart_metric");
-  state.from = (savedFrom && savedFrom > "2020-01-01") ? savedFrom : daysAgoISO(29);
-  state.to = (savedTo && savedTo <= todayISO()) ? savedTo : todayISO();
+  state.from = (savedFrom && validateDateStr(savedFrom)) ? savedFrom : daysAgoISO(29);
+  state.to = (savedTo && validateDateStr(savedTo)) ? savedTo : todayISO();
   state.adminFrom = daysAgoISO(29);
   state.adminTo = todayISO();
   state.adminSearch = "";
@@ -3747,9 +3747,9 @@ q("apply-range").addEventListener("click", async () => {
   q("compare-from-date").value = state.compareFrom;
   q("compare-to-date").value = state.compareTo;
   state.granularity = q("granularity-select").value;
-  // ④ 期間設定をlocalStorageに保存
-  localStorage.setItem("veltio_from", state.from);
-  localStorage.setItem("veltio_to", state.to);
+  // ④ 期間設定をlocalStorageに保存（有効な日付のみ）
+  if (validateDateStr(state.from)) localStorage.setItem("veltio_from", state.from);
+  if (validateDateStr(state.to)) localStorage.setItem("veltio_to", state.to);
   localStorage.setItem("veltio_compare_preset", state.comparePreset);
   localStorage.setItem("veltio_granularity", state.granularity);
   await refreshAll();
