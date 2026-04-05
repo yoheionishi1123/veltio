@@ -42,13 +42,13 @@ const AUTH_ROUTE_MODE_MAP = {
 const AUTH_PRIMARY_CONTENT = {
   login: {
     kicker: "Veltio Account",
-    title: "ログイン",
-    description: "Veltio にログインして、プロジェクトの分析と改善を再開します。"
+    title: "Login",
+    description: "Sign in to Veltio to continue your project analytics."
   },
   signup: {
     kicker: "Get Started",
-    title: "新規登録",
-    description: "会社情報と担当者情報を登録して、Veltio の初期設定を始めます。"
+    title: "Sign Up",
+    description: "Register your company and contact details to get started with Veltio."
   }
 };
 const APP_ROUTE_PAGE_MAP = {
@@ -869,7 +869,7 @@ async function api(path, options = {}) {
     err.data = body;
     if (res.status === 401 && !options.allowUnauthorized && path !== "/api/me" && !path.startsWith("/api/auth/")) {
       resetAuthState();
-      setAuthNotice("セッションの有効期限が切れました。もう一度ログインしてください。");
+      setAuthNotice("Your session has expired. Please sign in again.");
       showAuth("login", { nextPath: currentAppPath() });
     }
     throw err;
@@ -947,7 +947,7 @@ function applyRouteState(options = {}) {
     return;
   }
   if (appPage) {
-    setAuthNotice(options.notice || "このページを開くにはログインが必要です。");
+    setAuthNotice(options.notice || "Please sign in to access this page.");
     showAuth("login", { nextPath: location.pathname, syncPath: true });
     return;
   }
@@ -4050,7 +4050,7 @@ async function sendAssistantMessage(message) {
     q("assistant-status").textContent = "";
     renderAssistantReferences([]);
     if (err.status === 401) {
-      appendChatMessage("assistant", "セッションが切れています。ページを再読み込みしてログインし直してください。");
+      appendChatMessage("assistant", "Your session has expired. Please reload the page and sign in again.");
     } else {
       appendChatMessage("assistant", `回答できませんでした: ${err.message}`);
     }

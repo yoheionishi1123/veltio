@@ -2478,7 +2478,7 @@ async function handleApi(req, res, urlObj) {
     trackAppEvent(db, { eventType: "user_verified", userId: user.id, tenantId: tenant?.id || null });
 
     const sid = uid();
-    db.sessions = db.sessions.filter((s) => s.userId !== user.id);
+    db.sessions = db.sessions.filter((s) => !(s.userId === user.id && new Date(s.expiresAt).getTime() <= Date.now()));
     db.sessions.push({
       id: sid,
       userId: user.id,
@@ -2595,7 +2595,9 @@ async function handleApi(req, res, urlObj) {
     }
 
     const sid = uid();
-    db.sessions = db.sessions.filter((s) => s.userId !== user.id);
+    // Keep existing sessions (allow concurrent sessions across devices/tabs)
+    // Only remove expired sessions to keep the list clean
+    db.sessions = db.sessions.filter((s) => !(s.userId === user.id && new Date(s.expiresAt).getTime() <= Date.now()));
     db.sessions.push({
       id: sid,
       userId: user.id,
