@@ -3964,7 +3964,7 @@ document.getElementById("manage-subscription-btn")?.addEventListener("click", as
   }
 })();
 
-q("send-test-email").addEventListener("click", async () => {
+q("send-test-email")?.addEventListener("click", async () => {
   q("test-email-status").textContent = "送信中...";
   try {
     const out = await api("/api/account/email-delivery/test", {
