@@ -2327,18 +2327,14 @@ function reprioritizedTemplateScore(template, context) {
 async function serveStatic(req, res, urlObj) {
   let reqPath = urlObj.pathname;
 
-  // Language-based routing
-  // Root: detect language from Accept-Language header and redirect
+  // Root → /ja/
   if (reqPath === "/") {
-    const acceptLang = req.headers["accept-language"] || "";
-    const prefersJa = acceptLang.toLowerCase().includes("ja");
-    const redirectTo = prefersJa ? "/ja/" : "/en/";
-    res.writeHead(302, { "Location": redirectTo, "Vary": "Accept-Language" });
+    res.writeHead(302, { "Location": "/ja/" });
     res.end();
     return;
   }
 
-  // 301 redirects for old URLs → /ja/
+  // 301 redirects for old root-level URLs → /ja/
   const jaRedirects = {
     "/privacy": "/ja/privacy",
     "/privacy.html": "/ja/privacy",
@@ -2357,9 +2353,8 @@ async function serveStatic(req, res, urlObj) {
     return;
   }
 
-  // /ja/ and /en/ directory index
+  // /ja/ directory index
   if (reqPath === "/ja" || reqPath === "/ja/") reqPath = "/ja/index.html";
-  if (reqPath === "/en" || reqPath === "/en/") reqPath = "/en/index.html";
 
   if (reqPath === "/login" || reqPath.startsWith("/login/")) reqPath = "/analytics.html";
   if (reqPath === "/signin" || reqPath.startsWith("/signin/")) reqPath = "/analytics.html";
