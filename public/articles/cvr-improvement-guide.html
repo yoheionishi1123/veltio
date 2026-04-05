@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ECサイトCVR改善完全ガイド2025：診断→施策→検証の進め方 | Veltio</title>
+  <meta name="description" content="ECサイトのCVRを体系的に改善するためのフレームワーク。GA4による診断・施策の優先順位付け・効果検証の進め方を実践的に解説します。" />
+  <link rel="canonical" href="https://app.vel-tio.com/articles/cvr-improvement-guide.html" />
+  <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/articles/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="logo">Veltio</a>
+  <nav><a href="/articles.html">コンテンツ一覧</a><a href="/app" class="cta">無料で試す</a></nav>
+</header>
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/articles.html">コンテンツ一覧</a> › 実践ガイド</div>
+  <h1>ECサイトCVR改善完全ガイド2025：診断→施策→検証の進め方</h1>
+  <div class="article-meta"><span class="tag">実践ガイド</span><span>2025年版</span><span>読了約10分</span></div>
+
+  <h2>CVR改善を失敗させる3つのパターン</h2>
+  <p>多くのEC担当者がCVR改善に取り組むものの、成果が出ない場合には共通のパターンがあります。</p>
+  <ul>
+    <li><strong>感覚で施策を決める：</strong>データを見ずに「ボタンの色を変えたら改善するかも」という仮説から始める</li>
+    <li><strong>全部同時に変える：</strong>複数施策を同時に実施して、どれが効いたか分からなくなる</li>
+    <li><strong>効果検証をしない：</strong>施策後のデータを確認せず「やりっぱなし」になる</li>
+  </ul>
+  <p>CVR改善は「診断 → 施策 → 検証」のサイクルを繰り返すことが基本です。</p>
+
+  <h2>Step 1：現状診断 — どこが詰まっているかを特定する</h2>
+  <h3>ファネルの各指標を計測する</h3>
+  <p>まず以下の指標をGA4から取得し、現状を数値化します。</p>
+  <table>
+    <tr><th>指標</th><th>良好</th><th>要改善</th><th>計測イベント</th></tr>
+    <tr><td>直帰率</td><td>55%以下</td><td>65%以上</td><td>（自動計測）</td></tr>
+    <tr><td>PDP到達率</td><td>30%以上</td><td>15%以下</td><td>view_item</td></tr>
+    <tr><td>カート追加率</td><td>20%以上</td><td>10%以下</td><td>add_to_cart</td></tr>
+    <tr><td>カート離脱率</td><td>70%以下</td><td>80%以上</td><td>begin_checkout</td></tr>
+    <tr><td>購入完了率</td><td>35%以上</td><td>20%以下</td><td>purchase</td></tr>
+  </table>
+
+  <h3>ボトルネックを1つに絞る</h3>
+  <p>業界ベンチマークと比較して最もギャップが大きい指標が「最優先の改善箇所」です。複数あっても、まず1つに集中します。</p>
+  <div class="callout callout-green">
+    <p><strong>優先順位の考え方：</strong>ファネルの上流（直帰率・PDP到達率）を改善するほうが、下流（チェックアウト完了率）より影響する人数が多いため、インパクトが大きくなります。ただし、下流の改善は実装が簡単で即効性が高い場合もあります。</p>
+  </div>
+
+  <h2>Step 2：施策立案 — 根拠のある仮説を作る</h2>
+  <h3>原因を特定してから施策を決める</h3>
+  <p>例：「直帰率が68%と高い」という問題に対して、原因を絞り込みます。</p>
+  <ul>
+    <li>モバイルのみ高い → モバイルUXの問題</li>
+    <li>特定チャネル（広告）のみ高い → LP・広告のミスマッチ</li>
+    <li>特定LPのみ高い → そのページ固有の問題</li>
+  </ul>
+  <p>原因が特定できれば、施策が絞り込まれます。「広告のLPを流入ワードと合わせる」など具体的なアクションになります。</p>
+
+  <h3>施策の優先順位はImpact × Ease で決める</h3>
+  <table>
+    <tr><th>施策</th><th>Impact（影響度）</th><th>Ease（実装しやすさ）</th><th>優先度</th></tr>
+    <tr><td>CTAボタン固定表示</td><td>高</td><td>高</td><td>★ 最優先</td></tr>
+    <tr><td>送料の早期表示</td><td>高</td><td>高</td><td>★ 最優先</td></tr>
+    <tr><td>Amazon Pay導入</td><td>高</td><td>中</td><td>◎ 優先</td></tr>
+    <tr><td>ページ表示速度改善</td><td>高</td><td>低</td><td>○ 計画的に</td></tr>
+  </table>
+
+  <h2>Step 3：施策実施 — 1つずつ検証する</h2>
+  <p>可能であればA/Bテストを実施し、同時に複数の変更を加えないことが原則です。A/Bテストが難しい場合は、前週・前月・前年同期との比較で効果を判断します。</p>
+  <p>施策を実施したら必ず「完了日」「変更内容」「仮説」を記録します。これがないと後から振り返りができません。</p>
+
+  <h2>Step 4：効果検証 — 数字で成否を判断する</h2>
+  <p>施策から2〜4週間後にGA4で以下を確認します。</p>
+  <ul>
+    <li>対象指標（例：カート追加率）が改善したか</li>
+    <li>他の指標（CVR全体）に波及効果があったか</li>
+    <li>特定チャネル・デバイスでのみ改善したか（セグメント比較）</li>
+  </ul>
+  <div class="callout callout-warn">
+    <p><strong>注意：</strong>1週間以下のデータで判断するのは早計です。曜日変動・祝日・セール等の影響を排除するために、最低2週間以上の比較期間を確保します。</p>
+  </div>
+
+  <h2>PDCAを高速で回すコツ</h2>
+  <ul>
+    <li><strong>施策の粒度を小さくする：</strong>「サイト全体のリニューアル」ではなく「カートページのCTAボタンの色変更」のように範囲を絞る</li>
+    <li><strong>週次でデータを確認する習慣：</strong>毎週同じ曜日に主要指標を確認し、異常値があれば原因を調査する</li>
+    <li><strong>施策ログを残す：</strong>いつ・何を・なぜ変えたかを記録しておくことで、成功・失敗のパターンが蓄積される</li>
+  </ul>
+
+  <div class="cta-box">
+    <h3>CVR改善のPDCAをVeltioで自動化する</h3>
+    <p>GA4連携で指標を自動収集 → AIがボトルネックを診断 → 施策タスクを管理 → 効果を自動検証。診断→施策→検証のサイクルを効率化します。</p>
+    <a href="/app">無料でCVR改善を始める</a>
+  </div>
+</div>
+<footer><p>&copy; 2025 Veltio — <a href="/articles.html">記事一覧</a> · <a href="/privacy.html">プライバシーポリシー</a></p></footer>
+</body>
+</html>

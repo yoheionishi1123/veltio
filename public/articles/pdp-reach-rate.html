@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>商品ページ到達率（PDP到達率）を上げる5つの施策 | Veltio</title>
+  <meta name="description" content="ECサイトの商品ページ到達率（PDP到達率）が低い原因と改善策を解説。一覧ページのUI改善・検索導線・バッジ活用でPDP到達率30%超を目指す方法を紹介します。" />
+  <link rel="canonical" href="https://app.vel-tio.com/articles/pdp-reach-rate.html" />
+  <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/articles/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="logo">Veltio</a>
+  <nav><a href="/articles.html">コンテンツ一覧</a><a href="/app" class="cta">無料で試す</a></nav>
+</header>
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/articles.html">コンテンツ一覧</a> › 商品ページ到達率</div>
+  <h1>商品ページ到達率（PDP到達率）を上げる5つの施策</h1>
+  <div class="article-meta"><span class="tag">商品ページ到達率</span><span>2025年版</span><span>読了約5分</span></div>
+
+  <h2>PDP到達率とは</h2>
+  <p><strong>PDP到達率（Product Detail Page Reach Rate）</strong>は、サイト全体のセッションのうち商品詳細ページ（PDP）を1回以上閲覧したセッションの割合です。</p>
+  <div class="callout">
+    <p><strong>PDP到達率 = 商品ページ閲覧セッション数 ÷ 全セッション数 × 100（%）</strong><br />業界目安：30%以上が良好</p>
+  </div>
+  <p>PDP到達率が低いと、どれだけカート追加率・購入完了率を改善しても売上への影響が限定的になります。ファネルの上流にあたるため、CVR改善の優先指標の一つです。</p>
+
+  <h2>PDP到達率が低い主な原因</h2>
+  <ul>
+    <li>一覧ページのUIが「見づらく、クリックしにくい」</li>
+    <li>検索・フィルター機能が弱く、探している商品を見つけられない</li>
+    <li>商品サムネイルの情報量が少なく、魅力が伝わらない</li>
+    <li>流入ユーザーの多くがカテゴリページ止まりになっている</li>
+  </ul>
+
+  <h2>PDP到達率を上げる5つの施策</h2>
+
+  <h3>① 商品カード全体をクリック可能にする</h3>
+  <p>商品名テキストだけがリンクになっているケースは多いです。カード全体（画像・価格・テキスト）をクリック可能にするだけでPDP誘導率が10〜20%改善することがあります。</p>
+
+  <h3>② 一覧での情報量を最適化する</h3>
+  <p>価格・在庫状況・配送日・レビュー評価を一覧カードに表示することで、クリック前の期待値を高めます。「送料無料」「残り3点」などのバッジは特に効果的です。</p>
+
+  <h3>③ 検索・タグ導線を目立たせる</h3>
+  <p>検索窓がヘッダーに埋没していると活用されません。モバイルでは検索アイコンを大きく表示し、人気タグをカテゴリページ上部に配置することで探索行動を促進できます。</p>
+
+  <h3>④ 人気・新着・再入荷バッジを活用する</h3>
+  <p>「NEW」「BEST」「再入荷」などのバッジは、一覧の中でのクリック率（CTR）を向上させます。特に「残りわずか」は希少性を訴求し、クリックと購入の両方を後押しします。</p>
+
+  <h3>⑤ パーソナライズレコメンドを導入する</h3>
+  <p>閲覧履歴や購入履歴に基づく「あなたへのおすすめ」を一覧に差し込むことで、興味関心と合致した商品への到達率が上がります。ツール導入コストが高い場合は、「最近見た商品」から始めるだけでも効果があります。</p>
+
+  <h2>GA4でPDP到達率を計測する方法</h2>
+  <p>GA4では<code>view_item</code>イベントが商品ページ閲覧の計測に使われます。</p>
+  <ol>
+    <li>GA4 → 「探索」→「ファネルデータ探索」</li>
+    <li>ステップ1：セッション開始（session_start）</li>
+    <li>ステップ2：商品閲覧（view_item）</li>
+    <li>各ステップの達成率がPDP到達率の近似値になります</li>
+  </ol>
+  <div class="callout callout-warn">
+    <p><strong>注意：</strong><code>view_item</code>イベントがサイトに実装されていない場合、URLパターン（例：/products/）でフィルタリングする方法もあります。</p>
+  </div>
+
+  <div class="cta-box">
+    <h3>PDP到達率を自動計測・改善施策を提案</h3>
+    <p>VeltioはGA4の<code>view_item</code>イベントからPDP到達率を自動算出し、業界ベンチマークと比較して改善施策を提示します。</p>
+    <a href="/app">無料で分析を始める</a>
+  </div>
+</div>
+<footer><p>&copy; 2025 Veltio — <a href="/articles.html">記事一覧</a> · <a href="/privacy.html">プライバシーポリシー</a></p></footer>
+</body>
+</html>

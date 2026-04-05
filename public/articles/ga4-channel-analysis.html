@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GA4チャネル別分析でCV貢献度を正確に測る方法 | Veltio</title>
+  <meta name="description" content="GA4のチャネル別分析でオーガニック・広告・SNS・メールのCVR貢献度を比較する方法を解説。予算配分の最適化と流入改善につながる分析手法を紹介。" />
+  <link rel="canonical" href="https://app.vel-tio.com/articles/ga4-channel-analysis.html" />
+  <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/articles/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="logo">Veltio</a>
+  <nav><a href="/articles.html">コンテンツ一覧</a><a href="/app" class="cta">無料で試す</a></nav>
+</header>
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/articles.html">コンテンツ一覧</a> › チャネル分析</div>
+  <h1>GA4チャネル別分析でCV貢献度を正確に測る方法</h1>
+  <div class="article-meta"><span class="tag">チャネル分析</span><span>2025年版</span><span>読了約6分</span></div>
+
+  <h2>チャネル別分析が重要な理由</h2>
+  <p>同じサイトでも、流入チャネルによってCVRは大きく異なります。「自然検索は低CVRだが広告は高CVR」という場合、広告予算を増やすことで売上を伸ばせます。逆に「メール経由は高CVR」なら、メルマガ施策に投資すべきです。</p>
+  <p>チャネルごとのCVRを知ることは、マーケティング予算配分の意思決定に直結します。</p>
+
+  <h2>GA4の主なチャネル区分</h2>
+  <table>
+    <tr><th>チャネルグループ</th><th>内容</th><th>CVR傾向</th></tr>
+    <tr><td>Organic Search</td><td>Google・Yahoo!等の自然検索</td><td>中〜高</td></tr>
+    <tr><td>Paid Search</td><td>Google広告・Yahoo!広告</td><td>高（購買意図が明確）</td></tr>
+    <tr><td>Direct</td><td>直接入力・ブックマーク</td><td>高（リピーターが多い）</td></tr>
+    <tr><td>Email</td><td>メールマガジン経由</td><td>高（既存顧客）</td></tr>
+    <tr><td>Organic Social</td><td>SNSの自然流入</td><td>低〜中</td></tr>
+    <tr><td>Paid Social</td><td>Meta・Instagram広告等</td><td>中</td></tr>
+    <tr><td>Referral</td><td>他サイトからのリンク</td><td>中（サイト次第）</td></tr>
+  </table>
+
+  <h2>GA4でチャネル別CVRを確認する手順</h2>
+  <h3>方法1：トラフィック獲得レポートを使う</h3>
+  <ol>
+    <li>GA4 → レポート → 集客 → トラフィック獲得</li>
+    <li>ディメンション：「セッションのデフォルトチャネルグループ」</li>
+    <li>指標に「コンバージョン」「セッション」を追加</li>
+    <li>CVR = コンバージョン ÷ セッション で計算</li>
+  </ol>
+
+  <h3>方法2：探索レポートでチャネルをセグメントに設定</h3>
+  <ol>
+    <li>探索 → 空白 → 自由形式</li>
+    <li>ディメンション：セッションのデフォルトチャネルグループ</li>
+    <li>指標：セッション・購入・purchase イベント数</li>
+    <li>チャネルごとにCVR・直帰率・PDP到達率を一覧表示できます</li>
+  </ol>
+
+  <h2>チャネル別分析で見つかりやすいインサイト</h2>
+  <h3>① 広告流入のランディングページが最適化されていない</h3>
+  <p>広告のCVRが低い場合、LPと広告メッセージのミスマッチが疑われます。広告グループ別のランディングページを見直しましょう。</p>
+
+  <h3>② SNS流入の直帰率が高い</h3>
+  <p>SNSから流入するユーザーは「情報収集」目的が多く、購買意図が低い場合があります。SNS向けにはブランド認知・UGC活用を優先し、直接的なCVを求めすぎないことが重要です。</p>
+
+  <h3>③ オーガニック検索の流入キーワードと着地ページが合っていない</h3>
+  <p>「〇〇 レビュー」で流入したのに商品一覧ページに着地している場合、CVRは上がりません。検索クエリと着地ページの整合性を確認しましょう。</p>
+
+  <h2>UTMパラメータで計測精度を上げる</h2>
+  <p>メルマガ・SNS投稿・プレスリリースなど、GA4が自動分類できないチャネルには<strong>UTMパラメータ</strong>を付与します。</p>
+  <div class="callout">
+    <p><strong>例：</strong>メルマガのURLに<br /><code>?utm_source=newsletter&amp;utm_medium=email&amp;utm_campaign=spring2025</code><br />を付与することで、メルマガ経由を正確に計測できます。</p>
+  </div>
+
+  <div class="cta-box">
+    <h3>チャネル別CVRを自動比較・改善優先箇所を特定</h3>
+    <p>VeltioはGA4のチャネルデータを自動取得し、どのチャネルの直帰率・PDP到達率・CVRに問題があるかを一括診断します。</p>
+    <a href="/app">無料でチャネル分析を始める</a>
+  </div>
+</div>
+<footer><p>&copy; 2025 Veltio — <a href="/articles.html">記事一覧</a> · <a href="/privacy.html">プライバシーポリシー</a></p></footer>
+</body>
+</html>

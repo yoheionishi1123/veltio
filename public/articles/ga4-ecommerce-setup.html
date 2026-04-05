@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GA4でECサイトを分析する入門ガイド【設定から活用まで】| Veltio</title>
+  <meta name="description" content="GA4でECサイトを分析するための設定方法・必須イベント・レポートの見方を初心者向けに解説。view_item・add_to_cart・purchaseの実装手順も紹介。" />
+  <link rel="canonical" href="https://app.vel-tio.com/articles/ga4-ecommerce-setup.html" />
+  <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/articles/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="logo">Veltio</a>
+  <nav><a href="/articles.html">コンテンツ一覧</a><a href="/app" class="cta">無料で試す</a></nav>
+</header>
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/articles.html">コンテンツ一覧</a> › GA4入門</div>
+  <h1>GA4でECサイトを分析する入門ガイド【設定から活用まで】</h1>
+  <div class="article-meta"><span class="tag">GA4入門</span><span>2025年版</span><span>読了約8分</span></div>
+
+  <h2>GA4がECサイトに必要な理由</h2>
+  <p>Googleアナリティクス4（GA4）は、ECサイトの購買行動をファネル単位で分析できる無料ツールです。2023年7月にユニバーサルアナリティクス（UA）が廃止となり、現在はGA4が標準となっています。</p>
+  <p>ECサイトでGA4を活用すると、「直帰率・商品閲覧・カート追加・購入完了」の各ステップを数値で把握でき、CVR改善の根拠となるデータが得られます。</p>
+
+  <h2>GA4 ECイベントの種類と実装優先順位</h2>
+  <table>
+    <tr><th>イベント名</th><th>発火タイミング</th><th>優先度</th></tr>
+    <tr><td>view_item</td><td>商品詳細ページ閲覧時</td><td>★★★ 最重要</td></tr>
+    <tr><td>add_to_cart</td><td>カートに追加したとき</td><td>★★★ 最重要</td></tr>
+    <tr><td>begin_checkout</td><td>チェックアウト開始時</td><td>★★★ 最重要</td></tr>
+    <tr><td>purchase</td><td>購入完了時</td><td>★★★ 最重要</td></tr>
+    <tr><td>view_cart</td><td>カートページ閲覧時</td><td>★★ 重要</td></tr>
+    <tr><td>view_item_list</td><td>商品一覧閲覧時</td><td>★ あれば良い</td></tr>
+  </table>
+
+  <h2>GA4 ECイベントの実装方法</h2>
+  <h3>方法1：gtag.js で直接実装する</h3>
+  <p>サイトのHTMLに直接JavaScriptを記述する方法です。Shopifyなど対応プラットフォームでは自動実装されています。</p>
+
+  <h3>方法2：Google Tag Manager（GTM）で実装する</h3>
+  <p>コードを触らずにGA4イベントを設定できます。ECサイトのdataLayerに商品情報を積み、GTMでGA4イベントタグを発火させます。技術的なコストを最小化したい場合はGTM経由が推奨です。</p>
+
+  <h2>GA4でECデータを確認する主要レポート</h2>
+  <h3>① 収益レポート</h3>
+  <p>レポート → 収益化 → Eコマース購入数：商品別の売上・購入数・カート追加数を確認できます。</p>
+
+  <h3>② ファネルデータ探索</h3>
+  <p>探索 → ファネルデータ探索：view_item → add_to_cart → begin_checkout → purchase の各ステップの通過率を可視化します。どのステップで離脱が最も多いかが一目で分かります。</p>
+
+  <h3>③ チャネル別レポート</h3>
+  <p>レポート → 集客 → トラフィック獲得：オーガニック・広告・SNSなどチャネル別のCVRを比較できます。</p>
+
+  <h2>GA4 EC分析でよくあるミス</h2>
+  <div class="callout callout-warn">
+    <p><strong>ミス1：</strong>view_item や add_to_cart が実装されていないためファネルが計測できない</p>
+  </div>
+  <div class="callout callout-warn">
+    <p><strong>ミス2：</strong>UAの感覚でGA4のCVR・直帰率を解釈する（定義が異なります）</p>
+  </div>
+  <div class="callout callout-warn">
+    <p><strong>ミス3：</strong>テスト環境のデータが混入してしまっている（フィルターで除外する必要がある）</p>
+  </div>
+
+  <div class="cta-box">
+    <h3>GA4データを自動分析してCVR改善施策を提案</h3>
+    <p>VeltioはGA4と連携し、ECイベントデータを自動取得・分析。どのステップがボトルネックかを診断し、具体的な改善施策を提示します。</p>
+    <a href="/app">GA4連携を無料で始める</a>
+  </div>
+</div>
+<footer><p>&copy; 2025 Veltio — <a href="/articles.html">記事一覧</a> · <a href="/privacy.html">プライバシーポリシー</a></p></footer>
+</body>
+</html>

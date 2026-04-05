@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>直帰率が高い原因と改善施策7選【GA4対応】| Veltio</title>
+  <meta name="description" content="ECサイトの直帰率が高い原因を7つの視点で分析。GA4での計測方法から、ファーストビュー改善・表示速度・信頼性向上まで具体的な施策を解説します。" />
+  <link rel="canonical" href="https://app.vel-tio.com/articles/bounce-rate.html" />
+  <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/articles/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="logo">Veltio</a>
+  <nav><a href="/articles.html">コンテンツ一覧</a><a href="/app" class="cta">無料で試す</a></nav>
+</header>
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/articles.html">コンテンツ一覧</a> › 直帰率</div>
+  <h1>直帰率が高い原因と改善施策7選【GA4対応】</h1>
+  <div class="article-meta"><span class="tag">直帰率</span><span>2025年版</span><span>読了約6分</span></div>
+
+  <h2>GA4における直帰率とは</h2>
+  <p>GA4での<strong>直帰率（Bounce Rate）</strong>は「エンゲージメントのないセッションの割合」と定義されています。具体的には、セッション時間が10秒未満・コンバージョンなし・2ページ目以降の閲覧なし、の3条件をすべて満たす場合を「直帰」と判定します。</p>
+  <div class="callout">
+    <p><strong>直帰率 = エンゲージメントのないセッション ÷ 全セッション × 100（%）</strong><br />ECサイトの目安：55%以下が良好、65%超は要改善</p>
+  </div>
+
+  <h2>直帰率が高くなる7つの原因と改善策</h2>
+
+  <h3>① 広告・流入元とLPの訴求がズレている</h3>
+  <p>「20%OFF」という広告をクリックしたのに、LPに割引情報がない場合、ユーザーは即離脱します。広告文・SEOタイトルとファーストビューのメッセージを一致させることが最優先です。</p>
+  <p><strong>施策：</strong>広告グループ別にランディングページを分け、訴求ポイントをファーストビューに明示する。</p>
+
+  <h3>② 表示速度が遅い（3秒の壁）</h3>
+  <p>Googleの調査では、表示速度が3秒を超えると直帰率が53%増加するとされています。特にモバイルでの速度改善が急務です。</p>
+  <p><strong>施策：</strong>画像のWebP変換・遅延読み込み・不要なJSの削減。PageSpeed Insightsでスコア80以上を目指す。</p>
+
+  <h3>③ ファーストビューで価値が伝わらない</h3>
+  <p>誰向けの何を解決するサービス・商品かが3秒で伝わらないと離脱します。</p>
+  <p><strong>施策：</strong>キャッチコピー・サブコピー・CTAボタンをファーストビューに集中配置。画像よりテキスト情報を優先。</p>
+
+  <h3>④ モバイル最適化ができていない</h3>
+  <p>ECサイトの流入の60〜70%はスマートフォンです。PCを前提にデザインされたページはモバイルで直帰率が跳ね上がります。</p>
+  <p><strong>施策：</strong>タップターゲットのサイズを44px以上に・フォントサイズ16px以上・横スクロールを排除。</p>
+
+  <h3>⑤ 信頼性の要素が不足している</h3>
+  <p>初めて訪れるユーザーは「このサイトは安全か？」を無意識に判断します。レビュー・認定マーク・会社情報の不足は離脱を促します。</p>
+  <p><strong>施策：</strong>ファーストビュー直下に購入件数・レビュー数・信頼バッジを配置する。</p>
+
+  <h3>⑥ ポップアップ・インタースティシャルが多い</h3>
+  <p>着地直後のメルマガ登録ポップアップはユーザーの離脱を促します。Googleもペナルティを与える場合があります。</p>
+  <p><strong>施策：</strong>ポップアップは30秒後または下スクロール後に表示。初回訪問ユーザーへの表示を制限する。</p>
+
+  <h3>⑦ コンテンツがユーザーの期待と異なる</h3>
+  <p>検索意図と異なるコンテンツを表示すると、SEOでも直帰率が高くなります。</p>
+  <p><strong>施策：</strong>検索キーワードのインテント（情報収集・比較・購入）を分析し、ページ内容を合わせる。</p>
+
+  <h2>GA4で直帰率を確認する方法</h2>
+  <ol>
+    <li>GA4管理画面 → 「レポート」→「エンゲージメント」→「ページとスクリーン」</li>
+    <li>右上の「列をカスタマイズ」から「直帰率」を追加</li>
+    <li>流入チャネル別に確認する場合は「集客」→「トラフィック獲得」</li>
+  </ol>
+  <div class="callout callout-warn">
+    <p><strong>注意：</strong>GA4の直帰率はUAと定義が異なります。UAでは1ページのみ閲覧を直帰としていましたが、GA4ではエンゲージメントの有無で判定するため数値が低く出る傾向があります。</p>
+  </div>
+
+  <div class="cta-box">
+    <h3>直帰率の改善効果をGA4データで自動計測</h3>
+    <p>Veltioは施策実施前後の直帰率を自動比較し、改善が実際に数字に表れたかを可視化します。</p>
+    <a href="/app">無料で試す</a>
+  </div>
+</div>
+<footer><p>&copy; 2025 Veltio — <a href="/articles.html">記事一覧</a> · <a href="/privacy.html">プライバシーポリシー</a></p></footer>
+</body>
+</html>

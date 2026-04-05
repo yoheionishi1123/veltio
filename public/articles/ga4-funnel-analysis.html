@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GA4のファネル分析でECの離脱ポイントを特定する方法 | Veltio</title>
+  <meta name="description" content="GA4の探索レポートを使ったファネル分析の手順を解説。view_item・add_to_cart・purchaseの各ステップの離脱率を可視化し、改善優先箇所を特定する方法を紹介。" />
+  <link rel="canonical" href="https://app.vel-tio.com/articles/ga4-funnel-analysis.html" />
+  <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/articles/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="logo">Veltio</a>
+  <nav><a href="/articles.html">コンテンツ一覧</a><a href="/app" class="cta">無料で試す</a></nav>
+</header>
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/articles.html">コンテンツ一覧</a> › ファネル分析</div>
+  <h1>GA4のファネル分析でECの離脱ポイントを特定する方法</h1>
+  <div class="article-meta"><span class="tag">ファネル分析</span><span>2025年版</span><span>読了約7分</span></div>
+
+  <h2>なぜファネル分析が必要か</h2>
+  <p>「CVRが低い」という課題は分かっていても、どこで離脱しているかが分からなければ対策を打てません。GA4のファネル分析を使うことで、購買プロセスの各ステップの通過率が可視化され、「最も離脱が多いステップ」を特定できます。</p>
+
+  <h2>GA4ファネル分析の手順</h2>
+  <h3>ステップ1：GA4の「探索」を開く</h3>
+  <p>GA4管理画面左メニューの「探索」→「空白」または「ファネルデータ探索」テンプレートを選択します。</p>
+
+  <h3>ステップ2：ファネルのステップを設定する</h3>
+  <p>ECサイトの標準ファネルを以下のように設定します。</p>
+  <table>
+    <tr><th>ステップ</th><th>GA4イベント</th><th>説明</th></tr>
+    <tr><td>1</td><td>session_start</td><td>サイト訪問</td></tr>
+    <tr><td>2</td><td>view_item</td><td>商品ページ閲覧</td></tr>
+    <tr><td>3</td><td>add_to_cart</td><td>カートに追加</td></tr>
+    <tr><td>4</td><td>begin_checkout</td><td>チェックアウト開始</td></tr>
+    <tr><td>5</td><td>purchase</td><td>購入完了</td></tr>
+  </table>
+
+  <h3>ステップ3：「クローズドファネル」と「オープンファネル」を選ぶ</h3>
+  <p><strong>クローズドファネル：</strong>前のステップを必ず経由したセッションのみカウント。購買フローを厳密に追いたい場合に使用。</p>
+  <p><strong>オープンファネル：</strong>どのステップからでも開始可能。全体の離脱分布を把握したい場合に使用。ECサイトの分析では通常オープンが推奨されます。</p>
+
+  <h3>ステップ4：セグメント比較でインサイトを深める</h3>
+  <p>ファネルにセグメントを追加することで、チャネル別・デバイス別・新規/リピーター別の差を比較できます。</p>
+  <ul>
+    <li>「モバイル vs デスクトップ」でモバイルの離脱ステップを特定</li>
+    <li>「広告流入 vs オーガニック」でチャネル別の質を比較</li>
+  </ul>
+
+  <h2>ファネル分析の結果の読み方</h2>
+  <h3>どのステップが最も離脱が大きいか</h3>
+  <p>各ステップの「完了率」を確認し、前のステップから50%以上落ちているところが最優先の改善箇所です。</p>
+  <div class="callout">
+    <p><strong>例：</strong>商品ページ到達率15%（全体の85%がPDPに到達できていない）→ 一覧ページの導線改善が最優先</p>
+  </div>
+
+  <h3>時系列でファネルの変化を見る</h3>
+  <p>施策を実施した前後の期間でファネルを比較することで、どのステップの改善に成功したかを検証できます。「比較期間」機能を使ってA期間・B期間を並べて表示します。</p>
+
+  <h2>ファネル分析の自動化</h2>
+  <p>GA4の探索レポートは手動で設定・確認する必要があります。毎回の設定作業・業界ベンチマークとの比較・施策効果の追跡を自動化したい場合はVeltioが役立ちます。</p>
+
+  <div class="cta-box">
+    <h3>ECファネルを自動分析・ボトルネックを即診断</h3>
+    <p>VeltioはGA4と連携し、5ステップのファネルを自動計測。業界ベンチマークとのギャップから「今最も優先すべき改善箇所」を提示します。</p>
+    <a href="/app">無料でファネルを診断する</a>
+  </div>
+</div>
+<footer><p>&copy; 2025 Veltio — <a href="/articles.html">記事一覧</a> · <a href="/privacy.html">プライバシーポリシー</a></p></footer>
+</body>
+</html>

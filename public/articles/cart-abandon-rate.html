@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>カート離脱率（カゴ落ち）を下げる6つの方法 | Veltio</title>
+  <meta name="description" content="ECサイトのカート離脱率（カゴ落ち）の原因と改善策を解説。送料表示・ゲスト購入・リターゲティングメールなど6つの施策でカゴ落ち率70%以下を目指す方法。" />
+  <link rel="canonical" href="https://app.vel-tio.com/articles/cart-abandon-rate.html" />
+  <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/articles/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <a href="/" class="logo">Veltio</a>
+  <nav><a href="/articles.html">コンテンツ一覧</a><a href="/app" class="cta">無料で試す</a></nav>
+</header>
+<div class="article-wrap">
+  <div class="breadcrumb"><a href="/articles.html">コンテンツ一覧</a> › カゴ落ち</div>
+  <h1>カート離脱率を下げる6つの方法【ECサイト向け】</h1>
+  <div class="article-meta"><span class="tag">カゴ落ち</span><span>2025年版</span><span>読了約6分</span></div>
+
+  <h2>カート離脱率とは</h2>
+  <div class="callout">
+    <p><strong>カート離脱率 = （カート到達 − 購入完了）÷ カート到達 × 100（%）</strong><br />ECサイト平均は約70%。つまりカートに入れた商品の7割は購入されない。</p>
+  </div>
+  <p>カート離脱率は一見高く見えますが、業界全体でも70〜80%が平均です。ここを60〜65%に下げられれば、売上は大きく伸びます。</p>
+
+  <h2>カゴ落ちが起きる主な理由</h2>
+  <ul>
+    <li>想定外の送料・手数料が表示された</li>
+    <li>会員登録が必要でゲスト購入できない</li>
+    <li>決済手段が少ない（クレジットのみなど）</li>
+    <li>セキュリティへの不信感</li>
+    <li>「後で買う」という比較・検討行動</li>
+    <li>ページ表示が遅い・エラーが起きた</li>
+  </ul>
+
+  <h2>カート離脱率を下げる6つの施策</h2>
+
+  <h3>① 送料を早い段階で明示する</h3>
+  <p>最大のカゴ落ち原因は「チェックアウト直前で初めて送料を知る」ことです。商品ページのCTA付近・カートページのトップに送料条件を表示するだけで離脱率が改善します。</p>
+  <p><strong>実装例：</strong>「あと¥2,340で送料無料」という進捗バーをカートページに表示する。</p>
+
+  <h3>② ゲスト購入を可能にする</h3>
+  <p>「アカウント作成必須」はカゴ落ちの大きな要因です。初回購入はゲスト購入を許可し、購入完了後にアカウント登録を促すフローにすることで離脱を防げます。</p>
+
+  <h3>③ 決済手段を増やす</h3>
+  <p>クレジットカードのみの場合、カード非保有者やポイント払いを希望するユーザーが離脱します。PayPay・Amazon Pay・後払い・コンビニ払いを追加することで購入ハードルが下がります。</p>
+
+  <h3>④ カート内容の保存期間を延ばす</h3>
+  <p>「後で買う」ユーザーが翌日再訪したときにカートが空になっていると、再追加の手間で離脱します。カート保存期間を30日以上に設定することで、検討後の購入を取り込めます。</p>
+
+  <h3>⑤ カゴ落ちメール（リターゲティング）を送る</h3>
+  <p>カート追加後24時間以内にリマインドメールを送ることで、購入率が5〜15%回復するとされています。メール登録者限定で割引クーポンを付与する方法も効果的です。</p>
+
+  <h3>⑥ 離脱防止モーダルを設置する</h3>
+  <p>カートページで「戻る」「閉じる」の操作をしたときに「今なら送料無料」などのオファーを表示するモーダルで、一部ユーザーを引き止められます。ただし頻繁に使うと UX を損ねるため注意が必要です。</p>
+
+  <h2>計測：GA4でカート離脱率を把握する</h2>
+  <ol>
+    <li>GA4 → 探索 → ファネルデータ探索</li>
+    <li>ステップ1：begin_checkout または view_cart</li>
+    <li>ステップ2：purchase</li>
+    <li>（ステップ1 − ステップ2）÷ ステップ1 がカート離脱率</li>
+  </ol>
+
+  <div class="cta-box">
+    <h3>カゴ落ち率の改善を自動追跡</h3>
+    <p>VeltioはGA4データからカート離脱率をリアルタイム計測し、施策の効果を自動で比較します。</p>
+    <a href="/app">無料で分析を始める</a>
+  </div>
+</div>
+<footer><p>&copy; 2025 Veltio — <a href="/articles.html">記事一覧</a> · <a href="/privacy.html">プライバシーポリシー</a></p></footer>
+</body>
+</html>
