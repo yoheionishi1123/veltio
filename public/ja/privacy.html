@@ -6,8 +6,8 @@
     <title>プライバシーポリシー | Veltio</title>
     <link rel="canonical" href="https://app.vel-tio.com/ja/privacy" />
     <link rel="alternate" hreflang="ja" href="https://app.vel-tio.com/ja/privacy" />
-    <link rel="alternate" hreflang="en" href="https://app.vel-tio.com/en/privacy" />
     <link rel="alternate" hreflang="x-default" href="https://app.vel-tio.com/ja/privacy" />
+    <link rel="privacy-policy" href="https://app.vel-tio.com/ja/privacy" />
     <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,11 +21,17 @@
       .shell { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; }
       h1 { font-size: 28px; font-weight: 800; color: #0b1320; margin: 0 0 8px; }
       .updated { font-size: 13px; color: #98a2b3; margin: 0 0 40px; }
-      h2 { font-size: 17px; font-weight: 700; color: #0b1320; margin: 36px 0 10px; }
+      h2 { font-size: 17px; font-weight: 700; color: #0b1320; margin: 36px 0 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+      h3 { font-size: 15px; font-weight: 700; color: #0b1320; margin: 20px 0 8px; }
       p, li { font-size: 14px; line-height: 1.9; color: #344054; }
       ul { padding-left: 20px; }
+      .highlight-box { background: #f0f7ff; border-left: 4px solid #2563eb; border-radius: 0 6px 6px 0; padding: 16px 20px; margin: 16px 0; }
+      .highlight-box p { margin: 0; }
+      .prohibited-box { background: #fff7f0; border-left: 4px solid #ea580c; border-radius: 0 6px 6px 0; padding: 16px 20px; margin: 16px 0; }
+      .prohibited-box p { margin: 0; }
       footer { background: #0b1320; padding: 20px 24px; text-align: center; color: #4a5a78; font-size: 12.5px; }
       footer a { color: #a0aec0; text-decoration: none; margin: 0 8px; }
+      .lang-note { font-size: 12px; color: #98a2b3; margin-bottom: 32px; }
     </style>
   </head>
   <body>
@@ -36,61 +42,209 @@
 
     <main class="shell">
       <h1>プライバシーポリシー</h1>
-      <p class="updated">最終更新日：2025年4月1日</p>
+      <p class="updated">最終更新日：2026年4月6日</p>
+      <p class="lang-note">This page is also available in <a href="#english">English</a> below for Google API review purposes.</p>
 
-      <p>Veltio（以下「当社」）は、本ウェブサービス「Veltio」（以下「本サービス」）におけるユーザーの個人情報の取り扱いについて、以下のとおりプライバシーポリシー（以下「本ポリシー」）を定めます。</p>
+      <p>Veltio（運営：大西 洋平、以下「当社」）は、本ウェブサービス「Veltio」（以下「本サービス」）におけるユーザーの個人情報および Google ユーザーデータの取り扱いについて、以下のとおりプライバシーポリシー（以下「本ポリシー」）を定めます。</p>
 
       <h2>1. 収集する情報</h2>
       <p>当社は、本サービスの提供にあたり、以下の情報を収集します。</p>
       <ul>
-        <li>メールアドレス、氏名、会社名などの登録情報</li>
+        <li>メールアドレス、氏名、会社名などのアカウント登録情報</li>
         <li>本サービスへのアクセスログ（IPアドレス、ブラウザ情報、閲覧ページ等）</li>
-        <li>GA4連携に際して取得するGoogle OAuth認証情報（アクセストークン、リフレッシュトークン）</li>
+        <li>GA4 連携に際して取得する Google OAuth 認証情報（アクセストークン、リフレッシュトークン、Google アカウントのメールアドレス）</li>
+        <li>Google Analytics 4 Data API を通じて取得した分析データ（セッション数、イベント数、コンバージョン率等の集計指標）</li>
         <li>ユーザーが入力した分析メモ、施策ログ等のコンテンツ</li>
       </ul>
 
-      <h2>2. 情報の利用目的</h2>
-      <p>収集した情報は、以下の目的で利用します。</p>
+      <h2>2. Google ユーザーデータの取り扱い</h2>
+      <div class="highlight-box">
+        <p>本サービスが Google API を通じて取得するデータは、ユーザー自身が所有する Google Analytics 4 プロパティのアクセス解析指標のみです。このデータは、本サービスのダッシュボード表示・CVR 分析機能の提供という、ユーザーが直接要求した目的にのみ使用します。</p>
+      </div>
+
+      <h3>2-1. アクセスするデータの範囲</h3>
       <ul>
-        <li>本サービスの提供・運営・改善</li>
-        <li>ユーザーへのサポート対応・お知らせの送付</li>
-        <li>不正利用の防止およびセキュリティ確保</li>
-        <li>統計データの作成（個人を特定しない形式）</li>
+        <li>ユーザーが自身の Google Analytics 4 プロパティを本サービスに連携した際に、OAuth 2.0 を通じてアクセスを許可したデータのみを取得します</li>
+        <li>取得するスコープ：<code>https://www.googleapis.com/auth/analytics.readonly</code>（読み取り専用）</li>
+        <li>具体的に取得するデータ：セッション数・直帰率・商品詳細ページ到達率・カート追加率・購入完了率・CVR 等のサイト計測指標</li>
+        <li>Google アカウントの個人情報（連絡先、カレンダー、Gmail 等）は一切アクセスしません</li>
       </ul>
 
-      <h2>3. 第三者への提供</h2>
-      <p>当社は、次の場合を除き、ユーザーの個人情報を第三者に提供しません。</p>
+      <h3>2-2. データの使用目的</h3>
       <ul>
-        <li>ユーザーの同意がある場合</li>
-        <li>法令に基づく場合</li>
-        <li>人の生命・身体・財産を保護するために必要な場合</li>
+        <li>ユーザーのダッシュボードへの分析指標の表示</li>
+        <li>ルールベース診断・施策テンプレートの生成</li>
+        <li>キャンペーン効果測定・比較レポートの作成</li>
+        <li>PDF / PPTX レポートの出力</li>
       </ul>
 
-      <h2>4. 外部サービスの利用</h2>
-      <p>本サービスでは、以下の外部サービスを利用しています。</p>
+      <h3>2-3. データの共有・開示</h3>
+      <p>Google API から取得したユーザーデータは、以下の場合を除き、いかなる第三者とも共有・転送・開示しません。</p>
       <ul>
-        <li><strong>Google Analytics 4（GA4）</strong>：ユーザーが連携した自社サイトのアクセス解析データを取得するために利用します。取得するデータはGA4 Data APIを通じて処理され、Googleのプライバシーポリシーに従います。</li>
-        <li><strong>Google Analytics（Veltio自身の計測）</strong>：本サービスの利用状況分析のために使用します。</li>
+        <li>ユーザー本人の明示的な同意がある場合</li>
+        <li>法令または司法・行政機関の命令に基づく場合</li>
+        <li>本サービスの運用に必要な業務委託先（ホスティング・インフラ）に対して、守秘義務を課した上で提供する場合</li>
       </ul>
 
-      <h2>5. Cookieの使用</h2>
-      <p>本サービスでは、セッション管理のためにCookieを使用します。ブラウザの設定によりCookieを無効化することができますが、その場合、本サービスの一部機能がご利用いただけない場合があります。</p>
+      <h3>2-4. 禁止する利用方法</h3>
+      <div class="prohibited-box">
+        <p>当社は、Google API を通じて取得したユーザーデータについて、以下の行為を行いません。また、これらの目的で第三者に提供することも一切行いません。</p>
+      </div>
+      <ul>
+        <li>第三者へのデータの販売・売却</li>
+        <li>ターゲット広告・パーソナライズ広告への利用または広告目的での転送</li>
+        <li>データブローカー・情報再販業者への提供</li>
+        <li>信用力の判定・融資・保険審査への利用</li>
+        <li>AI モデル・機械学習モデルのトレーニング（当社独自モデルを含む）</li>
+        <li>汎用データベースの構築・外部への提供</li>
+        <li>ユーザー向け機能の提供・改善以外の目的への利用</li>
+      </ul>
 
-      <h2>6. 個人情報の管理・保護</h2>
-      <p>当社は、個人情報の漏えい・紛失・改ざん等を防止するため、適切なセキュリティ対策を実施します。パスワードはハッシュ化して保管し、認証情報は暗号化して管理します。</p>
+      <h3>2-5. データの保管・セキュリティ</h3>
+      <ul>
+        <li>OAuth アクセストークンおよびリフレッシュトークンは、本サービスのサーバー上に暗号化して保管します</li>
+        <li>サーバーとの通信はすべて HTTPS（TLS 1.2 以上）で暗号化されます</li>
+        <li>パスワードは bcrypt によりハッシュ化して保管します</li>
+        <li>GA4 から取得した指標データは、本サービスのデータベース上にユーザーのテナント領域内に隔離して保管します</li>
+      </ul>
 
-      <h2>7. 個人情報の開示・訂正・削除</h2>
-      <p>ユーザーは当社に対し、自己の個人情報の開示・訂正・削除を請求することができます。お問い合わせは <a href="/ja/contact">お問い合わせフォーム</a> よりご連絡ください。</p>
+      <h3>2-6. データの保持期間と削除</h3>
+      <ul>
+        <li>OAuth トークン（アクセストークン・リフレッシュトークン）：GA4 連携を解除した時点、またはアカウント削除時に即時削除します</li>
+        <li>取得した GA4 分析指標データ：アカウント削除時に即時削除します</li>
+        <li>アカウント登録情報：アカウント削除時に即時削除します</li>
+        <li>ユーザーは設定画面から「アカウントを削除」を選択することで、上記すべてのデータを即時削除できます</li>
+        <li>削除依頼は <a href="/ja/contact">お問い合わせフォーム</a> からも承ります</li>
+      </ul>
 
-      <h2>8. プライバシーポリシーの変更</h2>
-      <p>当社は、必要に応じて本ポリシーを変更することがあります。変更後のポリシーは本ページに掲載した時点から効力を生じるものとします。</p>
+      <h2>3. 本サービス自身の計測について</h2>
+      <p>本サービスでは、サービス品質の向上のため、Google Analytics 4 を使用して本サービス自身の利用状況（ページ閲覧数、機能利用状況等）を計測しています。収集されたデータは匿名化・集計された形式でのみ利用し、個人を特定する目的には使用しません。</p>
 
-      <h2>9. お問い合わせ</h2>
-      <p>個人情報の取り扱いに関するお問い合わせは、<a href="/ja/contact">お問い合わせフォーム</a> よりお願いいたします。</p>
+      <h2>4. Cookie の使用</h2>
+      <p>本サービスでは、セッション管理のために HttpOnly Cookie を使用します。この Cookie はセッション ID のみを保持し、個人情報は含みません。ブラウザの設定により Cookie を無効化することができますが、その場合、ログイン等の一部機能がご利用いただけません。</p>
+
+      <h2>5. 外部サービスの利用</h2>
+      <ul>
+        <li><strong>Render.com</strong>：本サービスのホスティング・サーバー運用に使用しています（<a href="https://render.com/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>）</li>
+        <li><strong>Stripe</strong>：決済処理に使用しています。カード情報は Stripe が直接処理し、当社サーバーには保存されません（<a href="https://stripe.com/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>）</li>
+        <li><strong>Resend</strong>：確認メール・パスワードリセットメールの送信に使用しています（<a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener">プライバシーポリシー</a>）</li>
+      </ul>
+
+      <h2>6. 個人情報の開示・訂正・削除</h2>
+      <p>ユーザーは当社に対し、自己の個人情報の開示・訂正・削除を請求することができます。削除はアプリ内の「アカウント設定」→「アカウントを削除」から即時実行できます。その他のご要望は <a href="/ja/contact">お問い合わせフォーム</a> よりご連絡ください。</p>
+
+      <h2>7. プライバシーポリシーの変更</h2>
+      <p>当社は、法令の改正や本サービスの仕様変更等に伴い、本ポリシーを変更することがあります。Google ユーザーデータの利用方法に実質的な変更が生じる場合は、変更前にメールにてユーザーに通知します。変更後のポリシーは本ページへの掲載をもって効力を生じるものとします。</p>
+
+      <h2>8. お問い合わせ</h2>
+      <p>本ポリシーに関するお問い合わせ、または Google ユーザーデータに関する削除・開示請求は、<a href="/ja/contact">お問い合わせフォーム</a> よりお願いいたします。</p>
+      <p>運営者：大西 洋平 / Veltio<br>
+      サービス URL：<a href="https://app.vel-tio.com">https://app.vel-tio.com</a></p>
+
+      <!-- ========================================================= -->
+      <!-- English version for Google OAuth API review               -->
+      <!-- ========================================================= -->
+      <hr id="english" style="margin:60px 0 40px;border:none;border-top:2px solid #e2e8f0;" />
+      <h1 style="font-size:24px;">Privacy Policy (English)</h1>
+      <p class="updated">Last updated: April 6, 2026</p>
+
+      <p>Veltio (operated by Yohei Onishi; hereinafter "we," "us," or "our") provides the web service "Veltio" (hereinafter the "Service"), a CVR (conversion rate) analytics platform for e-commerce sites. This Privacy Policy describes how we collect, use, store, and protect personal information and Google user data.</p>
+
+      <h2>1. Information We Collect</h2>
+      <ul>
+        <li>Account registration data: email address, display name, company name</li>
+        <li>Access logs: IP address, browser information, pages visited</li>
+        <li>Google OAuth credentials: access token, refresh token, and the Google account email address of the user who connects their GA4 property</li>
+        <li>Analytics data retrieved via the Google Analytics 4 Data API: aggregated site metrics such as sessions, bounce rate, add-to-cart rate, checkout rate, purchase rate, and CVR</li>
+        <li>User-generated content: analysis notes, action logs, campaign settings</li>
+      </ul>
+
+      <h2>2. Google User Data — How We Access, Use, Store, and Share It</h2>
+      <div class="highlight-box">
+        <p>The only Google user data we access is analytics metrics from the Google Analytics 4 property that the user explicitly connects to the Service. We use this data solely to provide and improve the features directly requested by the user — specifically, displaying analytics dashboards, generating CVR diagnoses, measuring campaign impact, and creating downloadable reports.</p>
+      </div>
+
+      <h3>Scope of Access</h3>
+      <ul>
+        <li>OAuth 2.0 scope requested: <code>https://www.googleapis.com/auth/analytics.readonly</code> (read-only)</li>
+        <li>We only access the GA4 property that the user explicitly authorizes.</li>
+        <li>We do not access any other Google services (Gmail, Calendar, Drive, Contacts, etc.).</li>
+      </ul>
+
+      <h3>How We Use Google User Data</h3>
+      <ul>
+        <li>To display CVR funnel metrics and trend charts in the user's dashboard</li>
+        <li>To generate rule-based diagnoses and improvement recommendations</li>
+        <li>To measure campaign impact and produce comparison reports</li>
+        <li>To generate downloadable PDF/PPTX analytics reports</li>
+      </ul>
+
+      <h3>Third-Party Sharing and Disclosure</h3>
+      <p>We do not sell, transfer, or disclose Google user data to any third party, except:</p>
+      <ul>
+        <li>When required by law or court/government order</li>
+        <li>To infrastructure providers (hosting, servers) strictly necessary to operate the Service, under confidentiality obligations</li>
+      </ul>
+
+      <h3>Prohibited Uses</h3>
+      <div class="prohibited-box">
+        <p>Veltio's use of data obtained through Google APIs is limited to providing and improving user-facing features. We do not, and will not, use Google user data for the following purposes, nor will we transfer it to third parties for these purposes:</p>
+      </div>
+      <ul>
+        <li>Selling or monetizing user data to third parties</li>
+        <li>Serving targeted or personalized advertisements</li>
+        <li>Providing data to data brokers or information resellers</li>
+        <li>Determining creditworthiness or for lending/insurance purposes</li>
+        <li>Training artificial intelligence or machine learning models (including our own)</li>
+        <li>Building external databases or data products</li>
+        <li>Any purpose unrelated to providing or improving user-facing Service features</li>
+      </ul>
+
+      <h3>Data Protection</h3>
+      <ul>
+        <li>OAuth access tokens and refresh tokens are stored encrypted on our servers.</li>
+        <li>All communication between clients and our servers is encrypted via HTTPS (TLS 1.2+).</li>
+        <li>Passwords are hashed using bcrypt and never stored in plaintext.</li>
+        <li>GA4 metrics data is stored in an isolated per-tenant data store.</li>
+      </ul>
+
+      <h3>Data Retention and Deletion</h3>
+      <ul>
+        <li><strong>OAuth tokens</strong> (access token and refresh token): deleted immediately upon GA4 disconnection or account deletion.</li>
+        <li><strong>GA4 analytics metrics</strong>: deleted immediately upon account deletion.</li>
+        <li><strong>Account data</strong>: deleted immediately upon account deletion.</li>
+        <li>Users can delete all their data at any time from <strong>Settings → Delete Account</strong> in the app.</li>
+        <li>Deletion requests may also be submitted via our <a href="/ja/contact">contact form</a>.</li>
+      </ul>
+
+      <h2>3. Cookies</h2>
+      <p>We use HttpOnly session cookies solely for authentication session management. These cookies contain only a session ID and no personal information. Disabling cookies will prevent login functionality.</p>
+
+      <h2>4. Third-Party Services Used</h2>
+      <ul>
+        <li><strong>Render.com</strong> — Server hosting and infrastructure</li>
+        <li><strong>Stripe</strong> — Payment processing (card data is handled directly by Stripe and never stored on our servers)</li>
+        <li><strong>Resend</strong> — Transactional email (verification codes, password resets)</li>
+        <li><strong>Google Analytics 4</strong> — Usage analytics for the Veltio service itself (anonymized and aggregated)</li>
+      </ul>
+
+      <h2>5. User Rights — Access, Correction, and Deletion</h2>
+      <p>Users may request access to, correction of, or deletion of their personal data at any time. In-app deletion is available from Settings → Delete Account. For other requests, please use our <a href="/ja/contact">contact form</a>.</p>
+
+      <h2>6. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy from time to time. If we make material changes to how we use Google user data, we will notify users by email before the changes take effect. Continued use of the Service after the updated policy is posted constitutes acceptance of the new terms.</p>
+
+      <h2>7. Contact</h2>
+      <p>For questions about this Privacy Policy or to submit a data deletion or access request:</p>
+      <p>
+        Operator: Yohei Onishi / Veltio<br>
+        Service URL: <a href="https://app.vel-tio.com">https://app.vel-tio.com</a><br>
+        Contact: <a href="https://app.vel-tio.com/ja/contact">https://app.vel-tio.com/ja/contact</a>
+      </p>
     </main>
 
     <footer>
-      © Veltio
+      © Veltio &nbsp;|&nbsp; 大西 洋平
       <a href="/ja/terms">利用規約</a>
       <a href="/ja/privacy">プライバシーポリシー</a>
       <a href="/ja/tokusho">特定商取引法</a>
