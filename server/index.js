@@ -2726,6 +2726,44 @@ async function handleApi(req, res, urlObj) {
     });
   }
 
+  if (req.method === "GET" && urlObj.pathname === "/api/demo") {
+    const DEMO_PROJECT = { id: "demo", name: "デモショップ", domain: "https://demo.example.com", targetCvr: 0.025 };
+    const DEMO_STAGE_RULES = { pdpEventName: "view_item", cartReachMode: "add_to_cart_or_begin_checkout" };
+    const today = new Date();
+    const toDate = today.toISOString().slice(0, 10);
+    const fromDate = new Date(today.getTime() - 29 * 86400000).toISOString().slice(0, 10);
+    const rows = [];
+    for (let d = new Date(fromDate); d <= today; d = new Date(d.getTime() + 86400000)) {
+      rows.push(...generateDailyMetrics(DEMO_PROJECT, DEMO_STAGE_RULES, d.toISOString().slice(0, 10)));
+    }
+    const agg = aggregateMetricRows(rows);
+    const rates = computeRates(agg);
+    const comparisons = buildMetricComparisons(db, rates, DEMO_PROJECT);
+    const granularity = "day";
+    const series = buildSeries(rows, granularity);
+    const funnel = [
+      { key: "sessions", label: "Sessions", value: agg.sessions },
+      { key: "pdp", label: "PDP", value: agg.pdpSessions },
+      { key: "add_to_cart", label: "Add to Cart", value: agg.addToCartSessions },
+      { key: "cart_reach", label: "Cart Reach", value: agg.cartReachSessions },
+      { key: "checkout", label: "Checkout", value: agg.checkoutSessions },
+      { key: "purchase", label: "Purchase", value: agg.purchaseSessions }
+    ];
+    return json(res, 200, {
+      projectId: "demo",
+      from: fromDate,
+      to: toDate,
+      granularity,
+      totals: agg,
+      metrics: rates,
+      comparisons,
+      series,
+      funnel,
+      compare: null,
+      isDemo: true
+    });
+  }
+
   if (req.method === "GET" && urlObj.pathname === "/api/account") {
     const user = requireAuth();
     if (!user) return;

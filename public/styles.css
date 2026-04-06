@@ -3482,3 +3482,95 @@ tr:hover td { background: var(--surface-2); }
   /* Topbar nav (fallback) */
   #topbar-nav.hidden ~ * .sidebar { display: none; }
 }
+
+/* ── Demo Banner ──────────────────────────────────────────────────────────── */
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+  color: #fff;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.demo-banner.hidden { display: none; }
+.demo-banner-text { flex: 1; min-width: 200px; }
+.demo-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.demo-banner-btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+.demo-banner-btn:hover { opacity: 0.85; }
+.demo-banner-login {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+.demo-banner-signup {
+  background: #fff;
+  color: var(--accent);
+}
+
+/* Demo mode: lock overlays for non-dashboard pages */
+.demo-locked-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--bg-rgb, 255,255,255), 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 10;
+  border-radius: 12px;
+}
+.demo-locked-overlay .demo-lock-icon {
+  font-size: 40px;
+  opacity: 0.5;
+}
+.demo-locked-overlay .demo-lock-msg {
+  font-size: 15px;
+  color: var(--ink-2);
+  text-align: center;
+  max-width: 300px;
+}
+.demo-locked-overlay .demo-lock-cta {
+  display: flex; gap: 8px;
+}
+.demo-locked-overlay .demo-lock-cta button {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+.demo-locked-overlay .demo-lock-cta .btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.demo-locked-overlay .demo-lock-cta .btn-ghost {
+  background: var(--bg-2);
+  color: var(--ink-1);
+}
+
+@media (max-width: 900px) {
+  .demo-banner { top: 52px; /* below mobile topbar */ }
+}
+@media (max-width: 600px) {
+  .demo-banner {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  .demo-banner-text { min-width: unset; }
+}

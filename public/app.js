@@ -27,7 +27,9 @@ const state = {
   adminCache: { tenants: [], users: [], projects: [] },
   adminBusiness: null,
   adminSelfGa: null,
-  authConfig: null
+  authConfig: null,
+  isDemo: false,
+  demoData: null
 };
 
 const q = (id) => document.getElementById(id);
@@ -946,7 +948,155 @@ function showAuth(mode = "login", options = {}) {
   }
 }
 
+async function showDemo(requestedPage = "dashboard") {
+  state.isDemo = true;
+  state.activePage = requestedPage;
+  // Show the app shell in demo mode
+  q("auth-view").classList.add("hidden");
+  q("app-view").classList.remove("hidden");
+  q("logout").classList.add("hidden");
+  q("topbar-nav").classList.remove("hidden");
+  const mbn = q("mobile-bottom-nav");
+  if (mbn) mbn.classList.add("visible");
+  q("app-main")?.classList.add("has-bottom-nav");
+  const mLogout = q("mobile-logout-btn");
+  if (mLogout) mLogout.classList.add("hidden");
+  q("demo-banner")?.classList.remove("hidden");
+  setAuthNotice("");
+  setActivePage(requestedPage);
+  renderDemoLockedOverlays();
+  await loadDemoData();
+}
+
+function renderDemoLockedOverlays() {
+  // Lock non-dashboard pages in demo mode
+  ["page-validation", "page-assistant", "page-account"].forEach((pageId) => {
+    const page = q(pageId);
+    if (!page) return;
+    if (!page.querySelector(".demo-locked-overlay")) {
+      const overlay = document.createElement("div");
+      overlay.className = "demo-locked-overlay";
+      overlay.innerHTML = `
+        <div class="demo-lock-icon">🔒</div>
+        <div class="demo-lock-msg">このページを表示するにはログインが必要です</div>
+        <div class="demo-lock-cta">
+          <button class="btn-primary" onclick="showAuth('signup',{syncPath:false})">無料で始める</button>
+          <button class="btn-ghost" onclick="showAuth('login',{syncPath:false})">ログイン</button>
+        </div>
+      `;
+      page.style.position = "relative";
+      page.appendChild(overlay);
+    }
+  });
+}
+
+function hideDemoLockedOverlays() {
+  document.querySelectorAll(".demo-locked-overlay").forEach((el) => el.remove());
+  ["page-validation", "page-assistant", "page-account"].forEach((pageId) => {
+    const page = q(pageId);
+    if (page) page.style.position = "";
+  });
+}
+
+async function loadDemoData() {
+  try {
+    const data = await api("/api/demo", { allowUnauthorized: true });
+    state.demoData = data;
+    renderDemoMetrics(data);
+  } catch {
+    // silently fail
+  }
+}
+
+function renderDemoMetrics(data) {
+  if (!data) return;
+  // Render KPI cards using demo data (reuse the same rendering logic as loadMetrics)
+  const cards = q("metric-cards");
+  if (!cards) return;
+  cards.innerHTML = "";
+
+  const lowerIsBetter = new Set(["bounce_rate", "cart_abandon_rate"]);
+  const orderedComparisons = (data.comparisons || []).slice().sort((a, b) => {
+    if (a.metricKey === "cvr") return -1;
+    if (b.metricKey === "cvr") return 1;
+    const gapA = a.status === "ok" ? 0 : Math.abs(a.gap * 100);
+    const gapB = b.status === "ok" ? 0 : Math.abs(b.gap * 100);
+    return gapB - gapA;
+  });
+  const worstAlert = orderedComparisons
+    .filter((i) => i.metricKey !== "cvr" && i.status !== "ok")
+    .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
+
+  orderedComparisons.forEach((item) => {
+    const card = document.createElement("div");
+    const isCvr = item.metricKey === "cvr";
+    const isCritical = worstAlert && item.metricKey === worstAlert.metricKey;
+    const gapAbs = Math.abs(item.gap * 100);
+    const currentText = metricActualText(data, item.metricKey);
+    let progressPct = 0;
+    if (item.status === "ok") {
+      progressPct = 100;
+    } else if (item.target > 0) {
+      progressPct = lowerIsBetter.has(item.metricKey)
+        ? Math.min(100, Math.round((item.target / Math.max(item.value, 0.0001)) * 100))
+        : Math.min(100, Math.round((item.value / item.target) * 100));
+    }
+    const progressClass = item.status === "ok" ? "is-good" : progressPct >= 70 ? "is-warn" : "is-bad";
+    card.className = ["metric-card", isCvr ? "metric-card-primary" : "", isCritical ? "metric-card-critical" : ""].filter(Boolean).join(" ");
+    card.innerHTML = `
+      <div class="metric-card-head">
+        <span class="metric-card-label">${escapeHtml(item.label)}</span>
+        ${item.status === "ok"
+          ? `<span class="metric-card-badge">✓ 基準内</span>`
+          : `<span class="metric-card-badge is-alert">▲ ${gapAbs.toFixed(2)}pt</span>`}
+      </div>
+      <div class="metric-card-main">${escapeHtml(currentText)}</div>
+      <div class="metric-progress-wrap" title="基準値達成率 ${progressPct}%">
+        <div class="metric-progress-fill ${progressClass}" style="width:${progressPct}%"></div>
+      </div>
+      <div class="metric-target-text">基準 ${fmtPct(item.target)}</div>
+    `;
+    cards.appendChild(card);
+  });
+
+  // Render project header for demo
+  const projCard = q("project-current-card");
+  if (projCard) {
+    projCard.innerHTML = `
+      <div class="k">分析対象サイト</div>
+      <div class="v">デモショップ</div>
+      <div class="k proj-domain">demo.example.com</div>
+      <div class="k" style="color:var(--muted)">目標CVR 2.50%（デモ）</div>
+    `;
+    q("project-empty-state")?.classList.add("hidden");
+    q("project-current-card")?.classList.remove("hidden");
+    q("project-actions")?.classList.add("hidden");
+    q("project-form")?.classList.add("hidden");
+  }
+
+  const compareStatus = q("compare-status");
+  if (compareStatus) {
+    compareStatus.className = "tiny";
+    compareStatus.textContent = `現在期間: ${data.from} 〜 ${data.to}（デモデータ）`;
+  }
+
+  // Render chart using demo series
+  if (data.series && data.series.length) {
+    renderTrendChart(data.series, state.chartMetric || "sessions");
+    renderChartSummary(data, state.chartMetric || "sessions");
+  }
+
+  // Render funnel
+  if (data.funnel) {
+    renderFunnelChart(data.funnel);
+  }
+}
+
 function showApp() {
+  state.isDemo = false;
+  state.demoData = null;
+  q("demo-banner")?.classList.add("hidden");
+  hideDemoLockedOverlays();
   q("auth-view").classList.add("hidden");
   q("app-view").classList.remove("hidden");
   q("logout").classList.remove("hidden");
@@ -998,8 +1148,7 @@ function applyRouteState(options = {}) {
     return;
   }
   if (appPage) {
-    setAuthNotice(options.notice || "Please sign in to access this page.");
-    showAuth("login", { nextPath: location.pathname, syncPath: true });
+    void showDemo(appPage);
     return;
   }
   showAuth(mode, { syncPath: false });
@@ -4281,5 +4430,19 @@ Array.from(document.querySelectorAll(".suggestion-chip")).forEach((button) => {
   // Mobile logout button
   q("mobile-logout-btn")?.addEventListener("click", doLogout);
 })();
+
+// Demo banner CTA buttons
+q("demo-login-btn")?.addEventListener("click", () => {
+  state.isDemo = false;
+  q("demo-banner")?.classList.add("hidden");
+  hideDemoLockedOverlays();
+  showAuth("login", { syncPath: false });
+});
+q("demo-signup-btn")?.addEventListener("click", () => {
+  state.isDemo = false;
+  q("demo-banner")?.classList.add("hidden");
+  hideDemoLockedOverlays();
+  showAuth("signup", { syncPath: false });
+});
 
 bootstrap();
