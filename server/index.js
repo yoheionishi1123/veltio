@@ -35,7 +35,7 @@ const ADMIN_EMAILS = new Set(
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean)
 );
-const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
@@ -55,10 +55,9 @@ if (STRIPE_SECRET_KEY) {
   }
 }
 
-const PLAN_PRICE_MAP = {
-  [STRIPE_PRO_PRICE_ID]:      "pro",
-  [STRIPE_BUSINESS_PRICE_ID]: "business"
-};
+const PLAN_PRICE_MAP = {};
+if (STRIPE_PRO_PRICE_ID)      PLAN_PRICE_MAP[STRIPE_PRO_PRICE_ID]      = "pro";
+if (STRIPE_BUSINESS_PRICE_ID) PLAN_PRICE_MAP[STRIPE_BUSINESS_PRICE_ID] = "business";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -1538,6 +1537,7 @@ async function syncProjectMetrics(db, project) {
   if (conn && requireGoogleOAuthConfig()) {
     try {
       await syncProjectMetricsFromGa4(db, project, from, to);
+      conn.lastSyncError = null;
       return;
     } catch (err) {
       conn.lastSyncError = String(err.message || err);
@@ -2495,16 +2495,6 @@ async function handleApi(req, res, urlObj) {
     };
     const code = issueEmailVerification(user);
 
-    db.tenants.push(tenant);
-    db.users.push(user);
-    db.memberships.push({
-      tenantId: tenant.id,
-      userId: user.id,
-      role: "owner",
-      createdAt: new Date().toISOString()
-    });
-    trackAppEvent(db, { eventType: "tenant_signup", userId: user.id, tenantId: tenant.id });
-
     let delivery;
     try {
       delivery = await sendVerificationEmail(user.email, code);
@@ -2515,6 +2505,16 @@ async function handleApi(req, res, urlObj) {
         detail: String(err.message || err)
       });
     }
+
+    db.tenants.push(tenant);
+    db.users.push(user);
+    db.memberships.push({
+      tenantId: tenant.id,
+      userId: user.id,
+      role: "owner",
+      createdAt: new Date().toISOString()
+    });
+    trackAppEvent(db, { eventType: "tenant_signup", userId: user.id, tenantId: tenant.id });
     await writeDb(db);
     return json(res, 200, {
       requiresVerification: true,
@@ -2969,6 +2969,7 @@ async function handleApi(req, res, urlObj) {
     db.ga4Connections = db.ga4Connections.filter((g) => !projectIds.has(g.projectId));
     db.stageRules = db.stageRules.filter((s) => !projectIds.has(s.projectId));
     db.metricDaily = db.metricDaily.filter((m) => !projectIds.has(m.projectId));
+    db.metricItemDaily = (db.metricItemDaily || []).filter((m) => !projectIds.has(m.projectId));
     db.diagnosisResults = db.diagnosisResults.filter((d) => !projectIds.has(d.projectId));
     db.reportJobs = db.reportJobs.filter((r) => !projectIds.has(r.projectId));
     db.projectContexts = db.projectContexts.filter((c) => !projectIds.has(c.projectId));
@@ -3392,15 +3393,23 @@ async function handleApi(req, res, urlObj) {
       return members.length === 1 && members[0].userId === user.id;
     });
     const projectIds = (db.projects || []).filter((p) => soleTenantIds.includes(p.tenantId)).map((p) => p.id);
+    const projectIdSet = new Set(projectIds);
+    const soleTenantIdSet = new Set(soleTenantIds);
 
     db.users = (db.users || []).filter((u) => u.id !== user.id);
     db.memberships = (db.memberships || []).filter((m) => m.userId !== user.id);
-    db.tenants = (db.tenants || []).filter((t) => !soleTenantIds.includes(t.id));
-    db.projects = (db.projects || []).filter((p) => !projectIds.includes(p.id));
-    db.ga4Connections = (db.ga4Connections || []).filter((c) => !projectIds.includes(c.projectId));
-    db.metricDaily = (db.metricDaily || []).filter((r) => !projectIds.includes(r.projectId));
-    db.campaigns = (db.campaigns || []).filter((c) => !projectIds.includes(c.projectId));
-    db.actionLogs = (db.actionLogs || []).filter((a) => !projectIds.includes(a.projectId));
+    db.tenants = (db.tenants || []).filter((t) => !soleTenantIdSet.has(t.id));
+    db.projects = (db.projects || []).filter((p) => !projectIdSet.has(p.id));
+    db.ga4Connections = (db.ga4Connections || []).filter((c) => !projectIdSet.has(c.projectId));
+    db.stageRules = (db.stageRules || []).filter((r) => !projectIdSet.has(r.projectId));
+    db.metricDaily = (db.metricDaily || []).filter((r) => !projectIdSet.has(r.projectId));
+    db.metricItemDaily = (db.metricItemDaily || []).filter((r) => !projectIdSet.has(r.projectId));
+    db.diagnosisResults = (db.diagnosisResults || []).filter((r) => !projectIdSet.has(r.projectId));
+    db.reportJobs = (db.reportJobs || []).filter((r) => !projectIdSet.has(r.projectId));
+    db.projectContexts = (db.projectContexts || []).filter((c) => !projectIdSet.has(c.projectId));
+    db.assistantMessages = (db.assistantMessages || []).filter((m) => !projectIdSet.has(m.projectId));
+    db.oauthStates = (db.oauthStates || []).filter((s) => s.userId !== user.id && !projectIdSet.has(s.projectId));
+    db.appEvents = (db.appEvents || []).filter((e) => e.userId !== user.id && !soleTenantIdSet.has(e.tenantId));
     db.sessions = (db.sessions || []).filter((s) => s.userId !== user.id);
     await writeDb(db);
 
@@ -3568,6 +3577,9 @@ async function handleApi(req, res, urlObj) {
       if (!name || !type || !startDate || !endDate || !validateDate(startDate) || !validateDate(endDate)) {
         return json(res, 400, { error: "missing_fields", message: "名称、種別、開始日、終了日は必須です" });
       }
+      if (startDate > endDate) {
+        return json(res, 400, { error: "invalid_date_range", message: "終了日は開始日以降に設定してください" });
+      }
       const customCompareStart = validateDate(String(body.customCompareStart || "")) ? String(body.customCompareStart) : "";
       const customCompareEnd = validateDate(String(body.customCompareEnd || "")) ? String(body.customCompareEnd) : "";
       const nextItem = {
@@ -3694,6 +3706,8 @@ async function handleApi(req, res, urlObj) {
       // Re-check uniqueness at callback time (race-condition guard)
       const conflictConn = db.ga4Connections.find((g) => g.ga4PropertyId === pending.propertyId && g.projectId !== pending.projectId);
       if (conflictConn) {
+        db.oauthStates = db.oauthStates.filter((s) => s.state !== state);
+        await writeDb(db);
         res.writeHead(302, { Location: "/dashboard?ga4=error&reason=property_already_registered" });
         return res.end();
       }
@@ -3778,13 +3792,15 @@ async function handleApi(req, res, urlObj) {
     if (!conn) return json(res, 400, { error: "ga4_not_connected" });
     if (!requireGoogleOAuthConfig()) return json(res, 400, { error: "ga4_oauth_not_configured" });
     await syncProjectMetrics(db, project);
-    trackAppEvent(db, {
-      eventType: "ga4_sync_success",
-      userId: user.id,
-      tenantId: project.tenantId,
-      projectId: project.id,
-      meta: { mode: "manual_sync" }
-    });
+    if (!conn.lastSyncError) {
+      trackAppEvent(db, {
+        eventType: "ga4_sync_success",
+        userId: user.id,
+        tenantId: project.tenantId,
+        projectId: project.id,
+        meta: { mode: "manual_sync" }
+      });
+    }
     await writeDb(db);
     return json(res, 200, { ok: true, lastSyncedAt: conn.lastSyncedAt || null, lastSyncError: conn.lastSyncError || null });
   }
