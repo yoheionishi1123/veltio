@@ -911,14 +911,25 @@ async function api(path, options = {}) {
   return body;
 }
 
+function closeMobileSidebar() {
+  document.documentElement.classList.remove("sidebar-open");
+}
+
 function showAuth(mode = "login", options = {}) {
   const syncPath = options.syncPath !== false;
   const nextPath = options.nextPath || "";
   const primary = authPrimaryMode(mode);
+  closeMobileSidebar();
   q("auth-view").classList.remove("hidden");
   q("app-view").classList.add("hidden");
   q("logout").classList.add("hidden");
   q("topbar-nav").classList.add("hidden");
+  // Mobile: hide bottom nav & logout btn, keep topbar visible but minimal
+  const mbn = q("mobile-bottom-nav");
+  if (mbn) mbn.classList.remove("visible");
+  q("app-main")?.classList.remove("has-bottom-nav");
+  const mLogout = q("mobile-logout-btn");
+  if (mLogout) mLogout.classList.add("hidden");
   q("login-form").classList.toggle("hidden", mode !== "login");
   q("signup-form").classList.toggle("hidden", mode !== "signup");
   q("verify-form").classList.toggle("hidden", mode !== "verify");
@@ -940,6 +951,12 @@ function showApp() {
   q("app-view").classList.remove("hidden");
   q("logout").classList.remove("hidden");
   q("topbar-nav").classList.remove("hidden");
+  // Mobile: show bottom nav & logout btn
+  const mbn = q("mobile-bottom-nav");
+  if (mbn) mbn.classList.add("visible");
+  q("app-main")?.classList.add("has-bottom-nav");
+  const mLogout = q("mobile-logout-btn");
+  if (mLogout) mLogout.classList.remove("hidden");
   setAuthNotice("");
   setActivePage(state.activePage || "dashboard");
 }
@@ -1047,6 +1064,12 @@ function setActivePage(page) {
     q(`tab-${key}`).classList.toggle("active", key === state.activePage);
     q(`page-${key}`).classList.toggle("hidden", key !== state.activePage);
   });
+  // Sync bottom nav active state
+  document.querySelectorAll(".mbn-item").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === state.activePage);
+  });
+  // Scroll to top on page change (mobile UX)
+  window.scrollTo({ top: 0, behavior: "instant" });
   if (state.activePage === "assistant" && !state.assistantHistoryLoaded) {
     void loadAssistantHistory();
   }
@@ -4220,5 +4243,43 @@ Array.from(document.querySelectorAll(".suggestion-chip")).forEach((button) => {
     await sendAssistantMessage(button.dataset.message || "");
   });
 });
+
+// ── Mobile navigation ──────────────────────────────────────────────────────
+(function initMobileNav() {
+  const menuBtn = q("mobile-menu-btn");
+  const overlay = document.getElementById("mobile-overlay");
+  const sidebar = q("sidebar");
+
+  function openSidebar() {
+    document.documentElement.classList.add("sidebar-open");
+  }
+  function closeSidebar() {
+    document.documentElement.classList.remove("sidebar-open");
+  }
+
+  menuBtn?.addEventListener("click", () => {
+    document.documentElement.classList.contains("sidebar-open") ? closeSidebar() : openSidebar();
+  });
+
+  overlay?.addEventListener("click", closeSidebar);
+
+  // Close sidebar when a sidebar-item is tapped on mobile
+  sidebar?.addEventListener("click", (e) => {
+    if (e.target.closest(".sidebar-item")) {
+      closeSidebar();
+    }
+  });
+
+  // Bottom nav tab switching
+  document.getElementById("mobile-bottom-nav")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".mbn-item");
+    if (!btn) return;
+    const tab = btn.dataset.tab;
+    if (tab) setActivePage(tab);
+  });
+
+  // Mobile logout button
+  q("mobile-logout-btn")?.addEventListener("click", doLogout);
+})();
 
 bootstrap();

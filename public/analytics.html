@@ -18,10 +18,24 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <!-- Mobile overlay (drawer backdrop) -->
+    <div id="mobile-overlay" class="mobile-overlay"></div>
+
     <div class="app-shell">
 
+    <!-- Mobile top bar (hidden on desktop) -->
+    <header class="mobile-topbar" id="mobile-topbar">
+      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" aria-label="メニューを開く">
+        <span></span><span></span><span></span>
+      </button>
+      <a href="/" class="mobile-brand">
+        <img src="/veltio-logo.svg" alt="Veltio" />
+      </a>
+      <button id="mobile-logout-btn" class="mobile-logout-btn hidden" type="button">Log out</button>
+    </header>
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <a href="/" aria-label="Veltio home">
           <img src="/veltio-logo.svg" alt="Veltio" class="brand-logo" />
@@ -1005,6 +1019,27 @@
 
     <script src="/app.js"></script>
     </div><!-- /.app-main -->
+
+    <!-- Mobile bottom navigation (hidden on desktop, shown when logged in) -->
+    <nav class="mobile-bottom-nav hidden" id="mobile-bottom-nav">
+      <button class="mbn-item active" data-tab="dashboard" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>
+        <span>Analytics</span>
+      </button>
+      <button class="mbn-item" data-tab="validation" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        <span>Actions</span>
+      </button>
+      <button class="mbn-item" data-tab="assistant" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" clip-rule="evenodd"/></svg>
+        <span>AI</span>
+      </button>
+      <button class="mbn-item" data-tab="account" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+        <span>Account</span>
+      </button>
+    </nav>
+
     </div><!-- /.app-shell -->
   </body>
 </html>

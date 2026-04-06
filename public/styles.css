@@ -3165,3 +3165,320 @@ tr:hover td { background: var(--surface-2); }
 .gm-cmp-good    { color: var(--success); font-weight: 700; }
 .gm-cmp-bad     { color: var(--danger);  font-weight: 700; }
 .gm-cmp-neutral { color: var(--muted); }
+
+/* ══════════════════════════════════════════════
+   MOBILE RESPONSIVE — complete overhaul
+   Breakpoints: 900px (tablet), 600px (phone)
+══════════════════════════════════════════════ */
+
+/* ── Mobile overlay (drawer backdrop) ─────── */
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+/* ── Mobile top bar ────────────────────────── */
+.mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  z-index: 101;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  gap: 12px;
+}
+
+.mobile-brand img {
+  height: 22px;
+  display: block;
+}
+
+.mobile-menu-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 38px;
+  height: 38px;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.mobile-menu-btn span {
+  display: block;
+  height: 2px;
+  background: var(--ink-2);
+  border-radius: 2px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.sidebar-open .mobile-menu-btn span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.sidebar-open .mobile-menu-btn span:nth-child(2) { opacity: 0; }
+.sidebar-open .mobile-menu-btn span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.mobile-logout-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── Mobile bottom navigation ─────────────── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 58px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  z-index: 100;
+  align-items: stretch;
+  justify-content: space-around;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mobile-bottom-nav.visible { display: flex; }
+
+.mbn-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  transition: color 0.15s;
+  letter-spacing: 0.02em;
+  -webkit-tap-highlight-color: transparent;
+}
+.mbn-item svg {
+  width: 22px; height: 22px;
+  transition: transform 0.15s;
+}
+.mbn-item.active {
+  color: var(--accent);
+}
+.mbn-item.active svg {
+  transform: scale(1.08);
+}
+
+/* ── Sidebar: drawer mode on mobile ────────── */
+@media (max-width: 900px) {
+  /* Show mobile UI elements */
+  .mobile-topbar { display: flex; }
+  .mobile-overlay { display: block; }
+
+  /* Sidebar becomes a slide-in drawer */
+  .sidebar {
+    display: flex !important;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
+    box-shadow: none;
+  }
+  .sidebar-open .sidebar {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+  }
+  .sidebar-open .mobile-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Main content: push down for mobile topbar */
+  .app-main {
+    margin-left: 0;
+    padding-top: 52px;
+  }
+
+  /* When bottom nav is visible, add bottom padding */
+  .app-main.has-bottom-nav {
+    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Container padding tighter on mobile */
+  .container {
+    padding: 16px 12px 32px;
+  }
+
+  /* Panel padding */
+  .panel {
+    padding: 14px 12px;
+  }
+
+  /* Cards: 2-col on tablet */
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Dashboard hero head: stack vertically */
+  .dashboard-hero-head {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .dashboard-hero-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Date range row: wrap tightly */
+  .dashboard-range-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 6px;
+    align-items: center;
+  }
+  .dashboard-range-row .compare-select-wrap {
+    grid-column: 1 / -1;
+  }
+  .dashboard-range-row .granularity-label {
+    grid-column: 1 / -1;
+  }
+  .dashboard-range-row #apply-range {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  /* Control grid: 2 col on tablet */
+  .dashboard-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Site footer hidden (bottom nav replaces) */
+  .site-footer { display: none; }
+
+  /* Admin controls wrap */
+  .admin-controls { flex-wrap: wrap; }
+  .admin-controls input[type="date"],
+  .admin-controls input[type="search"] { width: 100%; flex: none; }
+}
+
+/* ── Phone-specific (≤600px) ──────────────── */
+@media (max-width: 600px) {
+  .mobile-bottom-nav { display: flex; }
+  .mobile-bottom-nav.visible { display: flex; }
+
+  /* Container: minimal padding */
+  .container { padding: 12px 10px 28px; }
+
+  /* Panel: tighter */
+  .panel { padding: 12px 10px; margin-bottom: 12px; }
+  .panel h2 { font-size: 15px; }
+  .panel h3 { font-size: 14px; }
+
+  /* Cards: 1 column */
+  .cards { grid-template-columns: 1fr; }
+
+  /* Card value font size */
+  .card .v { font-size: 24px; }
+
+  /* Dashboard control grid: single col */
+  .dashboard-control-grid { grid-template-columns: 1fr; }
+
+  /* Dashboard range row: full-width stacked */
+  .dashboard-range-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dashboard-range-row .range-sep { display: none; }
+  .dashboard-range-row input[type="date"] { width: 100%; }
+
+  /* Chart: reduce height */
+  .chart { height: 180px; }
+  .chart-card .chart { height: 180px; }
+
+  /* Buttons: easier tap */
+  button, .btn, input[type="submit"] {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  /* Auth panel: full width, compact */
+  .panel:has(#auth-view),
+  #auth-view.panel {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    margin: 0 -10px;
+    padding: 16px 10px;
+  }
+
+  /* Stack form inputs */
+  .stack label, .stack input, .stack button { width: 100%; }
+
+  /* Topbar (legacy) */
+  .topbar { padding: 10px 12px; }
+  .topbar-nav { display: none; }
+
+  /* Timeline grid */
+  .timeline-grid { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+
+  /* Breakdown table → hidden, cards shown */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .breakdown-inline-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Diagnosis list */
+  .dac-finding-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .dac-finding-right { width: 100%; }
+
+  /* Task form */
+  .task-form-main-row { grid-template-columns: 1fr; }
+  .task-form-meta-row { grid-template-columns: 1fr; }
+
+  /* Account form */
+  .account-form-grid { grid-template-columns: 1fr; }
+  .account-wide-cols { flex-direction: column; }
+
+  /* GA4 connect form */
+  .ga4-form-row { flex-direction: column; }
+
+  /* Campaign info */
+  .ci-card-header { flex-direction: column; align-items: flex-start; }
+  .ci-compare-grid { grid-template-columns: 1fr; }
+
+  /* Pricing grid */
+  .pricing-grid { grid-template-columns: 1fr; }
+
+  /* Chat bubble max width */
+  .chat-bubble { max-width: 95%; }
+
+  /* Journey steps: single col */
+  .journey-steps { flex-direction: column; }
+  .journey-step-card { min-width: auto; }
+
+  /* Group measurement */
+  .gm-body { flex-direction: column; }
+  .gm-chart-col, .gm-table-col { min-width: 0; width: 100%; }
+
+  /* Admin table: scroll */
+  .admin-controls { gap: 6px; }
+  .admin-controls button { flex: none; }
+
+  /* Section head */
+  .dashboard-section-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .dashboard-section-head .dashboard-hero-actions { width: 100%; }
+
+  /* Topbar nav (fallback) */
+  #topbar-nav.hidden ~ * .sidebar { display: none; }
+}
