@@ -656,7 +656,8 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
   const host = q("trend-chart");
   host.innerHTML = "";
   if (!series.length) {
-    host.textContent = "データがありません。";
+    const ctaBtn = state.isDemo ? "" : `<button type="button" class="chart-empty-btn" onclick="setActivePage('account')">GA4を連携する →</button>`;
+    host.innerHTML = `<div class="chart-empty-state"><div class="chart-empty-icon">📊</div><div class="chart-empty-title">データがまだありません</div><div class="chart-empty-body">GA4を連携してデータを同期すると、ここに推移グラフが表示されます。</div>${ctaBtn}</div>`;
     return;
   }
 
@@ -816,7 +817,7 @@ function renderFunnelChart(funnel) {
   const host = q("funnel-chart");
   host.innerHTML = "";
   if (!funnel.length || funnel[0].value === 0) {
-    host.textContent = "データがありません。";
+    host.innerHTML = `<div class="chart-empty-state chart-empty-state-sm"><div class="chart-empty-icon">🔽</div><div class="chart-empty-title">データがまだありません</div><div class="chart-empty-body">GA4連携後に自動表示されます。</div></div>`;
     return;
   }
 
@@ -1089,6 +1090,89 @@ function renderDemoMetrics(data) {
   // Render funnel
   if (data.funnel) {
     renderFunnelChart(data.funnel);
+  }
+
+  // Render demo diagnosis preview
+  const diagHost = q("diagnosis-unified");
+  if (diagHost) {
+    diagHost.innerHTML = `
+      <div class="dac-section dac-severity-critical">
+        <div class="dac-finding-row">
+          <div class="dac-finding-left">
+            <span class="dac-severity-badge dac-sev-critical">重大</span>
+            <span class="dac-metric-title">カート追加率が基準を下回っています</span>
+          </div>
+          <div class="dac-finding-right">
+            <span class="dac-val">8.2%</span>
+            <span class="dac-bm muted">基準 15.0%</span>
+          </div>
+        </div>
+        <div class="dac-reason tiny muted">商品詳細ページへの訪問に対してカート追加が少ない状態です。商品ページの訴求力・価格表示・CTA配置を見直してください。</div>
+        <div class="dac-worst-row"><span class="dac-worst-tag">デバイス: mobile (6.1%)</span><span class="dac-worst-tag">チャネル: Organic Search (7.8%)</span></div>
+        <div class="dac-recs">
+          <div class="dac-rec">
+            <div class="dac-rec-header">
+              <div class="dac-rec-title">スマホ向けカートボタンを固定表示に変更する</div>
+              <div class="dac-rec-scores"><span class="dac-score-tag">Impact <strong>5</strong>/5</span><span class="dac-score-tag">Ease <strong>3</strong>/5</span></div>
+            </div>
+            <div class="dac-rec-summary tiny muted">スクロール中も常にカートボタンが見えるよう固定配置し、モバイルでの追加率を改善します。</div>
+          </div>
+          <div class="dac-rec">
+            <div class="dac-rec-header">
+              <div class="dac-rec-title">商品ページにレビュー件数・星評価を追加する</div>
+              <div class="dac-rec-scores"><span class="dac-score-tag">Impact <strong>4</strong>/5</span><span class="dac-score-tag">Ease <strong>4</strong>/5</span></div>
+            </div>
+            <div class="dac-rec-summary tiny muted">社会的証明を加えることで購買意欲を高め、カート追加率の向上を狙います。</div>
+          </div>
+        </div>
+      </div>
+      <div class="dac-section dac-severity-warning">
+        <div class="dac-finding-row">
+          <div class="dac-finding-left">
+            <span class="dac-severity-badge dac-sev-warning">要改善</span>
+            <span class="dac-metric-title">直帰率が基準を超えています</span>
+          </div>
+          <div class="dac-finding-right">
+            <span class="dac-val">62.3%</span>
+            <span class="dac-bm muted">基準 55.0%</span>
+          </div>
+        </div>
+        <div class="dac-reason tiny muted">流入後に離脱するユーザーが多い状態です。LP・トップページのファーストビューを改善し、回遊を促す導線を強化してください。</div>
+        <div class="dac-recs">
+          <div class="dac-rec">
+            <div class="dac-rec-header">
+              <div class="dac-rec-title">トップページのヒーローバナーを訴求軸で差し替える</div>
+              <div class="dac-rec-scores"><span class="dac-score-tag">Impact <strong>4</strong>/5</span><span class="dac-score-tag">Ease <strong>3</strong>/5</span></div>
+            </div>
+            <div class="dac-rec-summary tiny muted">ファーストビューでブランドの強みを明示し、スクロール継続率を高めます。</div>
+          </div>
+        </div>
+      </div>
+      <div class="tiny muted" style="padding:8px 12px;opacity:0.7">※ デモデータに基づくサンプル診断です。実際の診断はGA4連携後に生成されます。</div>
+    `;
+  }
+
+  // Render demo journey summary
+  const journeySummary = q("journey-summary");
+  if (journeySummary) {
+    journeySummary.innerHTML = `<div class="journey-alert">最大離脱: <strong>商品詳細 → カート</strong> / 離脱率 <strong>66.7%</strong> / 離脱セッション <strong>1,820</strong></div>`;
+  }
+  const journeySteps = q("journey-steps");
+  if (journeySteps) {
+    const steps = [
+      { label: "Landing", value: 8500 },
+      { label: "PDP（商品詳細）", value: 3800 },
+      { label: "Add to Cart", value: 1270 },
+      { label: "Checkout", value: 760 },
+      { label: "Purchase", value: 551 }
+    ];
+    const max = steps[0].value;
+    journeySteps.innerHTML = steps.map((step, idx) => {
+      const prev = idx > 0 ? steps[idx - 1] : null;
+      const passRate = prev ? (step.value / prev.value * 100).toFixed(1) + "%" : "起点";
+      const dropCount = prev ? fmtNum(Math.max(0, prev.value - step.value)) : "—";
+      return `<article class="journey-step-card"><div class="journey-step-head"><div class="journey-step-name">${idx + 1}. ${escapeHtml(step.label)}</div><div class="journey-step-value">${fmtNum(step.value)}</div></div><div class="journey-step-track"><div class="journey-step-fill" style="width:${Math.max(4, (step.value / max) * 100)}%"></div></div><div class="journey-step-meta">${prev ? `前段階通過率 ${passRate} / 離脱 ${dropCount}` : "起点セッション"}</div></article>`;
+    }).join("");
   }
 }
 
@@ -2595,6 +2679,13 @@ async function loadMetrics() {
   }
   const cards = q("metric-cards");
   cards.innerHTML = "";
+
+  if (!data.comparisons || data.comparisons.length === 0) {
+    cards.innerHTML = `<div class="kpi-empty-state"><div class="kpi-empty-icon">📈</div><div class="kpi-empty-title">KPIデータがまだありません</div><div class="kpi-empty-body">GA4を連携してデータを同期すると、CVRをはじめとする7指標が自動で計算されます。</div><button type="button" class="chart-empty-btn" onclick="setActivePage('account')">GA4を連携する →</button></div>`;
+    renderTrendChart(data.series || [], state.chartMetric);
+    renderFunnelChart(data.funnel || []);
+    return;
+  }
 
   // Sort: CVR first, then worst gap first
   const lowerIsBetter = new Set(["bounce_rate", "cart_abandon_rate"]);
