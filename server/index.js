@@ -433,7 +433,13 @@ async function ensureStorage() {
   }
 }
 
+// ── インメモリDBキャッシュ（起動時1回読み込み、以降はメモリを使う） ──────────
+let _dbCache = null;
+let _writeQueued = false;
+
 async function readDb() {
+  if (_dbCache) return _dbCache; // キャッシュヒット
+
   let raw;
   try {
     raw = await fs.readFile(DB_FILE, "utf8");
@@ -446,12 +452,29 @@ async function readDb() {
   try {
     db = JSON.parse(raw);
   } catch (e) {
-    console.error("[db] JSON parse error, backing up and reinitializing:", e.message);
-    const backupPath = DB_FILE + ".bak." + Date.now();
-    await fs.writeFile(backupPath, raw, "utf8").catch(() => {});
-    await fs.unlink(DB_FILE).catch(() => {});
-    await ensureStorage();
-    db = JSON.parse(await fs.readFile(DB_FILE, "utf8"));
+    console.error("[db] JSON parse error:", e.message);
+    // バックアップからの復旧を試みる
+    const backups = await fs.readdir(path.dirname(DB_FILE)).catch(() => []);
+    const bakFiles = backups
+      .filter((f) => f.startsWith("db.json.bak."))
+      .sort()
+      .reverse();
+    for (const bak of bakFiles) {
+      try {
+        const bakRaw = await fs.readFile(path.join(path.dirname(DB_FILE), bak), "utf8");
+        db = JSON.parse(bakRaw);
+        console.warn("[db] recovered from backup:", bak);
+        break;
+      } catch {}
+    }
+    if (!db) {
+      // 復旧不能 → バックアップして初期化
+      const backupPath = DB_FILE + ".bak." + Date.now();
+      await fs.writeFile(backupPath, raw, "utf8").catch(() => {});
+      await fs.unlink(DB_FILE).catch(() => {});
+      await ensureStorage();
+      db = JSON.parse(await fs.readFile(DB_FILE, "utf8"));
+    }
   }
   if (!Array.isArray(db.templates) || db.templates.length === 0) {
     db.templates = RECOMMENDATION_TEMPLATES;
@@ -495,11 +518,21 @@ async function readDb() {
     db.diagnosisRules = DIAGNOSIS_RULE_DEFAULTS;
   }
   db.tenants = db.tenants.map((tenant) => ensureTenantDefaults(tenant));
+  _dbCache = db; // キャッシュに保存
   return db;
 }
 
 async function writeDb(db) {
-  await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), "utf8");
+  _dbCache = db; // メモリ即時反映
+  // アトミック書き込み: tmpファイルに書いてからrename（書き込み途中クラッシュでのDB破壊を防ぐ）
+  const tmp = DB_FILE + ".tmp";
+  const json_str = JSON.stringify(db, null, 2);
+  await fs.writeFile(tmp, json_str, "utf8");
+  await fs.rename(tmp, DB_FILE);
+  // 定期バックアップ（1日1回）
+  const now = new Date();
+  const bakPath = DB_FILE + `.bak.${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}`;
+  await fs.writeFile(bakPath, json_str, "utf8").catch(() => {});
 }
 
 function json(res, status, body) {
@@ -4584,6 +4617,7 @@ async function runDailyBatch() {
 
 async function bootstrap() {
   await ensureStorage();
+  await readDb(); // 起動時にDBをメモリにロードしてキャッシュを温める
 
   const server = http.createServer(async (req, res) => {
     try {
