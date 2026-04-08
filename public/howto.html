@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veltio 使い方ガイド | CVR分析ワークスペース</title>
+    <meta name="description" content="Veltioの使い方を解説。アカウント作成からGA4接続、ダッシュボード分析、施策管理まで4ステップで開始できます。" />
+    <link rel="icon" href="/veltio-logo.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VBKYWDLGE5"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-VBKYWDLGE5");
+    </script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
+        color: #121926;
+        background: #f8fafc;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ── Topbar ── */
+      .lp-topbar {
+        background: #0b1320;
+        padding: 0 24px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      .lp-brand img { height: 28px; display: block; }
+      .lp-nav { display: flex; align-items: center; gap: 8px; }
+      .lp-nav a {
+        font-size: 13px; font-weight: 600; text-decoration: none;
+        padding: 7px 16px; border-radius: 999px;
+        transition: background 0.15s, color 0.15s;
+      }
+      .lp-nav-ghost { color: #a0aec0; border: 1px solid #2a3a52; }
+      .lp-nav-ghost:hover { background: #1a2744; color: #fff; }
+      .lp-nav-primary { background: #0a58ca; color: #fff; border: 1px solid #0a58ca; }
+      .lp-nav-primary:hover { background: #0847a8; }
+
+      /* ── Shell ── */
+      .shell { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+      /* ── Page header ── */
+      .page-header {
+        background: linear-gradient(135deg, #0b1320 0%, #162040 100%);
+        padding: 64px 24px;
+        text-align: center;
+        color: #fff;
+      }
+      .page-header-kicker {
+        font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: #60a5fa; font-weight: 800; margin-bottom: 16px;
+        background: rgba(96,165,250,0.15); padding: 4px 12px; border-radius: 20px;
+        display: inline-block;
+      }
+      .page-header h1 { margin: 0; font-size: clamp(24px, 4vw, 40px); font-weight: 800; line-height: 1.2; }
+      .page-header p { margin: 16px 0 0; color: #94a3b8; font-size: 15px; line-height: 1.8; }
+
+      /* ── Overview steps ── */
+      .overview { padding: 60px 0 0; }
+      .overview-steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-top: 32px;
+      }
+      .ov-step {
+        background: #fff;
+        border: 2px solid #e4e8f0;
+        border-radius: 16px;
+        padding: 20px 16px;
+        text-align: center;
+        position: relative;
+        transition: border-color 0.15s;
+      }
+      .ov-step:hover { border-color: #0a58ca; }
+      .ov-num {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: #0a58ca; color: #fff;
+        font-size: 14px; font-weight: 800;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 12px;
+      }
+      .ov-step h3 { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: #0b1320; }
+      .ov-step p { margin: 0; font-size: 12px; color: #667085; line-height: 1.6; }
+      .ov-connector {
+        display: none;
+      }
+      @media (min-width: 640px) {
+        .ov-step::after {
+          content: "→";
+          position: absolute;
+          right: -14px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #98a2b3;
+          font-size: 16px;
+          font-weight: 700;
+        }
+        .ov-step:last-child::after { display: none; }
+      }
+
+      /* ── Section titles ── */
+      .section-title-wrap { margin-bottom: 32px; }
+      .section-step-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: #0a58ca; color: #fff;
+        font-size: 12px; font-weight: 700; padding: 4px 12px 4px 8px;
+        border-radius: 999px; margin-bottom: 12px;
+      }
+      .section-step-badge span {
+        background: rgba(255,255,255,0.25); width: 20px; height: 20px;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 11px;
+      }
+      .section-title-wrap h2 { margin: 0 0 8px; font-size: clamp(20px, 3vw, 28px); font-weight: 800; color: #0b1320; }
+      .section-title-wrap p { margin: 0; color: #667085; font-size: 14px; line-height: 1.8; }
+
+      /* ── Guide sections ── */
+      .guide-section {
+        padding: 64px 0;
+        border-bottom: 1px solid #e4e8f0;
+      }
+      .guide-section:last-child { border-bottom: none; }
+
+      /* ── UI mockup screens ── */
+      .screen-wrap {
+        background: #fff;
+        border: 1px solid #d0d5dd;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(10,40,100,0.08);
+        margin: 32px 0;
+      }
+      .screen-titlebar {
+        background: #f1f3f5;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid #e4e8f0;
+      }
+      .screen-dot { width: 10px; height: 10px; border-radius: 50%; }
+      .screen-dot-r { background: #fc5c65; }
+      .screen-dot-y { background: #fed330; }
+      .screen-dot-g { background: #20bf6b; }
+      .screen-url {
+        background: #fff; border: 1px solid #dee2e6; border-radius: 6px;
+        padding: 4px 12px; font-size: 11px; color: #868e96; flex: 1; max-width: 300px;
+      }
+      .screen-body { padding: 24px; }
+
+      /* ── Signup mockup ── */
+      .mock-auth {
+        max-width: 400px;
+        margin: 0 auto;
+        border: 1px solid #e4e8f0;
+        border-radius: 12px;
+        padding: 28px 24px;
+      }
+      .mock-auth-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #0a58ca; font-weight: 800; margin-bottom: 8px; }
+      .mock-auth h3 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+      .mock-auth .sub { color: #667085; font-size: 12px; margin-bottom: 20px; }
+      .mock-tabs { display: flex; gap: 0; border-bottom: 2px solid #e4e8f0; margin-bottom: 20px; }
+      .mock-tab { padding: 8px 20px; font-size: 13px; font-weight: 600; color: #98a2b3; cursor: default; }
+      .mock-tab.active { color: #0a58ca; border-bottom: 2px solid #0a58ca; margin-bottom: -2px; }
+      .mock-field { margin-bottom: 14px; }
+      .mock-field label { display: block; font-size: 12px; font-weight: 600; color: #344054; margin-bottom: 4px; }
+      .mock-field input {
+        width: 100%; padding: 9px 12px; border: 1px solid #d0d5dd;
+        border-radius: 8px; font-size: 13px; color: #344054; background: #f9fafb;
+      }
+      .mock-field input[data-filled] { background: #fff; border-color: #0a58ca; }
+      .mock-btn-primary {
+        width: 100%; padding: 11px; background: #0a58ca; color: #fff;
+        border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+        cursor: default; margin-top: 4px;
+      }
+      .mock-divider { text-align: center; color: #98a2b3; font-size: 12px; margin: 16px 0; position: relative; }
+      .mock-divider::before, .mock-divider::after {
+        content: ""; position: absolute; top: 50%; width: 38%; height: 1px; background: #e4e8f0;
+      }
+      .mock-divider::before { left: 0; }
+      .mock-divider::after { right: 0; }
+      .mock-google-btn {
+        width: 100%; padding: 10px; border: 1px solid #d0d5dd; border-radius: 8px;
+        font-size: 13px; font-weight: 600; cursor: default; display: flex; align-items: center;
+        justify-content: center; gap: 8px; color: #344054; background: #fff;
+      }
+
+      /* ── Project form mockup ── */
+      .mock-form { max-width: 540px; }
+      .mock-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+      .mock-form-row.full { grid-template-columns: 1fr; }
+      .mock-select {
+        width: 100%; padding: 9px 12px; border: 1px solid #d0d5dd;
+        border-radius: 8px; font-size: 13px; color: #344054; background: #f9fafb;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2398A2B3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+      }
+
+      /* ── GA4 connect mockup ── */
+      .mock-ga4-card {
+        border: 1px solid #e4e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+      }
+      .mock-ga4-status {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #ecfdf5; color: #059669; padding: 4px 10px; border-radius: 999px;
+        font-size: 12px; font-weight: 700; margin-bottom: 12px;
+      }
+      .mock-ga4-prop {
+        font-size: 13px; font-weight: 600; color: #0b1320; margin-bottom: 4px;
+      }
+      .mock-ga4-id { font-size: 11px; color: #98a2b3; font-family: monospace; }
+      .mock-badge-blue {
+        display: inline-flex; align-items: center; gap: 4px;
+        background: #e8f0fe; color: #0a58ca; padding: 3px 10px; border-radius: 999px;
+        font-size: 11px; font-weight: 700;
+      }
+
+      /* ── Dashboard mockup ── */
+      .mock-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .mock-kpi {
+        background: #f5f7fb; border: 1px solid #e4e8f0; border-radius: 10px; padding: 14px;
+      }
+      .mock-kpi.primary { background: #e8f0fe; border-color: #0a58ca; }
+      .mock-kpi.alert { background: #fff5f5; border-color: #e53e3e; }
+      .mock-kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #98a2b3; font-weight: 700; margin-bottom: 6px; }
+      .mock-kpi-val { font-size: 22px; font-weight: 800; color: #0b1320; }
+      .mock-kpi.primary .mock-kpi-val { color: #0a58ca; }
+      .mock-kpi.alert .mock-kpi-val { color: #e53e3e; }
+      .mock-kpi-sub { font-size: 10px; color: #98a2b3; margin-top: 2px; }
+      .mock-kpi-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+      .mock-kpi-badge.ok { background: #d1fae5; color: #059669; }
+      .mock-kpi-badge.ng { background: #fee2e2; color: #dc2626; }
+      .mock-progress { height: 5px; background: #e4e8f0; border-radius: 3px; margin-top: 8px; }
+      .mock-progress-fill { height: 100%; border-radius: 3px; }
+      .mock-progress-fill.good { background: #059669; }
+      .mock-progress-fill.warn { background: #f59e0b; }
+      .mock-progress-fill.bad { background: #dc2626; }
+
+      /* ── Diagnosis mockup ── */
+      .mock-diag-card {
+        border-radius: 10px; padding: 16px; margin-bottom: 12px;
+      }
+      .mock-diag-card.critical { background: #fff5f5; border: 1px solid #fca5a5; }
+      .mock-diag-card.warning { background: #fffbeb; border: 1px solid #fcd34d; }
+      .mock-diag-badge {
+        display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+        border-radius: 4px; margin-bottom: 8px;
+      }
+      .mock-diag-badge.critical { background: #fee2e2; color: #dc2626; }
+      .mock-diag-badge.warning { background: #fef3c7; color: #d97706; }
+      .mock-diag-title { font-size: 14px; font-weight: 700; color: #0b1320; margin-bottom: 4px; }
+      .mock-diag-body { font-size: 12px; color: #667085; line-height: 1.6; }
+      .mock-rec { background: #fff; border: 1px solid #e4e8f0; border-radius: 8px; padding: 12px; margin-top: 10px; }
+      .mock-rec-title { font-size: 13px; font-weight: 600; color: #0b1320; margin-bottom: 4px; }
+      .mock-rec-body { font-size: 11px; color: #667085; }
+      .mock-score-row { display: flex; gap: 8px; margin-top: 6px; }
+      .mock-score { font-size: 11px; background: #f5f7fb; padding: 2px 8px; border-radius: 4px; color: #344054; font-weight: 600; }
+
+      /* ── Validation task mockup ── */
+      .mock-task { background: #fff; border: 1px solid #e4e8f0; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+      .mock-task-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .mock-task-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+      .mock-task-badge.doing { background: #e8f0fe; color: #0a58ca; }
+      .mock-task-badge.done { background: #d1fae5; color: #059669; }
+      .mock-task-badge.todo { background: #f5f7fb; color: #667085; }
+      .mock-task-title { font-size: 14px; font-weight: 600; color: #0b1320; }
+      .mock-task-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+      .mock-chip { font-size: 11px; background: #f5f7fb; padding: 3px 8px; border-radius: 4px; color: #667085; }
+      .mock-task-effect { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f0f0f0; }
+      .mock-effect-badge { font-size: 11px; font-weight: 700; background: #d1fae5; color: #059669; padding: 2px 8px; border-radius: 4px; }
+      .mock-effect-val { font-size: 13px; font-weight: 700; color: #059669; }
+
+      /* ── Tips box ── */
+      .tip-box {
+        background: #f0f7ff;
+        border: 1px solid #bfdbfe;
+        border-left: 4px solid #0a58ca;
+        border-radius: 8px;
+        padding: 16px 18px;
+        margin: 20px 0;
+        font-size: 13.5px;
+        line-height: 1.75;
+        color: #1e3a5f;
+      }
+      .tip-box strong { color: #0a58ca; }
+
+      /* ── Step connector ── */
+      .guide-step-divider {
+        display: flex; align-items: center; gap: 12px;
+        margin: 40px 0; color: #98a2b3; font-size: 13px; font-weight: 600;
+      }
+      .guide-step-divider::before, .guide-step-divider::after {
+        content: ""; flex: 1; height: 1px; background: #e4e8f0;
+      }
+
+      /* ── CTA section ── */
+      .cta-section {
+        background: linear-gradient(135deg, #0a58ca 0%, #0f3e9f 100%);
+        border-radius: 20px;
+        padding: 48px 40px;
+        text-align: center;
+        margin: 60px 0;
+        color: #fff;
+      }
+      .cta-section h2 { margin: 0 0 12px; font-size: 26px; font-weight: 800; }
+      .cta-section p { margin: 0 0 28px; color: rgba(255,255,255,0.8); font-size: 14px; }
+      .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+      .cta-btn-primary {
+        background: #fff; color: #0a58ca; padding: 12px 28px;
+        border-radius: 999px; font-size: 14px; font-weight: 700;
+        text-decoration: none; transition: opacity 0.15s;
+      }
+      .cta-btn-primary:hover { opacity: 0.9; }
+      .cta-btn-demo {
+        background: transparent; color: #fff; padding: 12px 28px;
+        border-radius: 999px; font-size: 14px; font-weight: 700;
+        text-decoration: none; border: 2px solid rgba(255,255,255,0.6);
+        transition: border-color 0.15s;
+      }
+      .cta-btn-demo:hover { border-color: #fff; }
+
+      /* ── Footer ── */
+      .lp-footer {
+        background: #0b1320;
+        padding: 24px;
+        text-align: center;
+        color: #4a5a78;
+        font-size: 12.5px;
+      }
+
+      /* ── Responsive ── */
+      @media (max-width: 640px) {
+        .overview-steps { grid-template-columns: 1fr 1fr; }
+        .mock-kpi-grid { grid-template-columns: 1fr 1fr; }
+        .mock-form-row { grid-template-columns: 1fr; }
+        .cta-section { padding: 32px 20px; }
+        .screen-body { padding: 16px; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <header class="lp-topbar">
+      <a href="/" class="lp-brand" aria-label="Veltio home">
+        <img src="/veltio-logo.svg" alt="Veltio" />
+      </a>
+      <nav class="lp-nav">
+        <a href="/app/login" class="lp-nav-ghost">ログイン</a>
+        <a href="/app/signin" class="lp-nav-primary">新規登録</a>
+      </nav>
+    </header>
+
+    <div class="page-header">
+      <p class="page-header-kicker">How to use Veltio</p>
+      <h1>Veltio 使い方ガイド</h1>
+      <p>アカウント作成からGA4接続・ダッシュボード分析・施策管理まで<br>4ステップで始められます。</p>
+    </div>
+
+    <main>
+      <!-- Overview -->
+      <section class="overview">
+        <div class="shell">
+          <div class="overview-steps">
+            <div class="ov-step">
+              <div class="ov-num">1</div>
+              <h3>アカウント作成</h3>
+              <p>メールアドレスで無料登録。30秒で完了。</p>
+            </div>
+            <div class="ov-step">
+              <div class="ov-num">2</div>
+              <h3>プロジェクト作成</h3>
+              <p>分析するサイトの名前とドメインを登録。</p>
+            </div>
+            <div class="ov-step">
+              <div class="ov-num">3</div>
+              <h3>GA4を接続</h3>
+              <p>Property IDを入力するだけで連携完了。</p>
+            </div>
+            <div class="ov-step">
+              <div class="ov-num">4</div>
+              <h3>分析・改善を回す</h3>
+              <p>診断→施策登録→効果測定のサイクルを継続。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 1: アカウント作成 -->
+      <section class="guide-section" id="step1">
+        <div class="shell">
+          <div class="section-title-wrap">
+            <div class="section-step-badge"><span>1</span> アカウント作成</div>
+            <h2>メールアドレスで無料登録</h2>
+            <p>Veltioはメールアドレスとパスワードだけで登録できます。会社名・氏名を入力して30秒で完了です。確認コードをメールで受け取ってアカウントを有効化します。</p>
+          </div>
+
+          <div class="screen-wrap">
+            <div class="screen-titlebar">
+              <div class="screen-dot screen-dot-r"></div>
+              <div class="screen-dot screen-dot-y"></div>
+              <div class="screen-dot screen-dot-g"></div>
+              <div class="screen-url">app.vel-tio.com/app/signin</div>
+            </div>
+            <div class="screen-body">
+              <div class="mock-auth">
+                <p class="mock-auth-kicker">Get Started</p>
+                <h3>新規登録</h3>
+                <p class="sub">Veltioを開始するにはアカウントを作成してください。</p>
+                <div class="mock-tabs">
+                  <div class="mock-tab">Login</div>
+                  <div class="mock-tab active">Sign Up</div>
+                </div>
+                <div class="mock-field">
+                  <label>会社名 / アカウント名 <span style="color:#e53e3e">*</span></label>
+                  <input type="text" value="デモ株式会社" data-filled readonly />
+                </div>
+                <div class="mock-field">
+                  <label>氏名</label>
+                  <input type="text" value="田中 太郎" data-filled readonly />
+                </div>
+                <div class="mock-field">
+                  <label>メールアドレス <span style="color:#e53e3e">*</span></label>
+                  <input type="email" value="tanaka@example.com" data-filled readonly />
+                </div>
+                <div class="mock-field">
+                  <label>パスワード <span style="color:#e53e3e">*</span></label>
+                  <input type="password" value="●●●●●●●●" data-filled readonly />
+                </div>
+                <button class="mock-btn-primary">アカウントを作成</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tip-box">
+            <strong>メール確認コードについて：</strong>登録後、入力したメールアドレスに6桁の確認コードが届きます。コードを入力してアカウントを有効化してください。コードの有効期限は30分です。
+          </div>
+
+          <div class="tip-box">
+            <strong>ログイン画面から始める場合：</strong>既にアカウントをお持ちの方は <a href="/app/login" style="color:#0a58ca;font-weight:700">こちらのログイン画面</a> から入ってください。パスワードを忘れた場合はログイン画面の「パスワードをリセット」から再設定できます。
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 2: プロジェクト作成 -->
+      <section class="guide-section" id="step2">
+        <div class="shell">
+          <div class="section-title-wrap">
+            <div class="section-step-badge"><span>2</span> プロジェクト作成</div>
+            <h2>分析するサイトをプロジェクトとして登録</h2>
+            <p>ログイン後、アカウント設定ページでプロジェクトを作成します。サイト名・ドメイン・目標CVRを設定しましょう。複数サイトを管理する場合は複数のプロジェクトを作成できます。</p>
+          </div>
+
+          <div class="screen-wrap">
+            <div class="screen-titlebar">
+              <div class="screen-dot screen-dot-r"></div>
+              <div class="screen-dot screen-dot-y"></div>
+              <div class="screen-dot screen-dot-g"></div>
+              <div class="screen-url">app.vel-tio.com/app/account</div>
+            </div>
+            <div class="screen-body">
+              <div style="margin-bottom:20px;">
+                <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#98a2b3;font-weight:700;margin-bottom:6px;">アカウント設定</div>
+                <div style="font-size:20px;font-weight:800;color:#0b1320;">アカウント設定</div>
+              </div>
+              <div style="border-top:1px solid #e4e8f0;padding-top:20px;margin-top:4px;">
+                <div style="font-size:12px;font-weight:700;color:#344054;margin-bottom:16px;text-transform:uppercase;letter-spacing:0.08em;">分析対象サイト</div>
+                <div class="mock-form">
+                  <div class="mock-form-row">
+                    <div class="mock-field" style="margin:0">
+                      <label>サイト名 <span style="color:#e53e3e">*</span></label>
+                      <input type="text" value="デモ EC ショップ" data-filled readonly />
+                    </div>
+                    <div class="mock-field" style="margin:0">
+                      <label>ドメイン / URL <span style="color:#e53e3e">*</span></label>
+                      <input type="text" value="https://demo-shop.example.com" data-filled readonly />
+                    </div>
+                  </div>
+                  <div class="mock-form-row" style="margin-top:14px;">
+                    <div class="mock-field" style="margin:0">
+                      <label>ECサイト種別</label>
+                      <select class="mock-select" disabled>
+                        <option selected>EC（直販・自社）</option>
+                      </select>
+                    </div>
+                    <div class="mock-field" style="margin:0">
+                      <label>購買スタイル</label>
+                      <select class="mock-select" disabled>
+                        <option selected>感性型</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="mock-form-row" style="margin-top:14px;">
+                    <div class="mock-field" style="margin:0">
+                      <label>目標CVR（%）</label>
+                      <input type="text" value="2.50" data-filled readonly />
+                    </div>
+                  </div>
+                  <div style="margin-top:20px;">
+                    <button class="mock-btn-primary" style="width:auto;padding:10px 24px;">プロジェクトを作成</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tip-box">
+            <strong>ECサイト種別について：</strong>「感性型（ブランド・デザイン重視）」「理性型（価格・スペック比較重視）」から選択します。サイトの性質に応じて診断ルールとレコメンドが最適化されます。
+          </div>
+          <div class="tip-box">
+            <strong>目標CVRの設定：</strong>業界平均はECで1〜3%程度です。現状のCVRより少し高い値を目標として設定し、ダッシュボードで達成状況を確認しましょう。
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 3: GA4接続 -->
+      <section class="guide-section" id="step3">
+        <div class="shell">
+          <div class="section-title-wrap">
+            <div class="section-step-badge"><span>3</span> GA4を接続</div>
+            <h2>GA4 Property IDを入力して連携</h2>
+            <p>アカウント設定ページの「GA4連携」セクションでProperty IDを入力します。GA4の管理画面から Property ID を確認して貼り付けるだけで連携が完了します。</p>
+          </div>
+
+          <!-- GA4 Property IDの確認方法 -->
+          <div style="background:#fff;border:1px solid #d0d5dd;border-radius:16px;overflow:hidden;margin-bottom:24px;">
+            <div style="background:#f1f3f5;padding:10px 16px;border-bottom:1px solid #e4e8f0;font-size:12px;font-weight:700;color:#344054;">
+              📍 GA4管理画面でProperty IDを確認する手順
+            </div>
+            <div style="padding:20px 24px;">
+              <ol style="margin:0;padding-left:20px;color:#344054;font-size:13.5px;line-height:2;">
+                <li>Google Analytics (<a href="https://analytics.google.com" target="_blank" rel="noopener" style="color:#0a58ca">analytics.google.com</a>) にアクセス</li>
+                <li>左下の「管理（⚙）」をクリック</li>
+                <li>「プロパティ設定」をクリック</li>
+                <li>「プロパティ ID」（数字のみ、例: <code style="background:#f5f7fb;padding:2px 6px;border-radius:4px;font-size:12px">123456789</code>）をコピー</li>
+              </ol>
+              <div style="background:#f5f7fb;border-radius:8px;padding:14px 16px;margin-top:12px;display:flex;align-items:center;gap:12px;">
+                <div style="font-size:24px;">💡</div>
+                <div style="font-size:13px;color:#344054;">URLから確認する場合は <code style="background:#fff;padding:2px 6px;border-radius:4px;font-size:11px;border:1px solid #e4e8f0">https://analytics.google.com/analytics/web/#/p<strong>123456789</strong>/</code> の <strong>p の後の数字</strong>がProperty IDです。</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="screen-wrap">
+            <div class="screen-titlebar">
+              <div class="screen-dot screen-dot-r"></div>
+              <div class="screen-dot screen-dot-y"></div>
+              <div class="screen-dot screen-dot-g"></div>
+              <div class="screen-url">app.vel-tio.com/app/account</div>
+            </div>
+            <div class="screen-body">
+              <div style="font-size:12px;font-weight:700;color:#344054;margin-bottom:16px;text-transform:uppercase;letter-spacing:0.08em;">GA4連携</div>
+
+              <div class="mock-ga4-card" style="border-color:#bfdbfe;background:#f0f7ff;">
+                <div style="font-size:12px;color:#344054;margin-bottom:12px;font-weight:600;">GA4 Property IDを入力</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input type="text" value="123456789" data-filled readonly style="flex:1;padding:9px 12px;border:1px solid #0a58ca;border-radius:8px;font-size:13px;color:#344054;background:#fff;font-family:monospace;" />
+                  <button class="mock-btn-primary" style="width:auto;padding:9px 16px;white-space:nowrap;font-size:13px;">接続する</button>
+                </div>
+                <div style="font-size:11px;color:#667085;margin-top:8px;">Property ID または GA4 の URL をそのまま貼り付けてください。</div>
+              </div>
+
+              <div style="margin-top:16px;">
+                <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:12px;">✓ 接続済みの状態</div>
+                <div class="mock-ga4-card" style="border-color:#a7f3d0;background:#ecfdf5;">
+                  <div class="mock-ga4-status">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="6" fill="#059669"/><path d="M3 6l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    接続済み
+                  </div>
+                  <div class="mock-ga4-prop">デモ EC ショップ</div>
+                  <div class="mock-ga4-id">Property ID: 123456789</div>
+                  <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+                    <span class="mock-badge-blue">🔄 今すぐ同期</span>
+                    <span style="font-size:11px;color:#98a2b3;">最終同期: 2026-04-09 09:00</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="tip-box">
+            <strong>Google OAuthでの接続：</strong>Googleアカウントの認証を使ってGA4に接続することもできます。アカウント設定の「Google Analytics 認証」から認証を行うと、GA4プロパティ一覧から選択して接続できます。
+          </div>
+          <div class="tip-box">
+            <strong>データ同期のタイミング：</strong>初回接続後すぐに「今すぐ同期」ボタンでデータを取得できます。以降は毎日自動で同期されます。GA4のデータは通常24〜48時間のラグがあるため、直近のデータと多少ズレる場合があります。
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 4: 分析・改善 -->
+      <section class="guide-section" id="step4">
+        <div class="shell">
+          <div class="section-title-wrap">
+            <div class="section-step-badge"><span>4</span> 分析・改善を回す</div>
+            <h2>ダッシュボードで診断→施策登録→効果測定</h2>
+            <p>GA4データが同期されたら、ダッシュボードでKPIを確認しながらボトルネックを診断。改善施策を施策管理に登録し、完了後の効果を自動計測するサイクルを回します。</p>
+          </div>
+
+          <!-- ダッシュボード -->
+          <h3 style="font-size:16px;font-weight:700;color:#0b1320;margin:0 0 16px;">4-1. ダッシュボード — KPIを一覧確認</h3>
+          <div class="screen-wrap">
+            <div class="screen-titlebar">
+              <div class="screen-dot screen-dot-r"></div>
+              <div class="screen-dot screen-dot-y"></div>
+              <div class="screen-dot screen-dot-g"></div>
+              <div class="screen-url">app.vel-tio.com/app/dashboard</div>
+            </div>
+            <div class="screen-body">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <div>
+                  <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#0a58ca;font-weight:700;margin-bottom:4px;">Veltio ダッシュボード</div>
+                  <div style="font-size:18px;font-weight:800;color:#0b1320;">分析ダッシュボード</div>
+                </div>
+                <div style="font-size:12px;color:#667085;background:#f5f7fb;padding:6px 12px;border-radius:8px;">2026-03-11 〜 2026-04-09</div>
+              </div>
+              <div class="mock-kpi-grid">
+                <div class="mock-kpi primary">
+                  <div class="mock-kpi-label">CVR</div>
+                  <div class="mock-kpi-val">1.87%</div>
+                  <div class="mock-kpi-sub">目標 2.50%</div>
+                  <div class="mock-kpi-badge ng">▲ 0.63pt</div>
+                  <div class="mock-progress"><div class="mock-progress-fill warn" style="width:75%"></div></div>
+                </div>
+                <div class="mock-kpi alert">
+                  <div class="mock-kpi-label">カート追加率</div>
+                  <div class="mock-kpi-val">8.2%</div>
+                  <div class="mock-kpi-sub">基準 15.0%</div>
+                  <div class="mock-kpi-badge ng">▲ 6.80pt</div>
+                  <div class="mock-progress"><div class="mock-progress-fill bad" style="width:55%"></div></div>
+                </div>
+                <div class="mock-kpi">
+                  <div class="mock-kpi-label">直帰率</div>
+                  <div class="mock-kpi-val">62.3%</div>
+                  <div class="mock-kpi-sub">基準 55.0%</div>
+                  <div class="mock-kpi-badge ng">▲ 7.30pt</div>
+                  <div class="mock-progress"><div class="mock-progress-fill bad" style="width:48%"></div></div>
+                </div>
+                <div class="mock-kpi">
+                  <div class="mock-kpi-label">PDP到達率</div>
+                  <div class="mock-kpi-val">44.7%</div>
+                  <div class="mock-kpi-sub">基準 30.0%</div>
+                  <div class="mock-kpi-badge ok">✓ 基準内</div>
+                  <div class="mock-progress"><div class="mock-progress-fill good" style="width:100%"></div></div>
+                </div>
+                <div class="mock-kpi">
+                  <div class="mock-kpi-label">チェックアウト到達率</div>
+                  <div class="mock-kpi-val">52.4%</div>
+                  <div class="mock-kpi-sub">基準 45.0%</div>
+                  <div class="mock-kpi-badge ok">✓ 基準内</div>
+                  <div class="mock-progress"><div class="mock-progress-fill good" style="width:100%"></div></div>
+                </div>
+                <div class="mock-kpi">
+                  <div class="mock-kpi-label">購入完了率</div>
+                  <div class="mock-kpi-val">34.8%</div>
+                  <div class="mock-kpi-sub">基準 35.0%</div>
+                  <div class="mock-kpi-badge ng">▲ 0.20pt</div>
+                  <div class="mock-progress"><div class="mock-progress-fill warn" style="width:99%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tip-box">
+            <strong>KPIカードの見方：</strong>赤色のカードが最優先で改善が必要な指標です。「▲ Xpt」は基準値との乖離を示します。基準値を超えているものは「✓ 基準内」の緑バッジが表示されます。
+          </div>
+
+          <!-- ボトルネック診断 -->
+          <div class="guide-step-divider">ボトルネック診断で改善ポイントを特定</div>
+          <h3 style="font-size:16px;font-weight:700;color:#0b1320;margin:0 0 16px;">4-2. ボトルネック診断 — 何から直すべきか自動判定</h3>
+          <div class="screen-wrap">
+            <div class="screen-titlebar">
+              <div class="screen-dot screen-dot-r"></div>
+              <div class="screen-dot screen-dot-y"></div>
+              <div class="screen-dot screen-dot-g"></div>
+              <div class="screen-url">app.vel-tio.com/app/dashboard — 診断セクション</div>
+            </div>
+            <div class="screen-body">
+              <div style="font-size:12px;font-weight:700;color:#344054;margin-bottom:16px;text-transform:uppercase;letter-spacing:0.08em;">ボトルネック診断</div>
+
+              <div class="mock-diag-card critical">
+                <span class="mock-diag-badge critical">重大</span>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <div class="mock-diag-title">カート追加率が基準を下回っています</div>
+                  <div style="text-align:right;">
+                    <div style="font-size:18px;font-weight:800;color:#dc2626;">8.2%</div>
+                    <div style="font-size:11px;color:#98a2b3;">基準 15.0%</div>
+                  </div>
+                </div>
+                <div class="mock-diag-body">商品詳細ページへの訪問に対してカート追加が少ない状態です。商品ページの訴求力・価格表示・CTA配置を見直してください。</div>
+                <div class="mock-rec">
+                  <div class="mock-rec-title">スマホ向けカートボタンを固定表示に変更する</div>
+                  <div class="mock-score-row">
+                    <span class="mock-score">Impact <strong>5</strong>/5</span>
+                    <span class="mock-score">Ease <strong>3</strong>/5</span>
+                  </div>
+                  <div class="mock-rec-body" style="margin-top:6px;">スクロール中も常にカートボタンが見えるよう固定配置し、モバイルでの追加率を改善します。</div>
+                </div>
+                <div class="mock-rec" style="margin-top:8px;">
+                  <div class="mock-rec-title">商品ページにレビュー件数・星評価を追加する</div>
+                  <div class="mock-score-row">
+                    <span class="mock-score">Impact <strong>4</strong>/5</span>
+                    <span class="mock-score">Ease <strong>4</strong>/5</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mock-diag-card warning" style="margin-top:12px;">
+                <span class="mock-diag-badge warning">要改善</span>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <div class="mock-diag-title">直帰率が基準を超えています</div>
+                  <div style="text-align:right;">
+                    <div style="font-size:18px;font-weight:800;color:#d97706;">62.3%</div>
+                    <div style="font-size:11px;color:#98a2b3;">基準 55.0%</div>
+                  </div>
+                </div>
+                <div class="mock-diag-body">流入後に離脱するユーザーが多い状態です。LP・トップページのファーストビューを改善し、回遊を促す導線を強化してください。</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tip-box">
+            <strong>改善レコメンドについて：</strong>各診断結果にはImpact（効果の大きさ）とEase（実装のしやすさ）のスコアが付与されます。Impact・Easeともに高い施策を優先して取り組むのが効果的です。
+          </div>
+
+          <!-- 施策管理 -->
+          <div class="guide-step-divider">診断結果をもとに施策を登録・追跡</div>
+          <h3 style="font-size:16px;font-weight:700;color:#0b1320;margin:0 0 16px;">4-3. 施策管理 — 改善タスクを登録・効果を測定</h3>
+          <div class="screen-wrap">
+            <div class="screen-titlebar">
+              <div class="screen-dot screen-dot-r"></div>
+              <div class="screen-dot screen-dot-y"></div>
+              <div class="screen-dot screen-dot-g"></div>
+              <div class="screen-url">app.vel-tio.com/app/experiments</div>
+            </div>
+            <div class="screen-body">
+              <div style="font-size:12px;font-weight:700;color:#344054;margin-bottom:16px;text-transform:uppercase;letter-spacing:0.08em;">施策管理ボード</div>
+
+              <div class="mock-task" style="border-color:#a7f3d0;background:#ecfdf5;">
+                <div class="mock-task-head">
+                  <span class="mock-task-badge done">完了</span>
+                  <span style="width:8px;height:8px;border-radius:50%;background:#e53e3e;display:inline-block;"></span>
+                </div>
+                <div class="mock-task-title">スマホ向けカートボタンを固定表示に変更する</div>
+                <div class="mock-task-meta">
+                  <span class="mock-chip">🎯 カート追加率</span>
+                  <span class="mock-chip">👤 田中</span>
+                  <span class="mock-chip">完了 2026-03-20</span>
+                </div>
+                <div class="mock-task-effect">
+                  <span class="mock-effect-badge">✓ 効果あり</span>
+                  <span class="mock-effect-val">カート追加率 +2.3pt 改善</span>
+                </div>
+              </div>
+
+              <div class="mock-task" style="border-color:#bfdbfe;background:#f0f7ff;">
+                <div class="mock-task-head">
+                  <span class="mock-task-badge doing">実施中</span>
+                  <span style="width:8px;height:8px;border-radius:50%;background:#e53e3e;display:inline-block;"></span>
+                </div>
+                <div class="mock-task-title">トップページのヒーローバナーを訴求軸で差し替える</div>
+                <div class="mock-task-meta">
+                  <span class="mock-chip">🎯 直帰率</span>
+                  <span class="mock-chip">👤 田中</span>
+                </div>
+              </div>
+
+              <div class="mock-task">
+                <div class="mock-task-head">
+                  <span class="mock-task-badge todo">未着手</span>
+                  <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>
+                </div>
+                <div class="mock-task-title">カゴ落ちメール（3時間後・24時間後）を設定する</div>
+                <div class="mock-task-meta">
+                  <span class="mock-chip">🎯 カゴ落ち率</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tip-box">
+            <strong>施策の完了登録と効果測定：</strong>施策が完了したら「完了にする」ボタンから完了日を設定します。完了日を境に施策前後のKPIを自動で比較し、「効果あり / 効果なし」の判定と改善ポイント数を表示します。
+          </div>
+          <div class="tip-box">
+            <strong>AIアシスタントの活用：</strong>「AIアシスタント」タブからGA4指標・診断結果・施策履歴を参照したAIアドバイスを受けられます。「直帰率が高い原因と改善策を教えて」のように自然言語で相談できます。
+          </div>
+
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <div class="shell">
+        <div class="cta-section">
+          <h2>さっそく始めてみましょう</h2>
+          <p>アカウント作成は無料・30秒で完了。<br>まずはデモ画面で機能を体験することもできます。</p>
+          <div class="cta-btns">
+            <a href="/app/signin" class="cta-btn-primary">無料で新規登録</a>
+            <a href="/app/dashboard" class="cta-btn-demo">デモ画面を見る</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="lp-footer">
+      <div style="margin-bottom:12px;">
+        <a href="/" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;">トップページ</a>
+        <a href="/terms.html" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;">利用規約</a>
+        <a href="/privacy.html" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;">プライバシーポリシー</a>
+        <a href="/contact.html" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;">お問い合わせ</a>
+      </div>
+      © Veltio — CVR Analytics Workspace
+    </footer>
+
+  </body>
+</html>

@@ -2828,6 +2828,37 @@ async function handleApi(req, res, urlObj) {
     return user;
   };
 
+  // 緊急ユーザー作成（ADMIN_API_KEY必須・メール認証スキップ）
+  if (req.method === "POST" && urlObj.pathname === "/api/admin/create-user") {
+    const apiKey = req.headers["x-admin-api-key"] || urlObj.searchParams.get("api_key");
+    if (!ADMIN_API_KEY || apiKey !== ADMIN_API_KEY) {
+      return json(res, 403, { error: "forbidden" });
+    }
+    const body = await parseBody(req);
+    const { email, password, displayName, tenantName } = body;
+    if (!email || !password || !displayName || !tenantName) {
+      return json(res, 400, { error: "missing_fields", message: "email, password, displayName, tenantName が必要です" });
+    }
+    if (db.users.some((u) => u.email.toLowerCase() === String(email).toLowerCase())) {
+      return json(res, 409, { error: "email_exists" });
+    }
+    const tenant = ensureTenantDefaults({
+      id: uid(), name: tenantName, accountName: tenantName,
+      companyName: tenantName, contactName: displayName, jobTitle: "",
+      plan: "starter", invitedUsers: [], createdAt: new Date().toISOString()
+    });
+    const user = {
+      id: uid(), email, passwordHash: hashPassword(password),
+      displayName, emailVerifiedAt: new Date().toISOString(),
+      emailVerification: null, passwordReset: null, createdAt: new Date().toISOString()
+    };
+    db.tenants.push(tenant);
+    db.users.push(user);
+    db.memberships.push({ tenantId: tenant.id, userId: user.id, role: "owner", createdAt: new Date().toISOString() });
+    await writeDb(db);
+    return json(res, 200, { ok: true, userId: user.id, tenantId: tenant.id, email: user.email });
+  }
+
   if (req.method === "GET" && urlObj.pathname === "/api/admin/overview") {
     const user = requireAdmin();
     if (!user) return;

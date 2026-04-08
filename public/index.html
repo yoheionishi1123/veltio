@@ -114,6 +114,8 @@
       .lp-btn-primary:hover { background: #0847a8; }
       .lp-btn-ghost { background: transparent; color: #344054; border: 1px solid #d0d5dd; }
       .lp-btn-ghost:hover { background: #f2f4f7; border-color: #98a2b3; }
+      .lp-btn-demo { background: transparent; color: #0a58ca; border: none; padding: 0 8px; font-weight: 700; font-size: 14px; }
+      .lp-btn-demo:hover { text-decoration: underline; }
 
       /* ── Right col: stat cards ── */
       .lp-hero-right { display: grid; gap: 14px; }
@@ -264,8 +266,9 @@
           <button class="lp-lang-btn" data-lang="de">DE</button>
           <button class="lp-lang-btn" data-lang="es">ES</button>
         </div>
-        <a href="/login" class="lp-nav-ghost" data-i18n="nav_login">ログイン</a>
-        <a href="/dashboard" class="lp-nav-primary" data-i18n="nav_start">無料で始める</a>
+        <a href="/howto.html" class="lp-nav-ghost" style="color:#a0aec0;border-color:#2a3a52" data-i18n="nav_howto">使い方</a>
+        <a href="/app/login" class="lp-nav-ghost" data-i18n="nav_login">ログイン</a>
+        <a href="/app/signin" class="lp-nav-primary" data-i18n="nav_signup">新規登録</a>
       </nav>
     </header>
 
@@ -278,8 +281,9 @@
             <h1 data-i18n="hero_h1">GA4の数字を、<br>次の改善アクションまでつなぐ。</h1>
             <p data-i18n="hero_p">Veltioは、GA4連携・KPI可視化・施策診断・改善メモ・レポート出力を一つにまとめた分析ワークスペースです。分析で止まらず、改善の意思決定まで前に進めます。</p>
             <div class="lp-actions">
-              <a href="/dashboard" class="lp-btn-primary" data-i18n="hero_cta_primary">分析画面を開く</a>
-              <a href="/signin" class="lp-btn-ghost" data-i18n="hero_cta_secondary">新規登録</a>
+              <a href="/app/signin" class="lp-btn-primary" data-i18n="hero_cta_primary">新規登録（無料）</a>
+              <a href="/app/login" class="lp-btn-ghost" data-i18n="hero_cta_secondary">ログイン</a>
+              <a href="/app/dashboard" class="lp-btn-demo" data-i18n="hero_cta_demo">デモ画面を見る →</a>
             </div>
           </div>
 
@@ -366,6 +370,7 @@
 
     <footer class="lp-footer">
       <div style="margin-bottom:12px;">
+        <a href="/howto.html" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;" data-i18n="footer_howto">使い方ガイド</a>
         <a href="/terms.html" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;" data-i18n="footer_terms">利用規約</a>
         <a href="/privacy.html" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;" data-i18n="footer_privacy">プライバシーポリシー</a>
         <a href="/tokusho.html" style="color:#a0aec0;text-decoration:none;margin:0 10px;font-size:12px;" data-i18n="footer_tokusho">特定商取引法</a>
@@ -377,10 +382,10 @@
     <script>
     const I18N = {
       ja: {
-        nav_login: "ログイン", nav_start: "無料で始める",
+        nav_howto: "使い方", nav_login: "ログイン", nav_signup: "新規登録",
         hero_h1: "GA4の数字を、<br>次の改善アクションまでつなぐ。",
         hero_p: "Veltioは、GA4連携・KPI可視化・施策診断・改善メモ・レポート出力を一つにまとめた分析ワークスペースです。分析で止まらず、改善の意思決定まで前に進めます。",
-        hero_cta_primary: "分析画面を開く", hero_cta_secondary: "新規登録",
+        hero_cta_primary: "新規登録（無料）", hero_cta_secondary: "ログイン", hero_cta_demo: "デモ画面を見る →",
         card_strong: "ダッシュボード・施策検証・AI支援・運営管理まで一気通貫。",
         card_p: "サイトごとのプロジェクト管理、比較分析、ボトルネック診断、レポート出力を一つの画面で扱えます。",
         chip_analyze: "7指標のKPIを一覧化", chip_validate: "施策メモと検証履歴",
@@ -392,14 +397,14 @@
         step2_h: "プロジェクト作成", step2_p: "サイト名とドメインを入力してプロジェクトを作成します。",
         step3_h: "GA4を接続", step3_p: "Property IDを入力するだけでGA4データを取得します。",
         step4_h: "分析・改善を回す", step4_p: "ダッシュボードで診断し、施策を記録・検証します。",
-        footer_terms: "利用規約", footer_privacy: "プライバシーポリシー",
+        footer_howto: "使い方ガイド", footer_terms: "利用規約", footer_privacy: "プライバシーポリシー",
         footer_tokusho: "特定商取引法", footer_contact: "お問い合わせ"
       },
       en: {
-        nav_login: "Log in", nav_start: "Get started free",
+        nav_howto: "How to use", nav_login: "Log in", nav_signup: "Sign up",
         hero_h1: "Turn GA4 data into<br>your next growth action.",
         hero_p: "Veltio is an all-in-one CVR analytics workspace — GA4 integration, KPI visualisation, bottleneck diagnosis, action logging and report export in a single screen.",
-        hero_cta_primary: "Open analytics", hero_cta_secondary: "Sign up",
+        hero_cta_primary: "Sign up free", hero_cta_secondary: "Log in", hero_cta_demo: "View demo →",
         card_strong: "Dashboard, campaign validation, AI assist and ops — all in one.",
         card_p: "Manage projects per site, run comparisons, diagnose bottlenecks and export reports without switching tools.",
         chip_analyze: "7 KPI metrics at a glance", chip_validate: "Action log & history",
@@ -411,14 +416,14 @@
         step2_h: "Create a project", step2_p: "Enter a site name and domain to create a project.",
         step3_h: "Connect GA4", step3_p: "Enter your Property ID to pull in GA4 data.",
         step4_h: "Analyse & improve", step4_p: "Diagnose with the dashboard, then log and validate your campaigns.",
-        footer_terms: "Terms of Service", footer_privacy: "Privacy Policy",
+        footer_howto: "How-to Guide", footer_terms: "Terms of Service", footer_privacy: "Privacy Policy",
         footer_tokusho: "Specified Commercial Transactions", footer_contact: "Contact"
       },
       de: {
-        nav_login: "Anmelden", nav_start: "Kostenlos starten",
+        nav_howto: "Anleitung", nav_login: "Anmelden", nav_signup: "Registrieren",
         hero_h1: "GA4-Daten in<br>konkrete Verbesserungen verwandeln.",
         hero_p: "Veltio ist ein All-in-One-Arbeitsbereich für CVR-Analytics — GA4-Integration, KPI-Visualisierung, Engpassdiagnose, Aktionsprotokoll und Berichtsexport auf einem Bildschirm.",
-        hero_cta_primary: "Analytics öffnen", hero_cta_secondary: "Registrieren",
+        hero_cta_primary: "Kostenlos registrieren", hero_cta_secondary: "Anmelden", hero_cta_demo: "Demo ansehen →",
         card_strong: "Dashboard, Kampagnenvalidierung, KI-Unterstützung und Betrieb — alles in einem.",
         card_p: "Verwalten Sie Projekte pro Website, führen Sie Vergleiche durch, diagnostizieren Sie Engpässe und exportieren Sie Berichte.",
         chip_analyze: "7 KPI-Metriken im Überblick", chip_validate: "Aktionslog & Verlauf",
@@ -430,14 +435,14 @@
         step2_h: "Projekt erstellen", step2_p: "Geben Sie einen Site-Namen und eine Domain ein, um ein Projekt zu erstellen.",
         step3_h: "GA4 verbinden", step3_p: "Geben Sie Ihre Property-ID ein, um GA4-Daten abzurufen.",
         step4_h: "Analysieren & verbessern", step4_p: "Diagnostizieren Sie mit dem Dashboard, protokollieren und validieren Sie Ihre Kampagnen.",
-        footer_terms: "Nutzungsbedingungen", footer_privacy: "Datenschutzrichtlinie",
+        footer_howto: "Anleitung", footer_terms: "Nutzungsbedingungen", footer_privacy: "Datenschutzrichtlinie",
         footer_tokusho: "Handelsangaben", footer_contact: "Kontakt"
       },
       es: {
-        nav_login: "Iniciar sesión", nav_start: "Empezar gratis",
+        nav_howto: "Guía", nav_login: "Iniciar sesión", nav_signup: "Registrarse",
         hero_h1: "Convierte los datos de GA4<br>en acciones de mejora concretas.",
         hero_p: "Veltio es un espacio de trabajo todo-en-uno para análisis de CVR — integración con GA4, visualización de KPI, diagnóstico de cuellos de botella, registro de acciones y exportación de informes en una sola pantalla.",
-        hero_cta_primary: "Abrir análisis", hero_cta_secondary: "Registrarse",
+        hero_cta_primary: "Registrarse gratis", hero_cta_secondary: "Iniciar sesión", hero_cta_demo: "Ver demo →",
         card_strong: "Dashboard, validación de campañas, asistencia IA y operaciones — todo en uno.",
         card_p: "Gestiona proyectos por sitio, ejecuta comparaciones, diagnostica cuellos de botella y exporta informes sin cambiar de herramienta.",
         chip_analyze: "7 métricas KPI de un vistazo", chip_validate: "Registro e historial de acciones",
@@ -449,7 +454,7 @@
         step2_h: "Crear un proyecto", step2_p: "Introduce un nombre de sitio y un dominio para crear un proyecto.",
         step3_h: "Conectar GA4", step3_p: "Introduce tu Property ID para obtener los datos de GA4.",
         step4_h: "Analizar y mejorar", step4_p: "Diagnostica con el dashboard, luego registra y valida tus campañas.",
-        footer_terms: "Términos de servicio", footer_privacy: "Política de privacidad",
+        footer_howto: "Guía de uso", footer_terms: "Términos de servicio", footer_privacy: "Política de privacidad",
         footer_tokusho: "Transacciones comerciales", footer_contact: "Contacto"
       }
     };

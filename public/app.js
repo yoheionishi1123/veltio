@@ -45,14 +45,14 @@ const AUTH_ROUTE_MODE_MAP = {
 };
 const AUTH_PRIMARY_CONTENT = {
   login: {
-    kicker: "Veltio Account",
-    title: "Login",
-    description: "Sign in to Veltio to continue your project analytics."
+    kicker: "Veltio アカウント",
+    title: "ログイン",
+    description: "Veltioにサインインして分析を続けましょう。"
   },
   signup: {
-    kicker: "Get Started",
-    title: "Sign Up",
-    description: "Register your company and contact details to get started with Veltio."
+    kicker: "はじめる",
+    title: "新規登録",
+    description: "会社情報と連絡先を入力してVeltioを開始しましょう。"
   }
 };
 const APP_ROUTE_PAGE_MAP = {
@@ -970,33 +970,11 @@ async function showDemo(requestedPage = "dashboard") {
 }
 
 function renderDemoLockedOverlays() {
-  // Lock non-dashboard pages in demo mode
-  ["page-validation", "page-assistant", "page-account"].forEach((pageId) => {
-    const page = q(pageId);
-    if (!page) return;
-    if (!page.querySelector(".demo-locked-overlay")) {
-      const overlay = document.createElement("div");
-      overlay.className = "demo-locked-overlay";
-      overlay.innerHTML = `
-        <div class="demo-lock-icon">🔒</div>
-        <div class="demo-lock-msg">このページを表示するにはログインが必要です</div>
-        <div class="demo-lock-cta">
-          <button class="btn-primary" onclick="showAuth('signup',{syncPath:false})">無料で始める</button>
-          <button class="btn-ghost" onclick="showAuth('login',{syncPath:false})">ログイン</button>
-        </div>
-      `;
-      page.style.position = "relative";
-      page.appendChild(overlay);
-    }
-  });
+  // デモモードでは全ページを開放（ロックなし）
 }
 
 function hideDemoLockedOverlays() {
   document.querySelectorAll(".demo-locked-overlay").forEach((el) => el.remove());
-  ["page-validation", "page-assistant", "page-account"].forEach((pageId) => {
-    const page = q(pageId);
-    if (page) page.style.position = "";
-  });
 }
 
 async function loadDemoData() {
@@ -1004,9 +982,77 @@ async function loadDemoData() {
     const data = await api("/api/demo", { allowUnauthorized: true });
     state.demoData = data;
     renderDemoMetrics(data);
+    renderDemoValidationPage();
+    renderDemoAccountPage();
   } catch {
     // silently fail
   }
+}
+
+function renderDemoValidationPage() {
+  const timeline = q("action-log-timeline");
+  if (!timeline) return;
+  const demoTasks = [
+    { id: "d1", content: "スマホ向けカートボタンを固定表示に変更する", status: "done", priority: "high", owner: "田中", targetMetricKey: "add_to_cart_rate", completedAtDate: "2026-03-20", effectiveness: { code: "effective", improvementPt: 2.3 } },
+    { id: "d2", content: "商品ページにレビュー件数・星評価を追加する", status: "done", priority: "high", owner: "佐藤", targetMetricKey: "add_to_cart_rate", completedAtDate: "2026-03-28", effectiveness: { code: "effective", improvementPt: 1.8 } },
+    { id: "d3", content: "トップページのヒーローバナーを訴求軸で差し替える", status: "doing", priority: "high", owner: "田中", targetMetricKey: "bounce_rate", completedAtDate: "" },
+    { id: "d4", content: "チェックアウトフォームのステップ数を3→2に削減する", status: "doing", priority: "medium", owner: "鈴木", targetMetricKey: "checkout_reach_rate", completedAtDate: "" },
+    { id: "d5", content: "カゴ落ちメール（3時間後・24時間後）を設定する", status: "todo", priority: "medium", owner: "", targetMetricKey: "cart_abandon_rate", completedAtDate: "" },
+    { id: "d6", content: "商品一覧ページの絞り込み条件UXを改善する", status: "todo", priority: "low", owner: "", targetMetricKey: "pdp_reach_rate", completedAtDate: "" }
+  ];
+  const demoNotice = `<div class="tiny muted" style="padding:8px 12px;margin-bottom:8px;background:#f5f7fb;border-radius:8px;border:1px solid #e4e8f0">※ デモデータです。実際に施策を登録・管理するにはログインしてください。</div>`;
+  const taskHtml = demoTasks.map((item) => {
+    const sm = item.status === "done" ? { label: "完了", cls: "status-done" } : item.status === "doing" ? { label: "実施中", cls: "status-doing" } : { label: "未着手", cls: "status-todo" };
+    const priCls = item.priority === "high" ? "task-priority-high" : item.priority === "low" ? "task-priority-low" : "task-priority-medium";
+    const effHtml = item.effectiveness?.code === "effective"
+      ? `<div class="task-inline-effect task-effect-effective"><span class="task-effect-badge">✓ 効果あり</span><span class="task-effect-val">+${item.effectiveness.improvementPt}pt</span></div>`
+      : "";
+    return `<div class="task-card ${item.effectiveness?.code === "effective" ? "task-card-effective" : ""}">
+      <div class="task-card-header">
+        <div class="task-card-left">
+          <span class="action-status-badge ${sm.cls}">${sm.label}</span>
+          <span class="task-priority-dot ${priCls}"></span>
+        </div>
+        <div class="task-card-actions"><button type="button" class="task-demo-action-btn" onclick="event.preventDefault();alert('デモモードです。ログイン後に操作できます。')">編集</button></div>
+      </div>
+      <div class="task-card-title">${escapeHtml(item.content)}</div>
+      <div class="task-card-meta">
+        ${item.targetMetricKey ? `<span class="task-metric-badge">🎯 ${escapeHtml(metricLabel(item.targetMetricKey))}</span>` : ""}
+        ${item.owner ? `<span class="task-meta-chip">👤 ${escapeHtml(item.owner)}</span>` : ""}
+        ${item.completedAtDate ? `<span class="task-meta-chip task-chip-date">完了 ${escapeHtml(item.completedAtDate)}</span>` : ""}
+      </div>
+      ${effHtml}
+    </div>`;
+  }).join("");
+  timeline.innerHTML = demoNotice + taskHtml;
+}
+
+function renderDemoAccountPage() {
+  // Fill in demo account profile fields
+  const fields = { "account-name": "デモアカウント", "company-name": "デモ株式会社", "contact-name": "デモ 太郎", "job-title": "ECマネージャー" };
+  Object.entries(fields).forEach(([id, val]) => {
+    const el = q(id);
+    if (el) el.value = val;
+  });
+  // Show plan info
+  const planEl = document.querySelector(".plan-badge");
+  if (planEl) planEl.textContent = "デモ / Free プラン";
+  // Show demo notice in project area
+  const projEmpty = q("project-onboard-hint");
+  if (projEmpty) projEmpty.classList.add("hidden");
+  const projCurrent = q("project-current-card");
+  if (projCurrent) {
+    projCurrent.innerHTML = `
+      <div class="k">分析対象サイト</div>
+      <div class="v">デモショップ</div>
+      <div class="k proj-domain">demo.example.com</div>
+      <div class="tiny muted" style="margin-top:4px">※ デモデータです。実際のプロジェクトを作成するにはログインしてください。</div>
+    `;
+    projCurrent.classList.remove("hidden");
+  }
+  q("project-empty-state")?.classList.add("hidden");
+  q("project-actions")?.classList.add("hidden");
+  q("project-form")?.classList.add("hidden");
 }
 
 function renderDemoMetrics(data) {
@@ -1176,7 +1222,20 @@ function renderDemoMetrics(data) {
   }
 }
 
+function clearDemoContent() {
+  // デモモードで注入したコンテンツをリセット
+  const timeline = q("action-log-timeline");
+  if (timeline) timeline.innerHTML = "";
+  const chat = q("assistant-chat");
+  if (chat) chat.innerHTML = "";
+  state.assistantHistoryLoaded = false;
+  // アカウントページのデモプロジェクト表示をリセット
+  const projCurrent = q("project-current-card");
+  if (projCurrent) projCurrent.innerHTML = "";
+}
+
 function showApp() {
+  clearDemoContent();
   state.isDemo = false;
   state.demoData = null;
   q("demo-banner")?.classList.add("hidden");
@@ -1303,7 +1362,7 @@ function setActivePage(page) {
   });
   // Scroll to top on page change (mobile UX)
   window.scrollTo({ top: 0, behavior: "instant" });
-  if (state.activePage === "assistant" && !state.assistantHistoryLoaded) {
+  if (state.activePage === "assistant" && (!state.assistantHistoryLoaded || state.isDemo)) {
     void loadAssistantHistory();
   }
   if (state.activePage === "admin" && state.isAdmin) {
@@ -3570,6 +3629,15 @@ q("task-complete-modal")?.addEventListener("click", (e) => {
 async function loadAssistantHistory() {
   const host = q("assistant-chat");
   host.innerHTML = "";
+  if (state.isDemo) {
+    appendChatMessage("assistant", "こんにちは！Veltio AIアシスタントです。GA4の指標・診断結果・施策履歴を参照して改善アドバイスを提供します。\n\nこちらはデモモードです。実際のGA4データを使った分析を行うにはログインしてください。");
+    appendChatMessage("user", "カート追加率が低い原因と改善策を教えてください。");
+    appendChatMessage("assistant", "デモショップのカート追加率は8.2%で、基準の15%を大きく下回っています。主な改善ポイントを3つご提案します。\n\n① スマホ向けカートボタンの固定表示\nモバイルユーザーのカート追加率が6.1%と特に低い傾向があります。スクロール中も常にカートボタンを表示することで追加率の改善が期待できます。\n\n② 商品ページへのレビュー・評価追加\n社会的証明を加えることで購買意欲が高まります。星評価とレビュー件数の表示を優先してください。\n\n③ 商品画像の品質向上\n複数アングルの着用画像・動画を追加し、購入前の不安を解消します。");
+    appendChatMessage("user", "直帰率の改善策もお願いします。");
+    appendChatMessage("assistant", "現在の直帰率は62.3%（基準55%）です。改善策としては、トップページのファーストビューをターゲット層の訴求軸に合わせて刷新することが最優先です。\n\n具体的には、流入チャネルごとのファーストビューをパーソナライズし、回遊を促す内部リンクを強化すると効果的です。\n\n※ これはデモデータに基づくサンプル回答です。実際のGA4データでの診断はログイン後に行えます。");
+    state.assistantHistoryLoaded = true;
+    return;
+  }
   if (!state.projectId) {
     appendChatMessage("assistant", "先にプロジェクトを作成してください。");
     state.assistantHistoryLoaded = true;
@@ -3855,6 +3923,10 @@ window.addEventListener("popstate", () => {
 
 q("project-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (state.isDemo) {
+    alert("デモモードです。プロジェクトを作成するにはログインしてください。");
+    return;
+  }
   const tenantId = state.tenants[0]?.id;
   if (!tenantId) return alert("テナント情報がありません");
 
@@ -4088,6 +4160,11 @@ q("create-report-ppt").addEventListener("click", async () => createReport("ppt")
 
 q("account-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (state.isDemo) {
+    q("project-status").textContent = "デモモードです。ログイン後に保存できます。";
+    setTimeout(() => { if (q("project-status")) q("project-status").textContent = ""; }, 3000);
+    return;
+  }
   try {
     await api("/api/account/profile", {
       method: "POST",
@@ -4281,6 +4358,10 @@ q("delete-account-form").addEventListener("submit", async (e) => {
 
 q("assistant-context-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (state.isDemo) {
+    q("assistant-context-status").textContent = "デモモードです。ログイン後に施策を登録できます。";
+    return;
+  }
   if (!state.projectId) return;
   const title = q("action-log").value.trim();
   if (!title) {
@@ -4438,6 +4519,12 @@ if (pageApplyBtn) {
 async function sendAssistantMessage(message) {
   const text = String(message || "").trim();
   if (!text) return;
+  if (state.isDemo) {
+    appendChatMessage("user", text);
+    q("assistant-input").value = "";
+    appendChatMessage("assistant", "デモモードでは実際のAI回答はご利用いただけません。実際のGA4データを使った分析・相談はログイン後にご利用ください。\n👉 右上の「ログイン」または「新規登録」から始められます。");
+    return;
+  }
   if (!state.projectId) {
     appendChatMessage("assistant", "先にプロジェクトを作成してください。");
     return;

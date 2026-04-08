@@ -31,7 +31,7 @@
       <a href="/" class="mobile-brand">
         <img src="/veltio-logo.svg" alt="Veltio" />
       </a>
-      <button id="mobile-logout-btn" class="mobile-logout-btn hidden" type="button">Log out</button>
+      <button id="mobile-logout-btn" class="mobile-logout-btn hidden" type="button">ログアウト</button>
     </header>
 
     <!-- Sidebar -->
@@ -68,12 +68,12 @@
         </a>
       </nav>
       <div class="sidebar-footer">
-        <button id="logout" class="hidden" type="button">Log out</button>
+        <button id="logout" class="hidden" type="button">ログアウト</button>
         <div class="sidebar-legal-links">
-          <a href="/privacy" target="_blank" rel="noopener">Privacy</a>
-          <a href="/terms" target="_blank" rel="noopener">Terms</a>
-          <a href="/tokusho" target="_blank" rel="noopener">Legal</a>
-          <a href="/contact" target="_blank" rel="noopener">Contact</a>
+          <a href="/privacy" target="_blank" rel="noopener">プライバシー</a>
+          <a href="/terms" target="_blank" rel="noopener">利用規約</a>
+          <a href="/tokusho" target="_blank" rel="noopener">特商法</a>
+          <a href="/contact" target="_blank" rel="noopener">お問い合わせ</a>
         </div>
       </div>
     </aside>
@@ -83,100 +83,100 @@
     <main class="container">
       <section id="auth-view" class="panel">
         <div class="auth-intro">
-          <p id="auth-kicker" class="auth-kicker">Veltio Account</p>
-          <h2 id="auth-title">Login</h2>
-          <p id="auth-description" class="muted">Sign in to Veltio to continue your project analytics.</p>
+          <p id="auth-kicker" class="auth-kicker">Veltio アカウント</p>
+          <h2 id="auth-title">ログイン</h2>
+          <p id="auth-description" class="muted">Veltioにサインインして分析を続けましょう。</p>
         </div>
         <div class="tabs">
-          <button id="show-login" class="active" type="button">Login</button>
-          <button id="show-signup" type="button">Sign Up</button>
+          <button id="show-login" class="active" type="button">ログイン</button>
+          <button id="show-signup" type="button">新規登録</button>
         </div>
         <div id="auth-meta" class="tiny muted"></div>
         <div id="auth-notice" class="tiny auth-notice hidden"></div>
 
         <form id="login-form" class="stack">
-          <label>Email <input type="email" id="login-email" required /></label>
-          <label>Password <input type="password" id="login-password" required /></label>
-          <button type="submit">Login</button>
-          <button id="show-forgot" class="ghost auth-aux" type="button">Forgot password?</button>
+          <label>メールアドレス <input type="email" id="login-email" required /></label>
+          <label>パスワード <input type="password" id="login-password" required /></label>
+          <button type="submit">ログイン</button>
+          <button id="show-forgot" class="ghost auth-aux" type="button">パスワードをリセット</button>
           <div id="login-status" class="tiny"></div>
         </form>
 
         <form id="signup-form" class="stack hidden">
           <section class="diagnosis-hero">
-            <h2>1. Site Type Analysis</h2>
-            <p class="muted">Identify your site type and set up your initial KPI framework before signing up.</p>
+            <h2>1. サイトタイプ診断</h2>
+            <p class="muted">登録前にサイトの特性を診断して、最適なKPIフレームワークを設定します。</p>
             <div id="site-diagnosis-result" class="diagnosis-result-box"></div>
             <div class="grid2">
-              <label>Business Model
+              <label>ビジネスモデル
                 <select id="diag-model">
-                  <option value="web_complete_ec">Web-only / E-commerce</option>
-                  <option value="web_complete_non_ec">Web-only / Non-E-commerce</option>
-                  <option value="lead_btob">Web to Sales / B2B</option>
-                  <option value="lead_btoc">Web to Sales / B2C</option>
+                  <option value="web_complete_ec">EC（直販・自社）</option>
+                  <option value="web_complete_non_ec">Webのみ / EC以外</option>
+                  <option value="lead_btob">Web商談化 / B2B</option>
+                  <option value="lead_btoc">Web商談化 / B2C</option>
                 </select>
               </label>
-              <label>Purchase Intent Type
+              <label>購買スタイル
                 <select id="diag-intent">
-                  <option value="emotional">Emotional / Brand-driven</option>
-                  <option value="rational">Rational / Comparison-driven</option>
-                  <option value="urgent">Urgent / Immediate need</option>
-                  <option value="consultative">Consultative / Research-driven</option>
+                  <option value="emotional">感性型（ブランド・デザイン重視）</option>
+                  <option value="rational">理性型（価格・スペック比較）</option>
+                  <option value="urgent">緊急型（即時ニーズ）</option>
+                  <option value="consultative">検討型（リサーチ重視）</option>
                 </select>
               </label>
-              <label>Physical Store Integration
+              <label>実店舗連携
                 <select id="diag-store">
-                  <option value="connected">Has stores / OMO enabled</option>
-                  <option value="none">No stores / Web-only</option>
+                  <option value="connected">実店舗あり / OMO対応</option>
+                  <option value="none">実店舗なし / Web専業</option>
                 </select>
               </label>
-              <label>Primary Site Goal
+              <label>サイトの主目的
                 <select id="diag-goal">
-                  <option value="sell">Sales / Purchases</option>
-                  <option value="lead">Lead generation / Inquiries</option>
-                  <option value="media">Traffic / Content / Referrals</option>
-                  <option value="brand">Brand awareness</option>
+                  <option value="sell">販売・購入</option>
+                  <option value="lead">リード獲得・問い合わせ</option>
+                  <option value="media">集客・コンテンツ・送客</option>
+                  <option value="brand">ブランド認知</option>
                 </select>
               </label>
             </div>
-            <button id="run-signup-diagnosis" type="button">Analyze</button>
+            <button id="run-signup-diagnosis" type="button">診断する</button>
           </section>
 
-          <h2>2. Create Account</h2>
-          <label>Company Name <input type="text" id="signup-tenant" required /></label>
-          <label>Display Name <input type="text" id="signup-name" required /></label>
-          <label>Email <input type="email" id="signup-email" required /></label>
-          <label>Password <input type="password" id="signup-password" required /></label>
-          <button type="submit">Sign Up</button>
+          <h2>2. アカウント作成</h2>
+          <label>会社名 / アカウント名 <input type="text" id="signup-tenant" required /></label>
+          <label>氏名 <input type="text" id="signup-name" required /></label>
+          <label>メールアドレス <input type="email" id="signup-email" required /></label>
+          <label>パスワード <input type="password" id="signup-password" required /></label>
+          <button type="submit">新規登録</button>
           <div id="signup-status" class="tiny"></div>
         </form>
 
         <form id="verify-form" class="stack hidden">
-          <h2>Email Verification</h2>
-          <p class="muted tiny">Please enter the confirmation code sent to your email to complete registration.</p>
-          <label>Email <input type="email" id="verify-email" required /></label>
-          <label>Confirmation Code <input type="text" id="verify-code" required maxlength="6" /></label>
-          <button type="submit">Complete Verification</button>
-          <button id="resend-code" type="button" class="ghost">Resend Code</button>
+          <h2>メール認証</h2>
+          <p class="muted tiny">登録したメールアドレスに確認コードを送信しました。コードを入力して認証を完了してください。</p>
+          <label>メールアドレス <input type="email" id="verify-email" required /></label>
+          <label>確認コード <input type="text" id="verify-code" required maxlength="6" /></label>
+          <button type="submit">認証を完了する</button>
+          <button id="resend-code" type="button" class="ghost">コードを再送する</button>
           <div id="verify-status" class="tiny"></div>
         </form>
 
         <form id="forgot-form" class="stack hidden">
-          <h2>Reset Password</h2>
-          <p class="muted tiny">We will send a 6-digit code to your registered email.</p>
-          <label>Email <input type="email" id="forgot-email" required /></label>
-          <button type="submit">Send Reset Code</button>
-          <button id="back-to-login" class="ghost auth-aux" type="button">Back to Login</button>
+          <h2>パスワードをリセット</h2>
+          <p class="muted tiny">登録済みのメールアドレスに6桁のリセットコードを送信します。</p>
+          <label>メールアドレス <input type="email" id="forgot-email" required /></label>
+          <button type="submit">リセットコードを送信</button>
+          <button id="back-to-login" class="ghost auth-aux" type="button">ログインに戻る</button>
           <div id="forgot-status" class="tiny"></div>
         </form>
 
         <form id="reset-form" class="stack hidden">
-          <h2>Set New Password</h2>
-          <label>Email <input type="email" id="reset-email" required /></label>
-          <label>Reset Code <input type="text" id="reset-code" maxlength="6" required /></label>
-          <label>New Password <input type="password" id="reset-password" required /></label>
-          <button type="submit">Update Password</button>
-          <button id="back-to-login-2" class="ghost auth-aux" type="button">Back to Login</button>
+          <h2>新しいパスワードを設定</h2>
+          <label>メールアドレス <input type="email" id="reset-email" required /></label>
+          <label>リセットコード <input type="text" id="reset-code" maxlength="6" required /></label>
+          <label>新しいパスワード <input type="password" id="reset-password" required /></label>
+          <button type="submit">パスワードを更新する</button>
+          <button id="back-to-login-2" class="ghost auth-aux" type="button">ログインに戻る</button>
           <div id="reset-status" class="tiny"></div>
         </form>
 
