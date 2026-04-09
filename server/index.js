@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { readDb, writeDb } from "./db.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,13 +63,13 @@ if (STRIPE_BUSINESS_PRICE_ID) PLAN_PRICE_MAP[STRIPE_BUSINESS_PRICE_ID] = "busine
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const BENCHMARK_DEFAULTS = [
-  { id: "bm-bounce", metricKey: "bounce_rate", label: "直帰率", target: 0.55, badWhen: "higher", unit: "ratio" },
-  { id: "bm-pdp", metricKey: "pdp_reach_rate", label: "PDP到達率", target: 0.3, badWhen: "lower", unit: "ratio" },
+  { id: "bm-bounce", metricKey: "bounce_rate", label: "直帰率", target: 0.50, badWhen: "higher", unit: "ratio" },
+  { id: "bm-pdp", metricKey: "pdp_reach_rate", label: "商品詳細ページ到達率", target: 0.3, badWhen: "lower", unit: "ratio" },
   { id: "bm-add", metricKey: "add_to_cart_rate", label: "カート追加率", target: 0.2, badWhen: "lower", unit: "ratio" },
   { id: "bm-cart-abandon", metricKey: "cart_abandon_rate", label: "カート離脱率", target: 0.7, badWhen: "higher", unit: "ratio" },
   { id: "bm-checkout", metricKey: "checkout_reach_rate", label: "checkout到達率", target: 0.45, badWhen: "lower", unit: "ratio" },
   { id: "bm-purchase", metricKey: "purchase_rate", label: "購入完了率", target: 0.35, badWhen: "lower", unit: "ratio" },
-  { id: "bm-cvr", metricKey: "cvr", label: "CVR", target: 0.03, badWhen: "lower", unit: "ratio" }
+  { id: "bm-cvr", metricKey: "cvr", label: "CVR", target: 0.015, badWhen: "lower", unit: "ratio" }
 ];
 
 const DIAGNOSIS_RULE_DEFAULTS = [
@@ -433,107 +434,7 @@ async function ensureStorage() {
   }
 }
 
-// ── インメモリDBキャッシュ（起動時1回読み込み、以降はメモリを使う） ──────────
-let _dbCache = null;
-let _writeQueued = false;
-
-async function readDb() {
-  if (_dbCache) return _dbCache; // キャッシュヒット
-
-  let raw;
-  try {
-    raw = await fs.readFile(DB_FILE, "utf8");
-  } catch {
-    console.warn("[db] file read failed, reinitializing");
-    await ensureStorage();
-    raw = await fs.readFile(DB_FILE, "utf8");
-  }
-  let db;
-  try {
-    db = JSON.parse(raw);
-  } catch (e) {
-    console.error("[db] JSON parse error:", e.message);
-    // バックアップからの復旧を試みる
-    const backups = await fs.readdir(path.dirname(DB_FILE)).catch(() => []);
-    const bakFiles = backups
-      .filter((f) => f.startsWith("db.json.bak."))
-      .sort()
-      .reverse();
-    for (const bak of bakFiles) {
-      try {
-        const bakRaw = await fs.readFile(path.join(path.dirname(DB_FILE), bak), "utf8");
-        db = JSON.parse(bakRaw);
-        console.warn("[db] recovered from backup:", bak);
-        break;
-      } catch {}
-    }
-    if (!db) {
-      // 復旧不能 → バックアップして初期化
-      const backupPath = DB_FILE + ".bak." + Date.now();
-      await fs.writeFile(backupPath, raw, "utf8").catch(() => {});
-      await fs.unlink(DB_FILE).catch(() => {});
-      await ensureStorage();
-      db = JSON.parse(await fs.readFile(DB_FILE, "utf8"));
-    }
-  }
-  if (!Array.isArray(db.templates) || db.templates.length === 0) {
-    db.templates = RECOMMENDATION_TEMPLATES;
-  }
-  if (!Array.isArray(db.oauthStates)) {
-    db.oauthStates = [];
-  }
-  if (!Array.isArray(db.assistantMessages)) {
-    db.assistantMessages = [];
-  }
-  if (!Array.isArray(db.projectContexts)) {
-    db.projectContexts = [];
-  }
-  if (!Array.isArray(db.metricItemDaily)) {
-    db.metricItemDaily = [];
-  }
-  if (!Array.isArray(db.appEvents)) {
-    db.appEvents = [];
-  }
-  db.projectContexts = db.projectContexts.map((item) => ensureProjectContextDefaults(item, item.projectId));
-  db.projects = (db.projects || []).map((project) => ensureProjectDefaults(project));
-  db.users = (db.users || []).map((user) => ({
-    ...user,
-    emailVerifiedAt: Object.prototype.hasOwnProperty.call(user, "emailVerifiedAt")
-      ? user.emailVerifiedAt
-      : (user.createdAt || new Date().toISOString()),
-    emailVerification: user.emailVerification || null,
-    passwordReset: user.passwordReset || null
-  }));
-  if (!Array.isArray(db.benchmarks) || db.benchmarks.length === 0) {
-    db.benchmarks = BENCHMARK_DEFAULTS;
-  } else {
-    const existingKeys = new Set(db.benchmarks.map((item) => item.metricKey));
-    BENCHMARK_DEFAULTS.forEach((item) => {
-      if (!existingKeys.has(item.metricKey)) {
-        db.benchmarks.push(item);
-      }
-    });
-  }
-  if (!Array.isArray(db.diagnosisRules) || db.diagnosisRules.length === 0) {
-    db.diagnosisRules = DIAGNOSIS_RULE_DEFAULTS;
-  }
-  db.tenants = db.tenants.map((tenant) => ensureTenantDefaults(tenant));
-  _dbCache = db; // キャッシュに保存
-  return db;
-}
-
-async function writeDb(db) {
-  _dbCache = db; // メモリ即時反映
-  // アトミック書き込み: tmpファイルに書いてからrename（書き込み途中クラッシュでのDB破壊を防ぐ）
-  const tmp = DB_FILE + ".tmp";
-  const json_str = JSON.stringify(db, null, 2);
-  await fs.writeFile(tmp, json_str, "utf8");
-  await fs.rename(tmp, DB_FILE);
-  // 定期バックアップ（1日1回）
-  const now = new Date();
-  const bakPath = DB_FILE + `.bak.${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}`;
-  await fs.writeFile(bakPath, json_str, "utf8").catch(() => {});
-}
+// readDb / writeDb は ./db.js (Supabase) から import 済み
 
 function json(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -1408,7 +1309,9 @@ function generateDailyMetrics(project, stageRules, date) {
         const revenue = purchaseSessions * (3500 + Math.floor(rng() * 12000));
 
         rows.push({
-          id: uid(),
+          id: crypto.createHash("sha256")
+            .update(`${project.id}|${date}|${channel}|${device}|${lp}`)
+            .digest("hex").slice(0, 36),
           projectId: project.id,
           date,
           channel,
@@ -4617,7 +4520,36 @@ async function runDailyBatch() {
 
 async function bootstrap() {
   await ensureStorage();
-  await readDb(); // 起動時にDBをメモリにロードしてキャッシュを温める
+
+  // 起動時にSupabaseからロードしてキャッシュを温める
+  const warmDb = await readDb();
+
+  // 静的データをキャッシュに注入（Supabaseとは別管理）
+  if (!Array.isArray(warmDb.templates) || warmDb.templates.length === 0) {
+    warmDb.templates = RECOMMENDATION_TEMPLATES;
+  }
+  if (!Array.isArray(warmDb.benchmarks) || warmDb.benchmarks.length === 0) {
+    warmDb.benchmarks = BENCHMARK_DEFAULTS;
+  } else {
+    const existingKeys = new Set(warmDb.benchmarks.map(b => b.metricKey));
+    BENCHMARK_DEFAULTS.forEach(b => {
+      if (!existingKeys.has(b.metricKey)) warmDb.benchmarks.push(b);
+    });
+  }
+  if (!Array.isArray(warmDb.diagnosisRules) || warmDb.diagnosisRules.length === 0) {
+    warmDb.diagnosisRules = DIAGNOSIS_RULE_DEFAULTS;
+  }
+  warmDb.tenants         = warmDb.tenants.map(t => ensureTenantDefaults(t));
+  warmDb.projects        = warmDb.projects.map(p => ensureProjectDefaults(p));
+  warmDb.projectContexts = warmDb.projectContexts.map(item => ensureProjectContextDefaults(item, item.projectId));
+  warmDb.users           = warmDb.users.map(user => ({
+    ...user,
+    emailVerifiedAt: Object.prototype.hasOwnProperty.call(user, "emailVerifiedAt")
+      ? user.emailVerifiedAt
+      : (user.createdAt || new Date().toISOString()),
+    emailVerification: user.emailVerification || null,
+    passwordReset: user.passwordReset || null
+  }));
 
   const server = http.createServer(async (req, res) => {
     try {

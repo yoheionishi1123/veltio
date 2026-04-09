@@ -240,7 +240,7 @@ function metricLabel(metricKey) {
   const map = {
     sessions: "Sessions",
     bounce_rate: "直帰率",
-    pdp_reach_rate: "PDP到達率",
+    pdp_reach_rate: "商品詳細ページ到達率",
     add_to_cart_rate: "カート追加率",
     cart_abandon_rate: "カート離脱率",
     checkout_reach_rate: "checkout到達率",
@@ -598,13 +598,13 @@ function bucketEndForGranularity(bucket, granularity) {
 
 // E-commerce industry average benchmarks
 const METRIC_BENCHMARKS = {
-  bounce_rate:        { value: 0.45, label: "業界平均 45%" },
+  bounce_rate:        { value: 0.50, label: "業界平均 50%" },
   pdp_reach_rate:     { value: 0.40, label: "業界平均 40%" },
   add_to_cart_rate:   { value: 0.08, label: "業界平均 8%" },
   cart_abandon_rate:  { value: 0.70, label: "業界平均 70%" },
   checkout_reach_rate:{ value: 0.03, label: "業界平均 3%" },
   purchase_rate:      { value: 0.55, label: "業界平均 55%" },
-  cvr:                { value: 0.02, label: "業界平均 2%" }
+  cvr:                { value: 0.015, label: "業界平均 1.5%" }
 };
 
 function generateMetricInsight(data, metricKey) {
@@ -672,7 +672,11 @@ function renderTrendChart(series, metricKey, compareSeries = []) {
     ...(bm ? [bm.value] : []),
     ...(typeof targetCvr === "number" ? [targetCvr] : [])
   ];
-  const maxValue = Math.max(...allValues, 1);
+  // 割合系指標はデータの実値に合わせてスケールする（sessions固定の1を避ける）
+  const isRateMetric = metricKey !== "sessions";
+  const maxValue = isRateMetric
+    ? Math.max(...allValues, 0.001) * 1.15
+    : Math.max(...allValues, 1);
   const pointsMain = series
     .map((item, idx) => {
       const x = pad + (idx * (width - pad * 2)) / Math.max(series.length - 1, 1);
@@ -2559,6 +2563,7 @@ async function loadProjects() {
     state.assistantHistoryLoaded = false;
     state.projectContext = null;
     state.addingProject = true;
+    setActivePage("account");  // プロジェクト未作成 → アカウントページへ誘導
     renderProjectHeader();
     await loadAccount();
     return;
@@ -2963,7 +2968,7 @@ async function loadBreakdown() {
         <div class="breakdown-row-metrics">
           <div class="k">Sessions</div><div>${fmtWithDelta(row, prev, "sessions", false)}</div>
           <div class="k">Bounce</div><div>${fmtWithDelta(row, prev, "bounce_rate")}</div>
-          <div class="k">PDP</div><div>${fmtWithDelta(row, prev, "pdp_reach_rate")}</div>
+          <div class="k">商品詳細</div><div>${fmtWithDelta(row, prev, "pdp_reach_rate")}</div>
           <div class="k">AddCart</div><div>${fmtWithDelta(row, prev, "add_to_cart_rate")}</div>
           <div class="k">CartAbandon</div><div>${fmtWithDelta(row, prev, "cart_abandon_rate")}</div>
         </div>
@@ -3157,6 +3162,11 @@ function renderDiagnosis(result) {
 
     host.appendChild(section);
   });
+
+  // 診断結果がゼロの場合のメッセージ
+  if (host.children.length === 0) {
+    host.innerHTML = `<div class="muted tiny" style="padding:16px">診断結果がありません。セッション数が不足しているか、すべての指標が基準内です。データが蓄積されてから再実行してください。</div>`;
+  }
 }
 
 async function loadReports() {

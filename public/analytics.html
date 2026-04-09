@@ -260,8 +260,8 @@
                 <div class="tiny muted">
                   <div>CVR = 購入セッション数 / 全セッション数</div>
                   <div>直帰率 = 1 - engagement rate</div>
-                  <div>PDP到達率 = PDP閲覧セッション数 / 全セッション数</div>
-                  <div>カート追加率 = add_to_cart セッション数 / PDP閲覧セッション数</div>
+                  <div>商品詳細ページ到達率 = 商品詳細ページ閲覧セッション数 / 全セッション数</div>
+                  <div>カート追加率 = add_to_cart セッション数 / 商品詳細ページ閲覧セッション数</div>
                   <div>カート離脱率 = (カート到達セッション数 - 購入セッション数) / カート到達セッション数</div>
                   <div>checkout到達率 = begin_checkout セッション数 / add_to_cart セッション数</div>
                   <div>購入完了率 = purchase セッション数 / begin_checkout セッション数</div>
@@ -296,7 +296,7 @@
                   <select id="chart-metric-select">
                     <option value="sessions">セッション数</option>
                     <option value="bounce_rate">直帰率</option>
-                    <option value="pdp_reach_rate">PDP到達率</option>
+                    <option value="pdp_reach_rate">商品詳細ページ到達率</option>
                     <option value="add_to_cart_rate">カート追加率</option>
                     <option value="cart_abandon_rate">カート離脱率</option>
                     <option value="checkout_reach_rate">checkout到達率</option>
@@ -359,7 +359,7 @@
             <div id="breakdown-table-wrap" class="table-wrap">
               <table class="breakdown-table">
                 <thead id="breakdown-thead">
-                  <tr><th>ディメンション</th><th>セッション</th><th>直帰率</th><th>PDP到達率</th><th>カート追加率</th><th>カゴ落ち率</th></tr>
+                  <tr><th>ディメンション</th><th>セッション</th><th>直帰率</th><th>商品詳細ページ到達率</th><th>カート追加率</th><th>カゴ落ち率</th></tr>
                 </thead>
                 <tbody id="breakdown-body"></tbody>
               </table>
@@ -370,8 +370,9 @@
           <section class="panel dashboard-panel">
             <div class="dashboard-section-head">
               <div>
-                <p class="dashboard-card-kicker">キャンペーン効果</p>
-                <h2>キャンペーン影響</h2>
+                <p class="dashboard-card-kicker">セール・キャンペーン</p>
+                <h2>セール/キャンペーン効果検証</h2>
+                <p style="margin-top:4px;font-size:0.8rem;color:var(--muted,#888)">セールやキャンペーンの期間を登録すると、グラフ上に帯表示されCVRへの影響を視覚的に確認できます。</p>
               </div>
             </div>
             <form id="campaign-form" class="dashboard-campaign-form">
@@ -711,7 +712,6 @@
 
                 <div class="stage-rules-footer">
                   <button type="submit" class="btn-primary">保存して再同期</button>
-                  <span class="tiny muted">※保存後、最新30日分を再取得</span>
                 </div>
               </form>
             </section>
@@ -952,7 +952,7 @@
             </div>
             <div id="assistant-chat" class="chat-log"></div>
             <form id="assistant-form" class="chat-compose">
-              <textarea id="assistant-input" rows="3" placeholder="例: PDP到達率が低い理由と、今やるべき施策を教えて"></textarea>
+              <textarea id="assistant-input" rows="3" placeholder="例: 商品詳細ページ到達率が低い理由と、今やるべき施策を教えて"></textarea>
               <div class="inline">
                 <button type="submit">送信</button>
                 <span id="assistant-status" class="tiny"></span>
