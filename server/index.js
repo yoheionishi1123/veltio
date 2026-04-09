@@ -3647,12 +3647,8 @@ async function handleApi(req, res, urlObj) {
 
     const body = await parseBody(req);
     const propertyId = extractGa4PropertyId(body.ga4Input);
-    const accountEmail = String(body.accountEmail || "").trim().toLowerCase();
     if (!propertyId) {
       return json(res, 400, { error: "invalid_ga4_input" });
-    }
-    if (!accountEmail) {
-      return json(res, 400, { error: "missing_account_email", message: "GA4アカウントメールは必須です" });
     }
 
     // GA4 property uniqueness: one property can only be connected by one project (any user)
@@ -3679,7 +3675,6 @@ async function handleApi(req, res, urlObj) {
       tenantId: project.tenantId,
       userId: user.id,
       propertyId,
-      accountEmailHint: accountEmail,
       expiresAt: new Date(Date.now() + OAUTH_STATE_TTL_MS).toISOString()
     });
     await writeDb(db);
@@ -3707,7 +3702,7 @@ async function handleApi(req, res, urlObj) {
 
     try {
       const tokens = await exchangeCodeForTokens(code);
-      const email = (await fetchGoogleUserEmail(tokens.access_token)) || pending.accountEmailHint || "connected@example.com";
+      const email = (await fetchGoogleUserEmail(tokens.access_token)) || "connected@example.com";
       // Re-check uniqueness at callback time (race-condition guard)
       const conflictConn = db.ga4Connections.find((g) => g.ga4PropertyId === pending.propertyId && g.projectId !== pending.projectId);
       if (conflictConn) {

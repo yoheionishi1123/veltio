@@ -4065,8 +4065,7 @@ q("ga4-quick-form").addEventListener("submit", async (e) => {
     const out = await api(`/api/projects/${state.projectId}/ga4/quick-connect`, {
       method: "POST",
       body: {
-        ga4Input: q("ga4-quick-input").value,
-        accountEmail: q("ga4-quick-email").value
+        ga4Input: q("ga4-quick-input").value
       }
     });
     q("ga4-quick-status").textContent = `OAuth画面へ移動します: Property ${out.propertyId}`;
@@ -4083,7 +4082,6 @@ q("ga4-quick-form").addEventListener("submit", async (e) => {
 q("ga4-reconnect").addEventListener("click", () => {
   // 連携し直す = フォームをクリアして再表示（古い値を引き継がない）
   q("ga4-quick-input").value = state.ga4Connection?.propertyId || "";
-  q("ga4-quick-email").value = ""; // メールは毎回入力させる
   q("ga4-quick-status").textContent = "";
   q("ga4-connect-form-wrap").classList.remove("hidden");
   q("ga4-reconnect").classList.add("hidden");
