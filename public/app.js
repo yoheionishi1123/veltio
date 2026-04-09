@@ -1348,6 +1348,18 @@ function renderProjectHeader() {
   // ボタンテキストを状態に合わせて切り替え
   q("show-add-project").textContent = state.addingProject ? "キャンセル" : "別サイトを追加";
   q("project-status").textContent = "";
+
+  // サイドバー・モバイルトップバーに現在のサイト名を表示
+  const siteName = current?.name || "";
+  const sideLabel = q("sidebar-site-label");
+  if (sideLabel) {
+    sideLabel.textContent = siteName;
+    sideLabel.classList.toggle("hidden", !siteName);
+  }
+  const mobileLabel = q("mobile-site-label");
+  if (mobileLabel) {
+    mobileLabel.textContent = siteName;
+  }
 }
 
 function setActivePage(page) {

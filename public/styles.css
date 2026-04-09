@@ -134,6 +134,18 @@ h3 {
 
 .brand-logo { height: 28px; width: auto; display: block; }
 
+.sidebar-site-label {
+  padding: 8px 18px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent, #4f8cff);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--line);
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -3307,6 +3319,17 @@ tr:hover td { background: var(--surface-2); }
   justify-content: space-between;
   padding: 0 12px;
   gap: 12px;
+}
+
+.mobile-site-label {
+  flex: 1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent, #4f8cff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .mobile-brand img {
