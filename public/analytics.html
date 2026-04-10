@@ -701,8 +701,14 @@
 
                 </div>
 
+                <!-- PDP URL パターン設定 -->
+                <div class="sr-field-group" style="margin-top:16px;">
+                  <label class="sr-label" for="sr-pdp-url">商品詳細ページ（PDP）の URL パターン</label>
+                  <p class="tiny muted" style="margin:2px 0 6px">このパターンに一致するページに直接流入したセッションをPDP到達率の分母から除外します。</p>
+                  <input id="sr-pdp-url" type="text" class="sr-event-custom" placeholder="/products/" style="width:100%;max-width:360px;" />
+                </div>
+
                 <!-- hidden URL inputs (still saved, just not prominent) -->
-                <input id="sr-pdp-url" type="hidden" />
                 <input id="sr-cart-url" type="hidden" />
                 <input id="sr-checkout-url" type="hidden" />
                 <input id="sr-purchase-url" type="hidden" />

@@ -50,3 +50,43 @@ services:
       name: veltio-data
       mountPath: /var/data
       sizeGB: 1
+
+  - type: web
+    name: atmos-cvr
+    runtime: docker
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CVR_STORAGE_DIR
+        value: /var/data/atmos
+      - key: SESSION_COOKIE_NAME
+        value: atmos_sid
+      - key: APP_NAME
+        value: Atmos
+      - key: NOINDEX
+        value: "true"
+      - key: BASIC_AUTH_USER
+        sync: false
+      - key: BASIC_AUTH_PASS
+        sync: false
+      - key: AUTO_SESSION_EMAIL
+        sync: false
+      - key: GA4_OAUTH_CLIENT_ID
+        sync: false
+      - key: GA4_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GA4_OAUTH_REDIRECT_URI
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+    disk:
+      name: atmos-data
+      mountPath: /var/data
+      sizeGB: 1

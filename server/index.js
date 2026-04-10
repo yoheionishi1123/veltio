@@ -39,6 +39,15 @@ const ADMIN_EMAILS = new Set(
 const OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
 
+// ── Private mode (Basic Auth + noindex) ───────────────────────────────────────
+const BASIC_AUTH_USER     = process.env.BASIC_AUTH_USER || "";
+const BASIC_AUTH_PASS     = process.env.BASIC_AUTH_PASS || "";
+const APP_NAME            = process.env.APP_NAME || "Veltio";
+const APP_FAVICON         = process.env.APP_FAVICON || "/veltio-logo.svg";
+const NOINDEX             = process.env.NOINDEX === "true";
+// AUTO_SESSION_EMAIL: Basic Auth モードで自動ログインするユーザーのメールアドレス
+const AUTO_SESSION_EMAIL  = process.env.AUTO_SESSION_EMAIL || "";
+
 // ── Stripe ────────────────────────────────────────────────────────────────────
 const STRIPE_SECRET_KEY        = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET    = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -66,7 +75,6 @@ const BENCHMARK_DEFAULTS = [
   { id: "bm-bounce", metricKey: "bounce_rate", label: "直帰率", target: 0.50, badWhen: "higher", unit: "ratio" },
   { id: "bm-pdp", metricKey: "pdp_reach_rate", label: "商品詳細ページ到達率", target: 0.3, badWhen: "lower", unit: "ratio" },
   { id: "bm-add", metricKey: "add_to_cart_rate", label: "カート追加率", target: 0.2, badWhen: "lower", unit: "ratio" },
-  { id: "bm-cart-abandon", metricKey: "cart_abandon_rate", label: "カート離脱率", target: 0.7, badWhen: "higher", unit: "ratio" },
   { id: "bm-checkout", metricKey: "checkout_reach_rate", label: "checkout到達率", target: 0.45, badWhen: "lower", unit: "ratio" },
   { id: "bm-purchase", metricKey: "purchase_rate", label: "購入完了率", target: 0.35, badWhen: "lower", unit: "ratio" },
   { id: "bm-cvr", metricKey: "cvr", label: "CVR", target: 0.015, badWhen: "lower", unit: "ratio" }
@@ -107,17 +115,6 @@ const DIAGNOSIS_RULE_DEFAULTS = [
     mediumGap: 0.02
   },
   {
-    id: "rule-cart",
-    metricKey: "cart_abandon_rate",
-    title: "カート離脱率が高い",
-    reason: "配送費表示タイミング、クーポン導線、決済前の不安要因が疑われます",
-    bottleneckStage: "cart_to_checkout",
-    minSessions: 200,
-    criticalGap: 0.12,
-    highGap: 0.06,
-    mediumGap: 0.03
-  },
-  {
     id: "rule-checkout",
     metricKey: "checkout_reach_rate",
     title: "チェックアウト到達率が低い",
@@ -142,94 +139,243 @@ const DIAGNOSIS_RULE_DEFAULTS = [
 ];
 
 const RECOMMENDATION_TEMPLATES = [
+  // ── 直帰率 ────────────────────────────────────────────────────────────────────
   {
     id: "tpl-bounce-1",
     metricKey: "bounce_rate",
     causeCategory: "landing_message_mismatch",
     title: "LPファーストビューを流入訴求に合わせる",
-    summary: "ファーストビューの訴求・速度・信頼情報を同時に改善して直帰を抑えます。",
+    summary: "ファーストビューの訴求・信頼情報を改善し、3秒で価値を伝えて直帰を抑えます。",
     imageLabel: "First View",
     imageColor: "#1d4ed8",
     actionSteps: [
-      "広告文と見出しを一致させる",
-      "1stビューで誰の何を解決するかを3秒で伝える",
-      "3秒以内の表示を目標に画像最適化する",
-      "累計購入数やレビューをFV直下に配置する"
+      "広告文と見出しを完全に一致させる",
+      "1stビューで『誰の何を解決するか』を3秒で伝える",
+      "累計購入数・レビュー・セキュリティバッジをFV直下に配置する",
+      "コンバージョンに結びつかない検索キーワードを除外設定する"
     ],
     impactScore: 5,
     easeScore: 3,
     validationMetric: "bounce_rate"
   },
   {
+    id: "tpl-bounce-2",
+    metricKey: "bounce_rate",
+    causeCategory: "page_speed",
+    title: "ページ表示速度を3秒以内に改善する",
+    summary: "読み込み遅延は直帰の最大要因のひとつ。画像圧縮・遅延読み込み・CDN活用で体感速度を改善します。",
+    imageLabel: "Page Speed",
+    imageColor: "#0369a1",
+    actionSteps: [
+      "画像をWebP/AVIF形式に変換し圧縮する",
+      "スクロール位置外の画像にLazy Loadを適用する",
+      "CDNを導入してアセット配信を高速化する",
+      "不要なサードパーティスクリプトを削除・遅延読み込みにする"
+    ],
+    impactScore: 4,
+    easeScore: 2,
+    validationMetric: "bounce_rate"
+  },
+  {
+    id: "tpl-bounce-3",
+    metricKey: "bounce_rate",
+    causeCategory: "exit_recovery",
+    title: "離脱防止と回遊誘導の強化",
+    summary: "Exit Intent技術と404対策で、離脱しようとしたユーザーをサイト内に引き留めます。",
+    imageLabel: "Exit Recover",
+    imageColor: "#be185d",
+    actionSteps: [
+      "戻るボタン操作時にクーポン・特典をポップアップ表示する",
+      "404ページに人気商品・主要カテゴリへのリンクを設置する",
+      "スクロール量や滞在時間に応じたWeb接客ポップアップを実装する",
+      "モバイルの本文フォントサイズを14px以上・読みやすいレイアウトにする"
+    ],
+    impactScore: 3,
+    easeScore: 3,
+    validationMetric: "bounce_rate"
+  },
+  // ── PDP到達率 ──────────────────────────────────────────────────────────────────
+  {
     id: "tpl-pdp-1",
     metricKey: "pdp_reach_rate",
     causeCategory: "weak_navigation",
-    title: "一覧→PDP導線の強化",
-    summary: "一覧・検索・導線設計を改善し、商品詳細の閲覧率を底上げします。",
-    imageLabel: "PDP Flow",
+    title: "一覧・ナビゲーション導線の強化",
+    summary: "カテゴリ構造・一覧表示・パンくずリストを整備し、商品詳細への到達率を底上げします。",
+    imageLabel: "Navigation",
     imageColor: "#0f766e",
     actionSteps: [
       "一覧カード全体をクリック可能にする",
-      "商品画像に人気・再入荷などのバッジを付ける",
-      "在庫/価格/配送日を一覧で可視化する",
-      "検索導線とタグ導線を目立つ位置へ再配置する"
+      "商品ラベル（ベストセラー・残りわずか・新着）でクリックを誘発する",
+      "カテゴリ階層を最大3階層に整理しメガメニューで直感的に構築する",
+      "パンくずリストを設置して現在地と上位カテゴリへの回遊を容易にする"
     ],
     impactScore: 4,
     easeScore: 4,
     validationMetric: "pdp_reach_rate"
   },
   {
+    id: "tpl-pdp-2",
+    metricKey: "pdp_reach_rate",
+    causeCategory: "weak_search",
+    title: "サイト内検索・絞り込み機能の高度化",
+    summary: "オートコンプリートやファセット検索を導入し、ユーザーが目的の商品に最短でたどり着けるようにします。",
+    imageLabel: "Search UX",
+    imageColor: "#0891b2",
+    actionSteps: [
+      "検索にオートコンプリートと画像付き候補表示を実装する",
+      "表記ゆれ・スペルミスを辞書/AI で吸収する（例：ゴミ箱/ごみ箱）",
+      "価格・サイズ・カラー・在庫状況での複数条件絞り込みを追加する",
+      "検索ゼロ件ページに関連商品・カテゴリレコメンドを表示する"
+    ],
+    impactScore: 4,
+    easeScore: 2,
+    validationMetric: "pdp_reach_rate"
+  },
+  {
+    id: "tpl-pdp-3",
+    metricKey: "pdp_reach_rate",
+    causeCategory: "personalization",
+    title: "AIレコメンド・パーソナライズ提案",
+    summary: "ユーザーの行動履歴に基づくAIレコメンドで、まだ気づいていない商品への誘導機会を創出します。",
+    imageLabel: "AI Recs",
+    imageColor: "#7c3aed",
+    actionSteps: [
+      "閲覧・購買履歴に基づく『あなたにおすすめ』セクションをTOPに設置する",
+      "一覧ページでユーザー別に商品の並び順をパーソナライズする",
+      "在庫状況や閲覧数に基づくリアルタイムバッジで人気度を可視化する",
+      "A/Bテストでレコメンドロジックの改善サイクルを回す"
+    ],
+    impactScore: 5,
+    easeScore: 1,
+    validationMetric: "pdp_reach_rate"
+  },
+  // ── カート追加率 ───────────────────────────────────────────────────────────────
+  {
     id: "tpl-add-1",
     metricKey: "add_to_cart_rate",
     causeCategory: "pdp_friction",
-    title: "PDPの購入意思決定阻害を削減",
-    summary: "CTAの視認性・商品情報・心理的障壁を同時に下げてカート追加を増やします。",
-    imageLabel: "Add Cart",
+    title: "PDPのCTAと商品情報の最適化",
+    summary: "CTAの視認性・配置・コピー改善と商品情報の充実で、カートへのアクションを増やします。",
+    imageLabel: "CTA & Info",
     imageColor: "#b45309",
     actionSteps: [
-      "カート追加CTAの固定表示",
-      "サイズ/カラー選択エラーを即時表示する",
-      "送料・返品条件をCTA付近で明示する",
-      "レビュー・サイズ感・利用画像をPDP上部に追加する"
+      "スマホ下部にカート追加CTAを固定表示し、タップ領域を44px以上確保する",
+      "CTA直下に『送料無料』『返品無料』『SSL保護』などの不安払拭コピーを添える",
+      "価格・送料・在庫・配送予定日をスクロールなしで見える位置に配置する",
+      "複数アングル・着用動画・360度ビューで実物の不安を解消する"
     ],
     impactScore: 5,
-    easeScore: 2,
+    easeScore: 3,
     validationMetric: "add_to_cart_rate"
   },
   {
-    id: "tpl-cart-1",
-    metricKey: "cart_abandon_rate",
+    id: "tpl-add-2",
+    metricKey: "add_to_cart_rate",
+    causeCategory: "social_proof",
+    title: "緊急性・希少性演出とソーシャルプルーフ",
+    summary: "星評価・UGC・在庫残数で『今買う理由』を作り、購買意欲を後押しします。",
+    imageLabel: "Social Proof",
+    imageColor: "#dc2626",
+    actionSteps: [
+      "星評価サマリ・画像付きレビュー・Q&AをPDP上部に配置する",
+      "『在庫残り◯点』『過去24時間で◯個売れました』などファクトベースの緊急性を表示する",
+      "SNSのUGCや導入実績をレビュー欄に組み込む",
+      "在庫/価格/カラー選択エラーをリアルタイムで即時表示する"
+    ],
+    impactScore: 4,
+    easeScore: 3,
+    validationMetric: "add_to_cart_rate"
+  },
+  {
+    id: "tpl-add-3",
+    metricKey: "add_to_cart_rate",
+    causeCategory: "live_support",
+    title: "Web接客・チャットサポートの導入",
+    summary: "滞在時間や行動トリガーに応じたチャットや自動ポップアップで、迷いを即座に解消します。",
+    imageLabel: "Live Chat",
+    imageColor: "#0f766e",
+    actionSteps: [
+      "商品ページの滞在時間が一定を超えたらチャットボットをポップアップ表示する",
+      "よくある質問（サイズ感・返品・配送）をFAQページではなくPDP内に組み込む",
+      "チャットサポートで購入障壁をリアルタイムに解消する",
+      "スクロール量に応じた自動チャット開始で購買迷いを検知してフォローする"
+    ],
+    impactScore: 3,
+    easeScore: 2,
+    validationMetric: "add_to_cart_rate"
+  },
+  // ── チェックアウト到達率 ────────────────────────────────────────────────────────
+  {
+    id: "tpl-checkout-1",
+    metricKey: "checkout_reach_rate",
     causeCategory: "checkout_entry_drop",
-    title: "カートから決済開始への遷移率を改善",
-    summary: "送料・クーポン・決済導線の不安を減らし、カゴ落ちを抑えます。",
-    imageLabel: "Checkout",
+    title: "カート画面の費用透明化と不安解消",
+    summary: "送料・合計金額の早期開示とセキュリティ表示で、カートから決済画面への移行を増やします。",
+    imageLabel: "Cart → Pay",
     imageColor: "#be123c",
     actionSteps: [
-      "合計金額内訳をカート画面で即表示",
-      "ゲスト購入導線を明確化",
-      "クーポン入力UIを簡素化する",
-      "離脱防止モーダルで戻る前に特典を提示する"
+      "カート画面で送料・手数料込みの合計金額を即時表示する",
+      "『あと◯円で送料無料』でアップセルを促しつつ離脱を防ぐ",
+      "ゲスト購入（会員登録なし）の導線を目立たせる",
+      "決済ページのヘッダー・フッターのノイズを排除し決済に集中させる"
     ],
     impactScore: 5,
     easeScore: 3,
     validationMetric: "checkout_reach_rate"
   },
   {
+    id: "tpl-checkout-2",
+    metricKey: "checkout_reach_rate",
+    causeCategory: "payment_options",
+    title: "決済手段の多様化とセキュリティ表示",
+    summary: "決済手段の幅を広げ、セキュリティへの信頼を可視化することでチェックアウト完了率を高めます。",
+    imageLabel: "Payment",
+    imageColor: "#0369a1",
+    actionSteps: [
+      "Amazon Pay・楽天ペイ・Apple Pay等のID決済を導入する",
+      "コンビニ払い・後払い（BNPL）を追加し幅広い支払いニーズに対応する",
+      "クレジットカードブランドロジョとSSLバッジを注文確定ボタン付近に表示する",
+      "注文確定ボタンを『送信』でなく『◯◯円を支払う』と金額明記にする"
+    ],
+    impactScore: 4,
+    easeScore: 2,
+    validationMetric: "checkout_reach_rate"
+  },
+  // ── 購入完了率 ──────────────────────────────────────────────────────────────────
+  {
     id: "tpl-purchase-1",
     metricKey: "purchase_rate",
     causeCategory: "checkout_friction",
-    title: "チェックアウト完了率を引き上げる",
-    summary: "フォーム項目削減・EFO・決済手段追加で購入完了率を上げます。",
-    imageLabel: "Purchase",
+    title: "チェックアウトフォームのEFO（入力最適化）",
+    summary: "フォーム項目削減・自動補完・インラインバリデーションで購入完了率を引き上げます。",
+    imageLabel: "Form EFO",
     imageColor: "#7c3aed",
     actionSteps: [
-      "入力項目を最小化し自動補完を有効化",
-      "利用可能決済手段を増やす",
-      "エラー理由と修正方法をその場表示する",
-      "Amazon Pay等の簡易決済を導入する"
+      "入力項目を最小限に絞り、郵便番号→住所の自動補完を有効化する",
+      "エラーを送信後ではなく入力直後にリアルタイム表示（インラインバリデーション）する",
+      "スマホで数字入力欄が数字キーボードで開くよう inputmode を設定する",
+      "進捗インジケーターでチェックアウトの現在ステップを可視化する"
     ],
     impactScore: 5,
     easeScore: 2,
+    validationMetric: "purchase_rate"
+  },
+  {
+    id: "tpl-purchase-2",
+    metricKey: "purchase_rate",
+    causeCategory: "cart_abandonment_recovery",
+    title: "カゴ落ちリカバリーとサンクスページ活用",
+    summary: "離脱後のリマインドメールとサンクスページ活用でLTVを向上させます。",
+    imageLabel: "Recovery",
+    imageColor: "#0f766e",
+    actionSteps: [
+      "MAツールでカート放棄から数時間〜翌日にリマインドメールを自動送信する",
+      "リマインドメールにクーポンや限定特典を組み込み再訪を促す",
+      "サンクスページで次回クーポン配布やLINE登録へ誘導しLTVを向上させる",
+      "購入完了後のクロスセル提案（一緒によく買われている商品）を表示する"
+    ],
+    impactScore: 4,
+    easeScore: 3,
     validationMetric: "purchase_rate"
   }
 ];
@@ -620,6 +766,7 @@ function aggregateBlankRow() {
   return {
     sessions: 0,
     engagedSessions: 0,
+    directPdpSessions: 0,
     pdpSessions: 0,
     addToCartSessions: 0,
     cartReachSessions: 0,
@@ -631,7 +778,7 @@ function aggregateBlankRow() {
 
 function metricBadWhen(metricKey, db) {
   const benchmark = db?.benchmarks?.find((item) => item.metricKey === metricKey);
-  return benchmark?.badWhen || (["bounce_rate", "cart_abandon_rate"].includes(metricKey) ? "higher" : "lower");
+  return benchmark?.badWhen || (metricKey === "bounce_rate" ? "higher" : "lower");
 }
 
 function benchmarkForMetric(db, metricKey) {
@@ -672,9 +819,10 @@ function buildMetricComparisons(db, rates, project = null) {
 function computeRates(agg) {
   const engagementRate = safeDivide(agg.engagedSessions, agg.sessions);
   const bounceRate = 1 - engagementRate;
-  const pdpReachRate = safeDivide(agg.pdpSessions, agg.sessions);
+  // PDP直接流入セッションを分母から除外（ファーストビューがPDPのセッションは到達率計算対象外）
+  const pdpDenominator = Math.max(0, agg.sessions - (agg.directPdpSessions || 0));
+  const pdpReachRate = safeDivide(agg.pdpSessions, pdpDenominator);
   const addToCartRate = safeDivide(agg.addToCartSessions, agg.pdpSessions);
-  const cartAbandonRate = safeDivide(agg.cartReachSessions - agg.purchaseSessions, agg.cartReachSessions);
   const checkoutReachRate = safeDivide(agg.checkoutSessions, Math.max(agg.addToCartSessions, agg.checkoutSessions));
   const purchaseRate = safeDivide(agg.purchaseSessions, agg.checkoutSessions);
   const cvr = safeDivide(agg.purchaseSessions, agg.sessions);
@@ -683,7 +831,6 @@ function computeRates(agg) {
     bounce_rate: bounceRate,
     pdp_reach_rate: pdpReachRate,
     add_to_cart_rate: addToCartRate,
-    cart_abandon_rate: cartAbandonRate,
     checkout_reach_rate: checkoutReachRate,
     purchase_rate: purchaseRate,
     cvr
@@ -710,7 +857,7 @@ const PLAN_SESSION_LIMITS = {
   pro:     100_000,
   business: Infinity // unlimited
 };
-const TRIAL_DAYS = 14;
+const TRIAL_DAYS = 30;
 
 function isTrialActive(tenant) {
   if (!tenant) return false;
@@ -789,7 +936,36 @@ function projectContextFor(db, projectId) {
   return ensureProjectContextDefaults(found, projectId);
 }
 
+// ── Basic Auth middleware ─────────────────────────────────────────────────────
+function checkBasicAuth(req, res) {
+  if (!BASIC_AUTH_USER) return true; // 無効時はスルー
+  const auth = req.headers["authorization"] || "";
+  const spaceIdx = auth.indexOf(" ");
+  const type = auth.slice(0, spaceIdx);
+  const encoded = auth.slice(spaceIdx + 1);
+  if (type !== "Basic" || !encoded) {
+    res.writeHead(401, { "WWW-Authenticate": 'Basic realm="Restricted Area"', "Content-Type": "text/plain" });
+    res.end("Unauthorized");
+    return false;
+  }
+  const decoded = Buffer.from(encoded, "base64").toString("utf-8");
+  const colonIdx = decoded.indexOf(":");
+  const user = decoded.slice(0, colonIdx);
+  const pass = decoded.slice(colonIdx + 1);
+  if (user !== BASIC_AUTH_USER || pass !== BASIC_AUTH_PASS) {
+    res.writeHead(401, { "WWW-Authenticate": 'Basic realm="Restricted Area"', "Content-Type": "text/plain" });
+    res.end("Unauthorized");
+    return false;
+  }
+  return true;
+}
+
 function currentUser(db, req) {
+  // Basic Auth + AUTO_SESSION_EMAIL が設定されている場合は自動ログイン
+  if (BASIC_AUTH_USER && AUTO_SESSION_EMAIL) {
+    const user = db.users.find((u) => u.email === AUTO_SESSION_EMAIL);
+    if (user) return user;
+  }
   const cookies = parseCookies(req);
   const sid = cookies[SESSION_COOKIE_NAME];
   if (!sid) return null;
@@ -1076,6 +1252,10 @@ async function syncProjectMetricsFromGa4(db, project, from, to) {
     row.checkoutSessions = Number(ev[checkoutEvent] || 0);
     row.purchaseSessions = Number(ev[purchaseEvent] || 0);
 
+    // PDP直接流入セッション数：ランディングページがPDP URLパターンに一致するセッション
+    const pdpUrlPattern = rules.pdpUrlPattern || "/products/";
+    row.directPdpSessions = row.landingPage && row.landingPage.startsWith(pdpUrlPattern) ? row.sessions : 0;
+
     const cartByViewCart = Number(ev[cartEvent] || 0);
     const cartByBeginCheckout = Number(ev[cartAltEvent] || 0);
     if (rules.cartReachMode === "view_cart_only") {
@@ -1148,6 +1328,7 @@ function aggregateMetricRows(rows) {
   return rows.reduce((acc, row) => {
     acc.sessions += row.sessions;
     acc.engagedSessions += row.engagedSessions;
+    acc.directPdpSessions += row.directPdpSessions || 0;
     acc.pdpSessions += row.pdpSessions;
     acc.addToCartSessions += row.addToCartSessions;
     acc.cartReachSessions += row.cartReachSessions;
@@ -1571,7 +1752,7 @@ function asciiReportLines(project, from, to, metrics, comparisons, worstRows, fi
 
 const METRIC_LABEL_MAP = {
   bounce_rate: "直帰率", pdp_reach_rate: "PDP到達率", add_to_cart_rate: "カート追加率",
-  cart_abandon_rate: "カート離脱率", checkout_reach_rate: "チェックアウト到達率",
+  checkout_reach_rate: "チェックアウト到達率",
   purchase_rate: "購入完了率", cvr: "CVR"
 };
 const SEVERITY_LABEL_MAP = { critical: "重大", high: "高", medium: "中", low: "低" };
@@ -1799,7 +1980,6 @@ function metricLabel(metricKey) {
     bounce_rate: "直帰率",
     pdp_reach_rate: "PDP到達率",
     add_to_cart_rate: "カート追加率",
-    cart_abandon_rate: "カート離脱率",
     checkout_reach_rate: "checkout到達率",
     purchase_rate: "購入完了率"
   }[metricKey] || metricKey;
@@ -1814,8 +1994,7 @@ function metricFromMessage(message) {
   if (text.includes("直帰") || text.includes("bounce")) return "bounce_rate";
   if (text.includes("pdp") || text.includes("商品詳細")) return "pdp_reach_rate";
   if (text.includes("カート追加") || text.includes("add")) return "add_to_cart_rate";
-  if (text.includes("カート離脱") || text.includes("カゴ落ち")) return "cart_abandon_rate";
-  if (text.includes("checkout") || text.includes("チェックアウト")) return "checkout_reach_rate";
+  if (text.includes("カート離脱") || text.includes("カゴ落ち") || text.includes("checkout") || text.includes("チェックアウト")) return "checkout_reach_rate";
   if (text.includes("購入") || text.includes("purchase")) return "purchase_rate";
   return null;
 }
@@ -2347,7 +2526,7 @@ async function serveStatic(req, res, urlObj) {
   }
 
   try {
-    const content = await fs.readFile(fsPath);
+    let content = await fs.readFile(fsPath);
     const ext = path.extname(fsPath).toLowerCase();
     const contentType =
       ext === ".html"
@@ -2359,6 +2538,28 @@ async function serveStatic(req, res, urlObj) {
             : ext === ".svg"
               ? "image/svg+xml"
             : "application/octet-stream";
+
+    // Private mode: HTML の書き換え
+    if (ext === ".html" && (NOINDEX || APP_NAME !== "Veltio" || APP_FAVICON !== "/veltio-logo.svg")) {
+      let html = content.toString("utf-8");
+
+      // サイト名の置換（<title> タグ内のみ）
+      if (APP_NAME !== "Veltio") {
+        html = html.replace(/<title>Veltio([^<]*)<\/title>/g, `<title>${APP_NAME}$1</title>`);
+      }
+
+      // ファビコンの置換
+      if (APP_FAVICON !== "/veltio-logo.svg") {
+        html = html.replace(/href="\/veltio-logo\.svg"([^>]*type="image\/svg\+xml")/g, `href="${APP_FAVICON}"$1`);
+      }
+
+      // noindex の注入
+      if (NOINDEX) {
+        html = html.replace(/<head>/, '<head>\n    <meta name="robots" content="noindex,nofollow" />');
+      }
+
+      content = Buffer.from(html, "utf-8");
+    }
 
     res.writeHead(200, { "Content-Type": contentType });
     res.end(content);
@@ -3815,17 +4016,17 @@ async function handleApi(req, res, urlObj) {
     const from = urlObj.searchParams.get("from") || shiftDate(new Date().toISOString().slice(0, 10), -90);
     const to = urlObj.searchParams.get("to") || new Date().toISOString().slice(0, 10);
     const rows = selectRowsForPeriod(db, project.id, from, to);
-    const header = ["date","channel","device","landingPage","sessions","engagedSessions","pdpSessions","addToCartSessions","cartReachSessions","checkoutSessions","purchaseSessions","revenue","bounce_rate","pdp_reach_rate","add_to_cart_rate","cart_abandon_rate","checkout_reach_rate","purchase_rate","cvr"];
+    const header = ["date","channel","device","landingPage","sessions","engagedSessions","directPdpSessions","pdpSessions","addToCartSessions","cartReachSessions","checkoutSessions","purchaseSessions","revenue","bounce_rate","pdp_reach_rate","add_to_cart_rate","checkout_reach_rate","purchase_rate","cvr"];
     const csvLines = [header.join(",")];
     for (const r of rows.sort((a, b) => a.date.localeCompare(b.date))) {
       const m = computeRates(r);
       const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
       csvLines.push([
         r.date, esc(r.channel), esc(r.device), esc(r.landingPage),
-        r.sessions, r.engagedSessions, r.pdpSessions, r.addToCartSessions,
+        r.sessions, r.engagedSessions, r.directPdpSessions || 0, r.pdpSessions, r.addToCartSessions,
         r.cartReachSessions, r.checkoutSessions, r.purchaseSessions, r.revenue,
         m.bounce_rate.toFixed(4), m.pdp_reach_rate.toFixed(4), m.add_to_cart_rate.toFixed(4),
-        m.cart_abandon_rate.toFixed(4), m.checkout_reach_rate.toFixed(4), m.purchase_rate.toFixed(4), m.cvr.toFixed(4)
+        m.checkout_reach_rate.toFixed(4), m.purchase_rate.toFixed(4), m.cvr.toFixed(4)
       ].join(","));
     }
     const csv = csvLines.join("\n");
@@ -3975,7 +4176,6 @@ async function handleApi(req, res, urlObj) {
           bounce_rate: rates.bounce_rate - compareRates.bounce_rate,
           pdp_reach_rate: rates.pdp_reach_rate - compareRates.pdp_reach_rate,
           add_to_cart_rate: rates.add_to_cart_rate - compareRates.add_to_cart_rate,
-          cart_abandon_rate: rates.cart_abandon_rate - compareRates.cart_abandon_rate,
           checkout_reach_rate: rates.checkout_reach_rate - compareRates.checkout_reach_rate,
           purchase_rate: rates.purchase_rate - compareRates.purchase_rate,
           cvr: rates.cvr - compareRates.cvr
@@ -4179,7 +4379,7 @@ async function handleApi(req, res, urlObj) {
     if (req.method === "POST") {
       const body = await parseBody(req);
       const existing = projectContextFor(db, projectId);
-      const VALID_METRIC_KEYS = ["bounce_rate","pdp_reach_rate","add_to_cart_rate","cart_abandon_rate","checkout_reach_rate","purchase_rate","cvr"];
+      const VALID_METRIC_KEYS = ["bounce_rate","pdp_reach_rate","add_to_cart_rate","checkout_reach_rate","purchase_rate","cvr"];
       const next = {
         ...existing,
         projectId,
@@ -4548,6 +4748,9 @@ async function bootstrap() {
 
   const server = http.createServer(async (req, res) => {
     try {
+      // Basic Auth チェック（BASIC_AUTH_USER が設定されている場合のみ）
+      if (!checkBasicAuth(req, res)) return;
+
       const urlObj = new URL(req.url || "/", `http://${req.headers.host}`);
       if (urlObj.pathname.startsWith("/api/")) {
         await handleApi(req, res, urlObj);

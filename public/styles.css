@@ -3615,6 +3615,65 @@ tr:hover td { background: var(--surface-2); }
 
   /* Topbar nav (fallback) */
   #topbar-nav.hidden ~ * .sidebar { display: none; }
+
+  /* ── KPI metric cards: 2 columns, compact ────────────────── */
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .metric-card { padding: 12px 10px; gap: 4px; }
+  .metric-card-label { font-size: 10px; }
+  .metric-card .v, .metric-card-main { font-size: 20px; }
+  .metric-card-sub { font-size: 11px; }
+
+  /* ── Recommendation cards: stack vertically ─────────────── */
+  .rec-card {
+    grid-template-columns: 1fr;
+  }
+  .rec-card img { width: 100%; height: 120px; }
+  .rec-scores { gap: 6px; }
+
+  /* ── Diagnosis (DAC) ──────────────────────────────────────── */
+  .dac-finding-row { padding: 12px 10px 6px; }
+  .dac-val { font-size: 18px; }
+  .dac-rec-header { flex-wrap: wrap; gap: 6px; }
+  .dac-rec-scores { flex-shrink: 1; flex-wrap: wrap; }
+  .dac-steps { gap: 4px; }
+  .dac-step-row { gap: 6px; }
+  .dac-step-text { font-size: 12px; }
+
+  /* ── Account settings ─────────────────────────────────────── */
+  .account-form-footer { justify-content: stretch; }
+  .account-save-btn { width: 100%; }
+  .account-card-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .plan-badge { align-self: flex-start; }
+
+  /* ── Stage rules form ─────────────────────────────────────── */
+  .sr-field-group input[type="text"] { max-width: 100% !important; }
+  .stage-rules-footer button { width: 100%; }
+
+  /* ── Funnel chart ─────────────────────────────────────────── */
+  .funnel-row-head { flex-wrap: wrap; gap: 4px; }
+
+  /* ── Experiments / Campaign ───────────────────────────────── */
+  .campaign-impact-grid { grid-template-columns: 1fr; }
+  .validation-metric-card { flex-direction: column; }
+
+  /* ── Benchmark table ──────────────────────────────────────── */
+  .table-wrap table { font-size: 12px; }
+  .table-wrap th, .table-wrap td { padding: 6px 8px; }
+
+  /* ── Chat compose ─────────────────────────────────────────── */
+  .chat-compose { gap: 6px; }
+  .chat-compose button { width: 100%; }
+}
+
+/* ── Very small screens (≤375px) ─────────────────────────── */
+@media (max-width: 375px) {
+  .dashboard-kpi-grid { grid-template-columns: 1fr; }
+  .metric-card .v, .metric-card-main { font-size: 22px; }
+  .panel { padding: 10px 8px; }
+  .container { padding: 10px 8px 24px; }
 }
 
 /* ── Demo Banner ──────────────────────────────────────────────────────────── */

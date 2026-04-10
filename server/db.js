@@ -85,11 +85,11 @@ const COLUMNS = {
     "id","project_id","tenant_id","property_id","access_token","refresh_token",
     "token_expires_at","google_email","connected_at","last_synced_at","last_sync_error"
   ]),
-  stage_rules: new Set(["id","project_id","pdp_event_name","cart_reach_mode"]),
+  stage_rules: new Set(["id","project_id","pdp_event_name","pdp_url_pattern","cart_reach_mode"]),
   metric_daily: new Set([
     "id","project_id","date","sessions","pdp_sessions","add_to_cart_sessions",
     "cart_reach_sessions","checkout_sessions","purchase_sessions",
-    "conversions","channel","device","created_at"
+    "conversions","channel","device","direct_pdp_sessions","created_at"
   ]),
   diagnosis_results: new Set(["id","project_id","from_date","to_date","result","created_at"]),
   report_jobs: new Set([
