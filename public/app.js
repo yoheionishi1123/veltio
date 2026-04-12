@@ -3223,7 +3223,7 @@ function syncPlanUI(plan, { trialActive = false, trialDaysLeft = 0, monthlySessi
   const statusEl = document.getElementById("plan-current-status");
   if (statusEl) {
     if (trialActive) {
-      statusEl.innerHTML = `🎉 <strong>14日間無料トライアル中</strong> — すべての機能をご利用いただけます。`;
+      statusEl.innerHTML = `🎉 <strong>30日間無料トライアル中</strong> — すべての機能をご利用いただけます。`;
     } else {
       const msgs = {
         free: "現在 <strong>Free</strong> プランをご利用中です。",
@@ -3295,7 +3295,7 @@ async function loadAccount() {
   const trialBanner = document.getElementById("trial-banner");
   if (trialBanner) {
     if (acct.trialActive) {
-      trialBanner.innerHTML = `🎉 <strong>14日間無料トライアル中</strong> — あと <strong>${acct.trialDaysLeft}日</strong>。すべての機能を無料でお試しいただけます。`;
+      trialBanner.innerHTML = `🎉 <strong>30日間無料トライアル中</strong> — あと <strong>${acct.trialDaysLeft}日</strong>。すべての機能を無料でお試しいただけます。`;
       trialBanner.classList.remove("hidden");
     } else {
       trialBanner.classList.add("hidden");

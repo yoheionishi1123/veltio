@@ -875,7 +875,7 @@ function ensureTenantDefaults(tenant) {
   // migrate legacy "starter" to "free"
   if (tenant.plan === "starter") tenant.plan = "free";
   tenant.plan = tenant.plan || "free";
-  // trial: set trialEndsAt 14 days from creation if not present
+  // trial: set trialEndsAt 30 days from creation if not present
   if (!tenant.trialEndsAt) {
     const base = tenant.createdAt ? new Date(tenant.createdAt) : new Date();
     const end = new Date(base.getTime() + TRIAL_DAYS * ONE_DAY_MS);
@@ -2537,6 +2537,16 @@ async function serveStatic(req, res, urlObj) {
             ? "application/javascript; charset=utf-8"
             : ext === ".svg"
               ? "image/svg+xml"
+            : ext === ".xml"
+              ? "application/xml; charset=utf-8"
+            : ext === ".txt"
+              ? "text/plain; charset=utf-8"
+            : ext === ".png"
+              ? "image/png"
+            : ext === ".jpg" || ext === ".jpeg"
+              ? "image/jpeg"
+            : ext === ".ico"
+              ? "image/x-icon"
             : "application/octet-stream";
 
     // Private mode: HTML の書き換え
